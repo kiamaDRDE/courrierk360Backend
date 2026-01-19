@@ -276,72 +276,74 @@ export class EffetClubService {
    * TF = moyenne des valeurs des structures tarifaires
    * associées aux options de la même offre
    */
-  // async calculateTF(
-  //   operateurId: number,
-  //   offreId: number,
-  //   typeOffre: TypeOffre,
-  // ): Promise<number> {
-  //   // 1️⃣ Vérifier que l'offre appartient bien à l'opérateur
-  //   const offre = await this.prisma.offre.findFirst({
-  //     where: {
-  //       id: offreId,
-  //       operateurId,
-  //     },
-  //   });
+  async calculateTF(
+    operateurId: number,
+    offreId: number,
+    typeOffre: TypeOffre,
+  ): Promise<number> {
+    // 1️⃣ Vérifier que l'offre appartient bien à l'opérateur
+    const offre = await this.prisma.offre.findFirst({
+      where: {
+        id: offreId,
+        operateurId,
+      },
+    });
 
-  //   if (!offre) {
-  //     throw new NotFoundException(
-  //       'Offre introuvable ou non rattachée à cet opérateur',
-  //     );
-  //   }
+    if (!offre) {
+      throw new NotFoundException(
+        'Offre introuvable ou non rattachée à cet opérateur',
+      );
+    }
 
-  //   // 2️⃣ Récupérer la structure tarifaire correspondante
-  //   const structureTarifaire =
-  //     await this.prisma.structureTarifaire.findFirst({
-  //       where: {
-  //         nom: STRUCTURE_TARIFAIRE[typeOffre],
-  //       },
-  //     });
+    // 2️⃣ Récupérer la structure tarifaire correspondante
+    const structureTarifaire =
+      await this.prisma.structureTarifaire.findFirst({
+        where: {
+          nom: STRUCTURE_TARIFAIRE[typeOffre],
+        },
+      });
 
-  //   if (!structureTarifaire) {
-  //     throw new NotFoundException(
-  //       `Structure tarifaire ${STRUCTURE_TARIFAIRE[typeOffre]} introuvable`,
-  //     );
-  //   }
+    if (!structureTarifaire) {
+      throw new NotFoundException(
+        `Structure tarifaire ${STRUCTURE_TARIFAIRE[typeOffre]} introuvable`,
+      );
+    }
 
-  //   // 3️⃣ Récupérer les valeurs tarifaires des options de l'offre
-  //   const valeurs =
-  //     await this.prisma.optionStructureTarifaire.findMany({
-  //       where: {
-  //         structureTarifaireId: structureTarifaire.id,
-  //         option: {
-  //           offreId: offreId,
-  //         },
-  //         valeur: {
-  //           not: null,
-  //         },
-  //       },
-  //       select: {
-  //         valeur: true,
-  //       },
-  //     });
+    // 3️⃣ Récupérer les valeurs tarifaires des options de l'offre
+    const valeurs =
+      await this.prisma.optionStructureTarifaire.findMany({
+        where: {
+          structureTarifaireId: structureTarifaire.id,
+          option: {
+            offreId: offreId,
+          },
+          valeur: {
+            not: null,
+          },
+        },
+        select: {
+          valeur: true,
+        },
+      });
 
-  //   if (valeurs.length === 0) {
-  //     throw new BadRequestException(
-  //       'Aucune valeur tarifaire trouvée pour cette offre',
-  //     );
-  //   }
+    if (valeurs.length === 0) {
+      throw new BadRequestException(
+        'Aucune valeur tarifaire trouvée pour cette offre',
+      );
+    }
 
-  //   // 4️⃣ Calcul de la moyenne
-  //   const somme = valeurs.reduce(
-  //     (total, item) => total + Number(item.valeur),
-  //     0,
-  //   );
+    // 4️⃣ Calcul de la moyenne
+    const somme = valeurs.reduce(
+      (total, item) => total + Number(item.valeur),
+      0,
+    );
 
-  //   const moyenne = somme / valeurs.length;
+    const moyenne = somme / valeurs.length;
 
-  //   return Number(moyenne.toFixed(2));
-  // }
+    return Number(moyenne.toFixed(2));
+  }
+
+  
   async calculateTFOptimized(
     operateurId: number,
     offreId: number,

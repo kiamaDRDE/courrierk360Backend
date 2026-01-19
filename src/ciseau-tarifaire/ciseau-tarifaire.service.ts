@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef 
 import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaService } from '../prisma/prisma.service';
 import { EffetClubQueryDto } from './dto/effet-club-query.dto';
-import { OffreService } from '../offre/offre.service';
+import { EffetClubService } from '../effet-club/effet-club.service';
 
 interface PaginatedEffetClubResponse {
   data: any[];
@@ -18,8 +18,8 @@ interface PaginatedEffetClubResponse {
 export class CiseauTarifaireService {
   constructor(
     private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => OffreService))
-    private readonly offreService: OffreService
+    @Inject(forwardRef(() => EffetClubService))
+    private readonly effetClubService: EffetClubService
   ) {}
 
   /**
@@ -113,12 +113,12 @@ export class CiseauTarifaireService {
 
   /**
    * Calculer le ciseau tarifaire selon le tarif facial (prix de l'offre)
-   * tariffacialOffnet = prixOffNet calculé à partir des options de l'offre
+   * tariffacialOffnet = TF OffNet calculé à partir des structures tarifaires des options
    * DiffTariffacialOffnetHC = tariffacialOffnet - Tarif Interconnexion OffNet HC
    * DiffTariffacialOffnetHP = tariffacialOffnet - Tarif Interconnexion OffNet HP
    */
   async calculateCiseauTarifaireAvecTarifFacial(offreId: number) {
-    // Récupérer l'offre avec son opérateur (sans prixOffNet car on le calcule)
+    // Récupérer l'offre avec son opérateur
     const offre = await this.prisma.offre.findUnique({
       where: { id: offreId },
       select: {
@@ -140,15 +140,19 @@ export class CiseauTarifaireService {
       throw new NotFoundException(`Offre avec l'ID ${offreId} non trouvée`);
     }
 
-    // Calculer le tarif facial OffNet en utilisant la fonction calculerPrixReseaux
-    const prixReseaux = await this.offreService['calculerPrixReseaux'](offreId);
+    // Calculer le tarif facial OffNet en utilisant calculateTF du service effet-club
+    const tfOffnet = await this.effetClubService.calculateTF(
+      offre.operateurId,
+      offreId,
+      'OFFNET'
+    );
 
-    if (!prixReseaux.prixOffNet) {
-      throw new BadRequestException(`Impossible de calculer le prix OffNet pour l'offre ${offreId}. Vérifiez que l'offre a des options avec des tarifs OffNet.`);
+    if (!tfOffnet) {
+      throw new BadRequestException(`Impossible de calculer le TF OffNet pour l'offre ${offreId}. Vérifiez que l'offre a des options avec des structures tarifaires OffNet.`);
     }
 
-    // Le tarif facial OffNet est le prix calculé à partir des options
-    const tariffacialOffnet = new Decimal(prixReseaux.prixOffNet);
+    // Le tarif facial OffNet est le TF calculé
+    const tariffacialOffnet = new Decimal(tfOffnet);
 
     // Extraire l'année depuis la date de validité de l'offre
     const annee = offre.dateDebutValidite.getFullYear();
@@ -242,10 +246,6 @@ export class CiseauTarifaireService {
           id: offre.operateur.id,
           nom: offre.operateur.nom
         }
-      },
-      calculTarifFacial: {
-        nombreOptions: prixReseaux.nombreOptions,
-        prixOffNetCalcule: tariffacialOffnet.toString()
       },
       ciseauTarifaire: this.mapToResponseDtoTarifFacial(ciseauTarifaire),
       resultats: {
@@ -492,7 +492,7 @@ export class CiseauTarifaireService {
         }
       },
       formules: {
-        tariffacialOffnet: `Prix OffNet de l'offre = ${tariffacialOffnet}`,
+        tariffacialOffnet: `TF OffNet (moyenne des valeurs tarifaires des options) = ${tariffacialOffnet}`,
         DiffTariffacialOffnetHC: `Tarif Facial OffNet - Tarif Interconnexion OffNet HC = ${DiffTariffacialOffnetHC}`,
         DiffTariffacialOffnetHP: `Tarif Facial OffNet - Tarif Interconnexion OffNet HP = ${DiffTariffacialOffnetHP}`
       },
