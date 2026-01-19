@@ -16,6 +16,13 @@ export class ParametreResponseDto {
   type: string;
 
   @ApiProperty({
+    description: 'Année du paramètre',
+    example: 2024,
+    type: 'integer',
+  })
+  annee: number;
+
+  @ApiProperty({
     description: 'Redevance FST en francs CFA',
     example: 15000.00,
     type: 'number',
@@ -23,6 +30,14 @@ export class ParametreResponseDto {
     nullable: true,
   })
   redevanceFst?: number;
+
+  @ApiProperty({
+    description: 'Coût réseau en francs CFA',
+    example: 1200000.00,
+    type: 'number',
+    format: 'decimal',
+  })
+  coutReseau: number;
 
   @ApiProperty({
     description: 'Redevance de Régulation en francs CFA',
@@ -59,6 +74,38 @@ export class ParametreResponseDto {
     nullable: true,
   })
   tva?: number;
+
+  @ApiProperty({
+    description: 'Taxe en francs CFA',
+    example: 500000.00,
+    type: 'number',
+    format: 'decimal',
+  })
+  taxe: number;
+
+  @ApiProperty({
+    description: 'Coût d\'interconnexion en francs CFA',
+    example: 800000.00,
+    type: 'number',
+    format: 'decimal',
+    nullable: true,
+  })
+  coutInterconnexion?: number;
+
+  @ApiProperty({
+    description: 'Coût total calculé (coutReseau + coutsCommerciaux + taxe + coutInterconnexion)',
+    example: 2535000.00,
+    type: 'number',
+    format: 'decimal',
+  })
+  cout: number;
+
+  @ApiProperty({
+    description: 'Formule de calcul du coût total',
+    example: '1200000 + 35000 + 500000 + 800000 = 2535000',
+    type: 'string',
+  })
+  coutFormule: string;
 
   @ApiProperty({
     description: 'Date de création du paramètre',

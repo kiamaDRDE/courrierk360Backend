@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateParametreDto } from './dto/create-parametre.dto';
 import { UpdateParametreDto } from './dto/update-parametre.dto';
@@ -14,24 +15,36 @@ export class ParametreService {
    */
   async create(createParametreDto: CreateParametreDto): Promise<ParametreResponseDto> {
     try {
-      // Vérifier qu'il n'existe pas déjà un paramètre de ce type
-      const existingParametre = await this.prisma.parametre.findFirst({
-        where: { type: createParametreDto.type }
+      // Vérifier qu'il n'existe pas déjà un paramètre pour cette année
+      const existingParametre = await this.prisma.parametre.findUnique({
+        where: { annee: createParametreDto.annee }
       });
 
       if (existingParametre) {
-        throw new ConflictException(`Un paramètre de type "${createParametreDto.type}" existe déjà`);
+        throw new ConflictException(`Un paramètre existe déjà pour l'année ${createParametreDto.annee}`);
       }
+
+      // Calculer le coût total (somme de tous les coûts)
+      const coutReseau = new Decimal(createParametreDto.coutReseau || 0);
+      const coutCommerciaux = new Decimal(createParametreDto.coutsCommerciaux || 0);
+      const taxe = new Decimal(createParametreDto.taxe || 0);
+      const coutInterconnexion = new Decimal(createParametreDto.coutInterconnexion || 0);
+      const cout = coutReseau.plus(coutCommerciaux).plus(taxe).plus(coutInterconnexion);
 
       // Créer le paramètre
       const parametre = await this.prisma.parametre.create({
         data: {
           type: createParametreDto.type,
+          annee: createParametreDto.annee,
           redevanceFst: createParametreDto.redevanceFst || null,
           redevanceRegulation: createParametreDto.redevanceRegulation || null,
           droitEntree: createParametreDto.droitEntree || null,
-          coutsCommerciaux: createParametreDto.coutsCommerciaux || null,
+          coutsCommerciaux: coutCommerciaux,
           tva: createParametreDto.tva || null,
+          coutReseau: coutReseau,
+          taxe: taxe,
+          coutInterconnexion: coutInterconnexion,
+          cout: cout,
         }
       });
 
@@ -132,28 +145,86 @@ export class ParametreService {
         throw new NotFoundException(`Paramètre avec l'ID ${id} non trouvé`);
       }
 
-      // Si le type est modifié, vérifier qu'il n'existe pas déjà un paramètre avec ce type
-      if (updateParametreDto.type && updateParametreDto.type !== existingParametre.type) {
-        const conflictParametre = await this.prisma.parametre.findUnique({
-          where: { type: updateParametreDto.type }
+      // Si l'année est modifiée, vérifier la contrainte d'unicité
+      if (updateParametreDto.annee !== undefined && updateParametreDto.annee !== existingParametre.annee) {
+        const existingConflict = await this.prisma.parametre.findFirst({
+          where: {
+            AND: [
+              { annee: updateParametreDto.annee },
+              { id: { not: id } }
+            ]
+          }
         });
 
-        if (conflictParametre) {
-          throw new ConflictException(`Un paramètre de type "${updateParametreDto.type}" existe déjà`);
+        if (existingConflict) {
+          throw new ConflictException(`Un paramètre existe déjà pour l'année ${updateParametreDto.annee}`);
         }
       }
 
-      // Mettre à jour le paramètre
+      // Préparer les données de mise à jour
+      const updateData: any = {};
+
+      if (updateParametreDto.type !== undefined) {
+        updateData.type = updateParametreDto.type;
+      }
+
+      if (updateParametreDto.annee !== undefined) {
+        updateData.annee = updateParametreDto.annee;
+      }
+
+      if (updateParametreDto.redevanceFst !== undefined) {
+        updateData.redevanceFst = updateParametreDto.redevanceFst;
+      }
+
+      if (updateParametreDto.redevanceRegulation !== undefined) {
+        updateData.redevanceRegulation = updateParametreDto.redevanceRegulation;
+      }
+
+      if (updateParametreDto.droitEntree !== undefined) {
+        updateData.droitEntree = updateParametreDto.droitEntree;
+      }
+
+      if (updateParametreDto.coutsCommerciaux !== undefined) {
+        updateData.coutsCommerciaux = new Decimal(updateParametreDto.coutsCommerciaux);
+      }
+
+      if (updateParametreDto.tva !== undefined) {
+        updateData.tva = updateParametreDto.tva;
+      }
+
+      if (updateParametreDto.coutReseau !== undefined) {
+        updateData.coutReseau = new Decimal(updateParametreDto.coutReseau);
+      }
+
+      if (updateParametreDto.taxe !== undefined) {
+        updateData.taxe = new Decimal(updateParametreDto.taxe);
+      }
+
+      if (updateParametreDto.coutInterconnexion !== undefined) {
+        updateData.coutInterconnexion = new Decimal(updateParametreDto.coutInterconnexion);
+      }
+
+      // Recalculer le coût total si au moins un des champs change
+      if (updateParametreDto.coutReseau !== undefined || 
+          updateParametreDto.coutsCommerciaux !== undefined || 
+          updateParametreDto.taxe !== undefined || 
+          updateParametreDto.coutInterconnexion !== undefined) {
+        
+        // Récupérer les valeurs actuelles ou les nouvelles valeurs
+        const coutReseau = updateData.coutReseau || existingParametre.coutReseau;
+        const coutCommerciaux = updateData.coutsCommerciaux || existingParametre.coutsCommerciaux || 0;
+        const taxe = updateData.taxe || existingParametre.taxe;
+        const coutInterconnexion = updateData.coutInterconnexion || existingParametre.coutInterconnexion || 0;
+        
+        updateData.cout = new Decimal(coutReseau)
+          .plus(new Decimal(coutCommerciaux))
+          .plus(new Decimal(taxe))
+          .plus(new Decimal(coutInterconnexion));
+      }
+
       const updatedParametre = await this.prisma.parametre.update({
         where: { id },
-        data: {
-          ...(updateParametreDto.type && { type: updateParametreDto.type }),
-          ...(updateParametreDto.redevanceFst !== undefined && { redevanceFst: updateParametreDto.redevanceFst }),
-          ...(updateParametreDto.redevanceRegulation !== undefined && { redevanceRegulation: updateParametreDto.redevanceRegulation }),
-          ...(updateParametreDto.droitEntree !== undefined && { droitEntree: updateParametreDto.droitEntree }),
-          ...(updateParametreDto.coutsCommerciaux !== undefined && { coutsCommerciaux: updateParametreDto.coutsCommerciaux }),
-          ...(updateParametreDto.tva !== undefined && { tva: updateParametreDto.tva }),
-        }
+        data: updateData
       });
 
       return this.mapToResponseDto(updatedParametre);
@@ -197,14 +268,26 @@ export class ParametreService {
    * Convertir un objet Parametre en ParametreResponseDto
    */
   private mapToResponseDto(parametre: any): ParametreResponseDto {
+    const coutReseau = parametre.coutReseau?.toString() || '0';
+    const coutCommerciaux = parametre.coutsCommerciaux?.toString() || '0';
+    const taxe = parametre.taxe?.toString() || '0';
+    const coutInterconnexion = parametre.coutInterconnexion?.toString() || '0';
+    const cout = parametre.cout?.toString() || '0';
+
     return {
       id: parametre.id,
       type: parametre.type,
+      annee: parametre.annee,
       redevanceFst: parametre.redevanceFst ? Number(parametre.redevanceFst) : undefined,
       redevanceRegulation: parametre.redevanceRegulation ? Number(parametre.redevanceRegulation) : undefined,
       droitEntree: parametre.droitEntree ? Number(parametre.droitEntree) : undefined,
       coutsCommerciaux: parametre.coutsCommerciaux ? Number(parametre.coutsCommerciaux) : undefined,
       tva: parametre.tva ? Number(parametre.tva) : undefined,
+      coutReseau: Number(coutReseau),
+      taxe: Number(taxe),
+      coutInterconnexion: parametre.coutInterconnexion ? Number(parametre.coutInterconnexion) : undefined,
+      cout: Number(cout),
+      coutFormule: `${coutReseau} + ${coutCommerciaux} + ${taxe} + ${coutInterconnexion} = ${cout}`,
       createdAt: parametre.createdAt,
       updatedAt: parametre.updatedAt
     };

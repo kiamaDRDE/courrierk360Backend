@@ -15,6 +15,31 @@ export class UpdateParametreDto extends PartialType(CreateParametreDto) {
   type?: string;
 
   @ApiProperty({
+    description: 'Année du paramètre',
+    example: 2024,
+    type: 'integer',
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'L\'année doit être un nombre' })
+  @Type(() => Number)
+  annee?: number;
+
+  @ApiProperty({
+    description: 'Coût réseau en francs CFA',
+    example: 1200000.00,
+    type: 'number',
+    format: 'decimal',
+    minimum: 0,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'Le coût réseau doit être un nombre' })
+  @Min(0, { message: 'Le coût réseau ne peut pas être négatif' })
+  @Type(() => Number)
+  coutReseau?: number;
+
+  @ApiProperty({
     description: 'Redevance FST en francs CFA',
     example: 15000.00,
     type: 'number',
@@ -84,4 +109,32 @@ export class UpdateParametreDto extends PartialType(CreateParametreDto) {
   @Min(0, { message: 'La TVA ne peut pas être négative' })
   @Type(() => Number)
   tva?: number;
+
+  @ApiProperty({
+    description: 'Taxe en francs CFA',
+    example: 500000.00,
+    type: 'number',
+    format: 'decimal',
+    minimum: 0,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'La taxe doit être un nombre' })
+  @Min(0, { message: 'La taxe ne peut pas être négative' })
+  @Type(() => Number)
+  taxe?: number;
+
+  @ApiProperty({
+    description: 'Coût d\'interconnexion en francs CFA',
+    example: 800000.00,
+    type: 'number',
+    format: 'decimal',
+    minimum: 0,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'Le coût d\'interconnexion doit être un nombre' })
+  @Min(0, { message: 'Le coût d\'interconnexion ne peut pas être négatif' })
+  @Type(() => Number)
+  coutInterconnexion?: number;
 }

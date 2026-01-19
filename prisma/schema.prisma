@@ -141,6 +141,7 @@ model TypeAppel {
 model Offre {
   id                Int       @id @default(autoincrement()) @map("id")
   operateurId       Int       @map("operateur_id")
+  ciseauTarifaireId Int?      @map("ciseau_tarifaire_id")
   nom               String    @map("nom") @db.VarChar(191)
   dateDebutValidite DateTime  @map("date_debut_validite")
   dateFinValidite   DateTime  @map("date_fin_validite")
@@ -280,6 +281,7 @@ model Offre {
 
   // Relations
   operateur         Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
+  ciseauTarifaire   CiseauTarifaire? @relation(fields: [ciseauTarifaireId], references: [id], onDelete: SetNull)
   avantages         OffreAvantage[]
   services          OffreService[]
   caracteristiques  Caracteristique[]
@@ -289,6 +291,7 @@ model Offre {
   @@unique([operateurId, nom], name: "unique_offre_par_operateur")
   @@index([id])
   @@index([operateurId])
+  @@index([ciseauTarifaireId])
   @@index([nom])
   @@index([typeOffre])
   @@index([statut])
@@ -301,10 +304,10 @@ model TarifInterconnexion {
   id          Int       @id @default(autoincrement()) @map("id")
   operateurId Int       @map("operateur_id")
   annee       Int       @map("annee")
-  tarifOffNetHeureCreuse    Decimal   @map("tarif_off_net_heure_creuse") @db.Decimal(10, 2)
-  tarifOffNetHeurePleine    Decimal   @map("tarif_off_net_heure_pleine") @db.Decimal(10, 2)
-  tarifOnNetHeureCreuse     Decimal   @map("tarif_on_net_heure_creuse") @db.Decimal(10, 2)
-  tarifOnNetHeurePleine     Decimal   @map("tarif_on_net_heure_pleine") @db.Decimal(10, 2)
+  tarifOffNetHeureCreuse    Decimal   @default(0) @map("tarif_off_net_heure_creuse") @db.Decimal(10, 2)
+  tarifOffNetHeurePleine    Decimal   @default(0) @map("tarif_off_net_heure_pleine") @db.Decimal(10, 2)
+  tarifOnNetHeureCreuse     Decimal   @default(0) @map("tarif_on_net_heure_creuse") @db.Decimal(10, 2)
+  tarifOnNetHeurePleine     Decimal   @default(0) @map("tarif_on_net_heure_pleine") @db.Decimal(10, 2)
   typeTarif   String    @default("Standard") @map("type_tarif") @db.VarChar(100)
   description String?   @map("description") @db.Text
   createdAt   DateTime  @default(now()) @map("created_at")
@@ -595,16 +598,21 @@ model Caracteristique {
 model Parametre {
   id           Int      @id @default(autoincrement()) @map("id")
   type         String   @map("type") @db.VarChar(100)
+  annee        Int      @unique @map("annee")
   redevanceFst Decimal? @map("redevance_fst") @db.Decimal(10, 2)
   redevanceRegulation Decimal? @map("redevance_regulation") @db.Decimal(10, 2)
   droitEntree  Decimal? @map("droit_entree") @db.Decimal(10, 2)
   coutsCommerciaux Decimal? @map("couts_commerciaux") @db.Decimal(10, 2)
+  coutInterconnexion  Decimal  @default(0) @map("cout_interconnexion") @db.Decimal(18, 2)
   tva          Decimal? @map("tva") @db.Decimal(5, 2)
+  coutReseau   Decimal  @default(0) @map("cout_reseau") @db.Decimal(18, 2)
+  taxe         Decimal  @default(0) @map("taxe") @db.Decimal(18, 2)
+  cout         Decimal  @default(0) @map("cout") @db.Decimal(18, 2)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
 
-  @@unique([type], name: "unique_parametre_type")
   @@index([type])
+  @@index([annee])
   @@map("parametres")
 }
 
@@ -738,13 +746,19 @@ model OptionConsommationMoyenne {
 model CiseauTarifaire {
   id                  Int      @id @default(autoincrement()) @map("id")
   annee               Int      @unique @map("annee")
-  coutReseau          Decimal  @default(0) @map("cout_reseau") @db.Decimal(18, 2)
-  coutCommerciaux     Decimal  @default(0) @map("cout_commerciaux") @db.Decimal(18, 2)
-  coutInterconnexion  Decimal  @default(0) @map("cout_interconnexion") @db.Decimal(18, 2)
-  taxe                Decimal  @default(0) @map("taxe") @db.Decimal(18, 2)
   cout                Decimal  @default(0) @map("cout") @db.Decimal(18, 2)
+  differenceOffnetHC  Decimal  @default(0) @map("difference_offnet_hc") @db.Decimal(18, 2)
+  differenceOffnetHP  Decimal  @default(0) @map("difference_offnet_hp") @db.Decimal(18, 2)
+  differenceOnnetHC   Decimal  @default(0) @map("difference_onnet_hc") @db.Decimal(18, 2)
+  differenceOnnetHP   Decimal  @default(0) @map("difference_onnet_hp") @db.Decimal(18, 2)
+  isCiseauOffHC            Boolean  @default(false) @map("is_ciseau_off_hc")
+  isCiseauOffHP            Boolean  @default(false) @map("is_ciseau_off_hp")
+
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  offres              Offre[]
 
   @@index([id])
   @@index([annee])

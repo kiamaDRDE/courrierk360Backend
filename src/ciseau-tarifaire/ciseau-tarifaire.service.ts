@@ -1,8 +1,6 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateEffetClubDto } from './dto/create-effet-club.dto';
-import { UpdateEffetClubDto } from './dto/update-effet-club.dto';
 import { EffetClubQueryDto } from './dto/effet-club-query.dto';
 
 interface PaginatedEffetClubResponse {
@@ -19,35 +17,149 @@ interface PaginatedEffetClubResponse {
 export class CiseauTarifaireService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createEffetClubDto: CreateEffetClubDto) {
-    // Vérifier qu'il n'existe pas déjà un ciseau tarifaire pour cette année
-    const existingEffetClub = await this.prisma.ciseauTarifaire.findUnique({
-      where: { annee: createEffetClubDto.annee }
-    });
-
-    if (existingEffetClub) {
-      throw new ConflictException(`Un ciseau tarifaire existe déjà pour l'année ${createEffetClubDto.annee}`);
-    }
-
-    // Calculer le coût total (somme de tous les coûts + taxe)
-    const coutReseau = new Decimal(createEffetClubDto.coutReseau);
-    const coutCommerciaux = new Decimal(createEffetClubDto.coutCommerciaux);
-    const coutInterconnexion = new Decimal(createEffetClubDto.coutInterconnexion);
-    const taxe = new Decimal(createEffetClubDto.taxe);
-    const cout = coutReseau.plus(coutCommerciaux).plus(coutInterconnexion).plus(taxe);
-
-    const effetClub = await this.prisma.ciseauTarifaire.create({
-      data: {
-        annee: createEffetClubDto.annee,
-        coutReseau,
-        coutCommerciaux,
-        coutInterconnexion,
-        taxe,
-        cout
+  /**
+   * Calculer et créer/mettre à jour automatiquement le ciseau tarifaire pour un opérateur et une année
+   */
+  async calculateCiseauTarifaire(operateurId: number, annee: number) {
+    // Récupérer les tarifs de l'opérateur pour cette année (Base et Interconnexion)
+    const tarifs = await this.prisma.tarifInterconnexion.findMany({
+      where: {
+        operateurId,
+        annee
       }
     });
 
-    return this.mapToResponseDto(effetClub);
+    if (tarifs.length === 0) {
+      throw new NotFoundException(`Aucun tarif trouvé pour l'opérateur ${operateurId} pour l'année ${annee}`);
+    }
+
+    const tarifBase = tarifs.find(t => t.typeTarif === 'Base');
+    const tarifInterconnexion = tarifs.find(t => t.typeTarif === 'Interconnexion');
+
+    if (!tarifBase) {
+      throw new BadRequestException(`Tarif de type "Base" manquant pour l'opérateur ${operateurId} pour l'année ${annee}`);
+    }
+
+    if (!tarifInterconnexion) {
+      throw new BadRequestException(`Tarif de type "Interconnexion" manquant pour l'opérateur ${operateurId} pour l'année ${annee}`);
+    }
+
+    // Calculer les différences
+    const differenceOffnetHC = new Decimal(tarifBase.tarifOffNetHeureCreuse).minus(new Decimal(tarifInterconnexion.tarifOffNetHeureCreuse));
+    const differenceOffnetHP = new Decimal(tarifBase.tarifOffNetHeurePleine).minus(new Decimal(tarifInterconnexion.tarifOffNetHeurePleine));
+    const differenceOnnetHC = new Decimal(tarifBase.tarifOnNetHeureCreuse).minus(new Decimal(tarifInterconnexion.tarifOnNetHeureCreuse));
+    const differenceOnnetHP = new Decimal(tarifBase.tarifOnNetHeurePleine).minus(new Decimal(tarifInterconnexion.tarifOnNetHeurePleine));
+
+    // Récupérer le coût depuis la table Parametre pour cette année
+    const parametre = await this.prisma.parametre.findUnique({
+      where: { annee }
+    });
+
+    if (!parametre) {
+      throw new NotFoundException(`Paramètre non trouvé pour l'année ${annee}`);
+    }
+
+    const cout = parametre.cout;
+
+    // Déterminer si c'est un ciseau tarifaire pour chaque différence OffNet
+    // Si differenceOffnetHC > cout, alors isCiseauOffHC = false, sinon true
+    const isCiseauOffHC = !differenceOffnetHC.greaterThan(cout);
+    
+    // Si differenceOffnetHP > cout, alors isCiseauOffHP = false, sinon true
+    const isCiseauOffHP = !differenceOffnetHP.greaterThan(cout);
+
+    // Vérifier si un ciseau tarifaire existe déjà pour cette année
+    const existingCiseau = await this.prisma.ciseauTarifaire.findUnique({
+      where: { annee }
+    });
+
+    if (existingCiseau) {
+      // Mettre à jour
+      const updated = await this.prisma.ciseauTarifaire.update({
+        where: { annee },
+        data: {
+          cout,
+          differenceOffnetHC,
+          differenceOffnetHP,
+          differenceOnnetHC,
+          differenceOnnetHP,
+          isCiseauOffHC,
+          isCiseauOffHP
+        }
+      });
+      return this.mapToResponseDto(updated);
+    } else {
+      // Créer
+      const created = await this.prisma.ciseauTarifaire.create({
+        data: {
+          annee,
+          cout,
+          differenceOffnetHC,
+          differenceOffnetHP,
+          differenceOnnetHC,
+          differenceOnnetHP,
+          isCiseauOffHC,
+          isCiseauOffHP
+        }
+      });
+      return this.mapToResponseDto(created);
+    }
+  }
+
+  /**
+   * Calculer le ciseau tarifaire pour une offre spécifique
+   * Récupère l'opérateur de l'offre et calcule le ciseau tarifaire
+   */
+  async calculateCiseauTarifaireForOffre(offreId: number) {
+    // Récupérer l'offre avec son opérateur
+    const offre = await this.prisma.offre.findUnique({
+      where: { id: offreId },
+      include: {
+        operateur: true
+      }
+    });
+
+    if (!offre) {
+      throw new NotFoundException(`Offre avec l'ID ${offreId} non trouvée`);
+    }
+
+    // Extraire l'année depuis les dates de validité de l'offre
+    const annee = offre.dateDebutValidite.getFullYear();
+
+    // Calculer le ciseau tarifaire pour cet opérateur et cette année
+    const ciseauTarifaire = await this.calculateCiseauTarifaire(offre.operateurId, annee);
+
+    // Lier le ciseau tarifaire à l'offre si ce n'est pas déjà fait
+    if (offre.ciseauTarifaireId !== ciseauTarifaire.id) {
+      await this.prisma.offre.update({
+        where: { id: offreId },
+        data: {
+          ciseauTarifaireId: ciseauTarifaire.id
+        }
+      });
+    }
+
+    return {
+      offre: {
+        id: offre.id,
+        nom: offre.nom,
+        operateur: {
+          id: offre.operateur.id,
+          nom: offre.operateur.nom
+        }
+      },
+      ciseauTarifaire,
+      resultats: {
+        isCiseauOffHC: ciseauTarifaire.isCiseauOffHC,
+        isCiseauOffHP: ciseauTarifaire.isCiseauOffHP,
+        messageOffHC: ciseauTarifaire.isCiseauOffHC 
+          ? 'Ciseau tarifaire détecté pour OffNet HC' 
+          : 'Pas de ciseau tarifaire pour OffNet HC',
+        messageOffHP: ciseauTarifaire.isCiseauOffHP 
+          ? 'Ciseau tarifaire détecté pour OffNet HP' 
+          : 'Pas de ciseau tarifaire pour OffNet HP'
+      }
+    };
   }
 
   async findAll(query: EffetClubQueryDto): Promise<PaginatedEffetClubResponse> {
@@ -60,7 +172,16 @@ export class CiseauTarifaireService {
     if (limit === 0) {
       // Retourner tous les résultats sans pagination
       const effetsClub = await this.prisma.ciseauTarifaire.findMany({
-        orderBy
+        orderBy,
+        include: {
+          offres: {
+            select: {
+              id: true,
+              nom: true,
+              operateurId: true
+            }
+          }
+        }
       });
 
       return {
@@ -80,7 +201,16 @@ export class CiseauTarifaireService {
       this.prisma.ciseauTarifaire.findMany({
         skip,
         take: limit,
-        orderBy
+        orderBy,
+        include: {
+          offres: {
+            select: {
+              id: true,
+              nom: true,
+              operateurId: true
+            }
+          }
+        }
       }),
       this.prisma.ciseauTarifaire.count()
     ]);
@@ -98,97 +228,71 @@ export class CiseauTarifaireService {
     };
   }
 
-  async update(id: number, updateEffetClubDto: UpdateEffetClubDto) {
-    // Vérifier que l'effet club existe
-    const existingEffetClub = await this.prisma.ciseauTarifaire.findUnique({
-      where: { id }
-    });
-
-    if (!existingEffetClub) {
-      throw new NotFoundException(`Effet club avec l'ID ${id} non trouvé`);
-    }
-
-    // Si l'année est modifiée, vérifier la contrainte d'unicité
-    if (updateEffetClubDto.annee !== undefined && updateEffetClubDto.annee !== existingEffetClub.annee) {
-      const existingConflict = await this.prisma.ciseauTarifaire.findFirst({
-        where: {
-          AND: [
-            { annee: updateEffetClubDto.annee },
-            { id: { not: id } }
-          ]
-        }
-      });
-
-      if (existingConflict) {
-        throw new ConflictException(`Un ciseau tarifaire existe déjà pour l'année ${updateEffetClubDto.annee}`);
-      }
-    }
-
-    // Préparer les données de mise à jour
-    const updateData: any = {};
-
-    if (updateEffetClubDto.annee !== undefined) {
-      updateData.annee = updateEffetClubDto.annee;
-    }
-
-    if (updateEffetClubDto.coutReseau !== undefined) {
-      updateData.coutReseau = new Decimal(updateEffetClubDto.coutReseau);
-    }
-
-    if (updateEffetClubDto.coutCommerciaux !== undefined) {
-      updateData.coutCommerciaux = new Decimal(updateEffetClubDto.coutCommerciaux);
-    }
-
-    if (updateEffetClubDto.coutInterconnexion !== undefined) {
-      updateData.coutInterconnexion = new Decimal(updateEffetClubDto.coutInterconnexion);
-    }
-
-    if (updateEffetClubDto.taxe !== undefined) {
-      updateData.taxe = new Decimal(updateEffetClubDto.taxe);
-    }
-
-    // Recalculer le coût total si au moins un des champs change
-    if (updateEffetClubDto.coutReseau !== undefined || 
-        updateEffetClubDto.coutCommerciaux !== undefined || 
-        updateEffetClubDto.coutInterconnexion !== undefined || 
-        updateEffetClubDto.taxe !== undefined) {
-      
-      // Récupérer les valeurs actuelles ou les nouvelles valeurs
-      const coutReseau = updateData.coutReseau || existingEffetClub.coutReseau;
-      const coutCommerciaux = updateData.coutCommerciaux || existingEffetClub.coutCommerciaux;
-      const coutInterconnexion = updateData.coutInterconnexion || existingEffetClub.coutInterconnexion;
-      const taxe = updateData.taxe || existingEffetClub.taxe;
-      
-      updateData.cout = new Decimal(coutReseau)
-        .plus(new Decimal(coutCommerciaux))
-        .plus(new Decimal(coutInterconnexion))
-        .plus(new Decimal(taxe));
-    }
-
-    const effetClub = await this.prisma.ciseauTarifaire.update({
+  async findOne(id: number) {
+    const ciseauTarifaire = await this.prisma.ciseauTarifaire.findUnique({
       where: { id },
-      data: updateData
+      include: {
+        offres: {
+          select: {
+            id: true,
+            nom: true,
+            operateurId: true
+          }
+        }
+      }
     });
 
-    return this.mapToResponseDto(effetClub);
+    if (!ciseauTarifaire) {
+      throw new NotFoundException(`Ciseau tarifaire avec l'ID ${id} non trouvé`);
+    }
+
+    return this.mapToResponseDto(ciseauTarifaire);
   }
 
+
+
   private mapToResponseDto(effetClub: any) {
-    const coutReseau = effetClub.coutReseau?.toString() || '0';
-    const coutCommerciaux = effetClub.coutCommerciaux?.toString() || '0';
-    const coutInterconnexion = effetClub.coutInterconnexion?.toString() || '0';
-    const taxe = effetClub.taxe?.toString() || '0';
     const cout = effetClub.cout?.toString() || '0';
+    const differenceOffnetHC = effetClub.differenceOffnetHC?.toString() || '0';
+    const differenceOffnetHP = effetClub.differenceOffnetHP?.toString() || '0';
+    const differenceOnnetHC = effetClub.differenceOnnetHC?.toString() || '0';
+    const differenceOnnetHP = effetClub.differenceOnnetHP?.toString() || '0';
 
     return {
       id: effetClub.id,
       annee: effetClub.annee,
-      coutReseau,
-      coutCommerciaux,
-      coutInterconnexion,
-      taxe,
       cout,
-      coutFormule: `${coutReseau} + ${coutCommerciaux} + ${coutInterconnexion} + ${taxe} = ${cout}`,
+      differenceOffnetHC,
+      differenceOffnetHP,
+      differenceOnnetHC,
+      differenceOnnetHP,
+      isCiseauOffHC: effetClub.isCiseauOffHC,
+      isCiseauOffHP: effetClub.isCiseauOffHP,
+      resultats: {
+        offnetHC: {
+          difference: differenceOffnetHC,
+          cout,
+          isCiseau: effetClub.isCiseauOffHC,
+          resultat: effetClub.isCiseauOffHC 
+            ? `Ciseau tarifaire (${differenceOffnetHC} <= ${cout})` 
+            : `Pas de ciseau tarifaire (${differenceOffnetHC} > ${cout})`
+        },
+        offnetHP: {
+          difference: differenceOffnetHP,
+          cout,
+          isCiseau: effetClub.isCiseauOffHP,
+          resultat: effetClub.isCiseauOffHP 
+            ? `Ciseau tarifaire (${differenceOffnetHP} <= ${cout})` 
+            : `Pas de ciseau tarifaire (${differenceOffnetHP} > ${cout})`
+        }
+      },
+      formules: {
+        differenceOffnetHC: `Tarif Base OffNet HC - Tarif Interconnexion OffNet HC = ${differenceOffnetHC}`,
+        differenceOffnetHP: `Tarif Base OffNet HP - Tarif Interconnexion OffNet HP = ${differenceOffnetHP}`,
+        differenceOnnetHC: `Tarif Base OnNet HC - Tarif Interconnexion OnNet HC = ${differenceOnnetHC}`,
+        differenceOnnetHP: `Tarif Base OnNet HP - Tarif Interconnexion OnNet HP = ${differenceOnnetHP}`
+      },
+      offres: effetClub.offres || [],
       createdAt: effetClub.createdAt,
       updatedAt: effetClub.updatedAt
     };
