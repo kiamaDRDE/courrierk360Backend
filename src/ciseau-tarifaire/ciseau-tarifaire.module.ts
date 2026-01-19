@@ -1,10 +1,14 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { CiseauTarifaireService } from './ciseau-tarifaire.service';
 import { CiseauTarifaireController } from './ciseau-tarifaire.controller';
 import { PrismaModule } from '../prisma/prisma.module';
+import { OffreModule } from '../offre/offre.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [
+    PrismaModule,
+    forwardRef(() => OffreModule)
+  ],
   controllers: [CiseauTarifaireController],
   providers: [CiseauTarifaireService],
   exports: [CiseauTarifaireService]

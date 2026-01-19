@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaService } from '../prisma/prisma.service';
 import { EffetClubQueryDto } from './dto/effet-club-query.dto';
+import { OffreService } from '../offre/offre.service';
 
 interface PaginatedEffetClubResponse {
   data: any[];
@@ -15,7 +16,11 @@ interface PaginatedEffetClubResponse {
 
 @Injectable()
 export class CiseauTarifaireService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => OffreService))
+    private readonly offreService: OffreService
+  ) {}
 
   /**
    * Calculer et créer/mettre à jour automatiquement le ciseau tarifaire pour un opérateur et une année
@@ -108,7 +113,7 @@ export class CiseauTarifaireService {
 
   /**
    * Calculer le ciseau tarifaire selon le tarif facial (prix de l'offre)
-   * tariffacialOffnet = prixOffNet
+   * tariffacialOffnet = prixOffNet calculé à partir des options de l'offre
    * DiffTariffacialOffnetHC = tariffacialOffnet - Tarif Interconnexion OffNet HC
    * DiffTariffacialOffnetHP = tariffacialOffnet - Tarif Interconnexion OffNet HP
    */
@@ -125,13 +130,15 @@ export class CiseauTarifaireService {
       throw new NotFoundException(`Offre avec l'ID ${offreId} non trouvée`);
     }
 
-    // Vérifier que l'offre a un prix OffNet
-    if (!offre.prixOffNet) {
-      throw new BadRequestException(`L'offre avec l'ID ${offreId} n'a pas de prix OffNet défini`);
+    // Calculer le tarif facial OffNet en utilisant la fonction calculerPrixReseaux
+    const prixReseaux = await this.offreService['calculerPrixReseaux'](offreId);
+
+    if (!prixReseaux.prixOffNet) {
+      throw new BadRequestException(`Impossible de calculer le prix OffNet pour l'offre ${offreId}. Vérifiez que l'offre a des options avec des tarifs OffNet.`);
     }
 
-    // Le tarif facial OffNet est le prix de l'offre
-    const tariffacialOffnet = new Decimal(offre.prixOffNet);
+    // Le tarif facial OffNet est le prix calculé à partir des options
+    const tariffacialOffnet = new Decimal(prixReseaux.prixOffNet);
 
     // Extraire l'année depuis la date de validité de l'offre
     const annee = offre.dateDebutValidite.getFullYear();
@@ -221,11 +228,14 @@ export class CiseauTarifaireService {
       offre: {
         id: offre.id,
         nom: offre.nom,
-        prixOffNet: offre.prixOffNet?.toString(),
         operateur: {
           id: offre.operateur.id,
           nom: offre.operateur.nom
         }
+      },
+      calculTarifFacial: {
+        nombreOptions: prixReseaux.nombreOptions,
+        prixOffNetCalcule: tariffacialOffnet.toString()
       },
       ciseauTarifaire: this.mapToResponseDtoTarifFacial(ciseauTarifaire),
       resultats: {

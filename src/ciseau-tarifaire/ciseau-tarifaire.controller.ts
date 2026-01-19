@@ -137,7 +137,7 @@ export class CiseauTarifaireController {
   @Post('calculate-tarif-facial/:offreId')
   @ApiOperation({ 
     summary: 'Calculer le ciseau tarifaire selon le tarif facial',
-    description: 'Calcule le ciseau tarifaire en utilisant le prix OffNet de l\'offre (tarif facial) comparé au tarif d\'interconnexion.'
+    description: 'Calcule automatiquement le tarif facial OffNet à partir des options de l\'offre (moyenne des tarifMinuteOffNet), puis compare avec le tarif d\'interconnexion pour déterminer s\'il y a ciseau tarifaire.'
   })
   @ApiParam({
     name: 'offreId',
@@ -160,11 +160,14 @@ export class CiseauTarifaireController {
             offre: {
               id: 1,
               nom: 'Offre Mobile Pro',
-              prixOffNet: '50.00',
               operateur: {
                 id: 1,
                 nom: 'Orange CI'
               }
+            },
+            calculTarifFacial: {
+              nombreOptions: 3,
+              prixOffNetCalcule: '50.00'
             },
             ciseauTarifaire: {
               id: 1,
