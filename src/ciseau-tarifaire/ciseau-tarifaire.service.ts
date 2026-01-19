@@ -118,11 +118,21 @@ export class CiseauTarifaireService {
    * DiffTariffacialOffnetHP = tariffacialOffnet - Tarif Interconnexion OffNet HP
    */
   async calculateCiseauTarifaireAvecTarifFacial(offreId: number) {
-    // Récupérer l'offre avec son opérateur
+    // Récupérer l'offre avec son opérateur (sans prixOffNet car on le calcule)
     const offre = await this.prisma.offre.findUnique({
       where: { id: offreId },
-      include: {
-        operateur: true
+      select: {
+        id: true,
+        nom: true,
+        operateurId: true,
+        dateDebutValidite: true,
+        ciseauTarifaireId: true,
+        operateur: {
+          select: {
+            id: true,
+            nom: true
+          }
+        }
       }
     });
 
