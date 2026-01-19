@@ -133,4 +133,111 @@ export class CiseauTarifaireController {
       data
     );
   }
+
+  @Post('calculate-tarif-facial/:offreId')
+  @ApiOperation({ 
+    summary: 'Calculer le ciseau tarifaire selon le tarif facial',
+    description: 'Calcule le ciseau tarifaire en utilisant le prix OffNet de l\'offre (tarif facial) comparé au tarif d\'interconnexion.'
+  })
+  @ApiParam({
+    name: 'offreId',
+    type: Number,
+    description: 'Identifiant de l\'offre',
+    example: 1
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Ciseau tarifaire avec tarif facial calculé avec succès',
+    content: {
+      'application/json': {
+        example: {
+          success: true,
+          statusCode: 201,
+          code: 'CISEAU_TARIFAIRE_FACIAL_CALCULATED',
+          title: 'Ciseau tarifaire calculé',
+          message: 'Le ciseau tarifaire selon le tarif facial a été calculé avec succès',
+          data: {
+            offre: {
+              id: 1,
+              nom: 'Offre Mobile Pro',
+              prixOffNet: '50.00',
+              operateur: {
+                id: 1,
+                nom: 'Orange CI'
+              }
+            },
+            ciseauTarifaire: {
+              id: 1,
+              annee: 2024,
+              cout: '2250000.00',
+              tariffacialOffnet: '50.00',
+              DiffTariffacialOffnetHC: '35.50',
+              DiffTariffacialOffnetHP: '32.00',
+              isCiseauOffTarifHC: true,
+              isCiseauOffTarifHP: true,
+              resultats: {
+                offnetTarifHC: {
+                  tariffacial: '50.00',
+                  difference: '35.50',
+                  cout: '2250000.00',
+                  isCiseau: true,
+                  resultat: 'Ciseau tarifaire (35.50 <= 2250000.00)'
+                },
+                offnetTarifHP: {
+                  tariffacial: '50.00',
+                  difference: '32.00',
+                  cout: '2250000.00',
+                  isCiseau: true,
+                  resultat: 'Ciseau tarifaire (32.00 <= 2250000.00)'
+                }
+              },
+              formules: {
+                tariffacialOffnet: 'Prix OffNet de l\'offre = 50.00',
+                DiffTariffacialOffnetHC: 'Tarif Facial OffNet - Tarif Interconnexion OffNet HC = 35.50',
+                DiffTariffacialOffnetHP: 'Tarif Facial OffNet - Tarif Interconnexion OffNet HP = 32.00'
+              },
+              offres: [],
+              createdAt: '2026-01-19T10:30:00.000Z',
+              updatedAt: '2026-01-19T10:30:00.000Z'
+            },
+            resultats: {
+              isCiseauOffTarifHC: true,
+              isCiseauOffTarifHP: true,
+              messageOffTarifHC: 'Ciseau tarifaire détecté pour OffNet HC (tarif facial)',
+              messageOffTarifHP: 'Ciseau tarifaire détecté pour OffNet HP (tarif facial)'
+            }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Offre, tarifs ou paramètres non trouvés',
+    content: {
+      'application/json': {
+        example: {
+          success: false,
+          statusCode: 404,
+          code: 'NOT_FOUND',
+          title: 'Ressource non trouvée',
+          message: 'L\'offre ou les données nécessaires n\'ont pas été trouvées',
+          data: null
+        }
+      }
+    }
+  })
+  async calculateTarifFacial(
+    @Param('offreId', ParseIntPipe) offreId: number
+  ): Promise<ResponseApi<any>> {
+    const data = await this.ciseauTarifaireService.calculateCiseauTarifaireAvecTarifFacial(offreId);
+    return new ResponseApi(
+      true,
+      201,
+      'CISEAU_TARIFAIRE_FACIAL_CALCULATED',
+      'Ciseau tarifaire calculé',
+      'Le ciseau tarifaire selon le tarif facial a été calculé avec succès',
+      data
+    );
+  }
 }
