@@ -67,10 +67,17 @@ export class ParametreController {
           properties: {
             id: { type: 'number', example: 1 },
             type: { type: 'string', example: 'REGLEMENTAIRE' },
+            annee: { type: 'number', example: 2024 },
             redevanceFst: { type: 'number', example: 15000.00 },
             redevanceRegulation: { type: 'number', example: 25000.00 },
             droitEntree: { type: 'number', example: 50000.00 },
             coutsCommerciaux: { type: 'number', example: 35000.00 },
+            tva: { type: 'number', example: 18.00 },
+            coutReseau: { type: 'number', example: 1200000.00 },
+            taxe: { type: 'number', example: 500000.00 },
+            coutInterconnexion: { type: 'number', example: 800000.00 },
+            cout: { type: 'number', example: 2535000.00 },
+            coutFormule: { type: 'string', example: '1200000 + 35000 + 500000 + 800000 = 2535000' },
             createdAt: { type: 'string', example: '2026-01-05T12:00:00Z' },
             updatedAt: { type: 'string', example: '2026-01-05T12:00:00Z' }
           }
@@ -147,10 +154,17 @@ export class ParametreController {
             properties: {
               id: { type: 'number', example: 1 },
               type: { type: 'string', example: 'REGLEMENTAIRE' },
+              annee: { type: 'number', example: 2024 },
               redevanceFst: { type: 'number', example: 15000.00 },
               redevanceRegulation: { type: 'number', example: 25000.00 },
               droitEntree: { type: 'number', example: 50000.00 },
               coutsCommerciaux: { type: 'number', example: 35000.00 },
+              tva: { type: 'number', example: 18.00 },
+              coutReseau: { type: 'number', example: 1200000.00 },
+              taxe: { type: 'number', example: 500000.00 },
+              coutInterconnexion: { type: 'number', example: 800000.00 },
+              cout: { type: 'number', example: 2535000.00 },
+              coutFormule: { type: 'string', example: '1200000 + 35000 + 500000 + 800000 = 2535000' },
               createdAt: { type: 'string', example: '2026-01-05T12:00:00Z' },
               updatedAt: { type: 'string', example: '2026-01-05T12:00:00Z' }
             }
@@ -198,10 +212,17 @@ export class ParametreController {
           properties: {
             id: { type: 'number', example: 1 },
             type: { type: 'string', example: 'REGLEMENTAIRE' },
+            annee: { type: 'number', example: 2024 },
             redevanceFst: { type: 'number', example: 15000.00 },
             redevanceRegulation: { type: 'number', example: 25000.00 },
             droitEntree: { type: 'number', example: 50000.00 },
             coutsCommerciaux: { type: 'number', example: 35000.00 },
+            tva: { type: 'number', example: 18.00 },
+            coutReseau: { type: 'number', example: 1200000.00 },
+            taxe: { type: 'number', example: 500000.00 },
+            coutInterconnexion: { type: 'number', example: 800000.00 },
+            cout: { type: 'number', example: 2535000.00 },
+            coutFormule: { type: 'string', example: '1200000 + 35000 + 500000 + 800000 = 2535000' },
             createdAt: { type: 'string', example: '2026-01-05T12:00:00Z' },
             updatedAt: { type: 'string', example: '2026-01-05T12:00:00Z' }
           }
@@ -256,10 +277,17 @@ export class ParametreController {
           properties: {
             id: { type: 'number', example: 1 },
             type: { type: 'string', example: 'REGLEMENTAIRE' },
+            annee: { type: 'number', example: 2024 },
             redevanceFst: { type: 'number', example: 18000.00 },
             redevanceRegulation: { type: 'number', example: 30000.00 },
             droitEntree: { type: 'number', example: 55000.00 },
             coutsCommerciaux: { type: 'number', example: 40000.00 },
+            tva: { type: 'number', example: 18.00 },
+            coutReseau: { type: 'number', example: 1300000.00 },
+            taxe: { type: 'number', example: 550000.00 },
+            coutInterconnexion: { type: 'number', example: 850000.00 },
+            cout: { type: 'number', example: 2740000.00 },
+            coutFormule: { type: 'string', example: '1300000 + 40000 + 550000 + 850000 = 2740000' },
             createdAt: { type: 'string', example: '2026-01-05T12:00:00Z' },
             updatedAt: { type: 'string', example: '2026-01-05T12:30:00Z' }
           }
