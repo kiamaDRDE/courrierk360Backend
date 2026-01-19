@@ -1,0 +1,752 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int           @id @default(autoincrement()) @map("id")
+  nom            String        @map("nom") @db.VarChar(255)
+  email          String        @unique @map("email") @db.VarChar(191)
+  numero         String        @map("numero")
+  fonction       String?       @map("fonction") @db.VarChar(255)
+  password       String        @map("password") @db.VarChar(255)
+  role           UserRole      @default(SUPER_ADMIN) @map("role")
+  resetOtp       String?       @map("reset_otp") @db.VarChar(255)
+  resetExpires   DateTime?     @map("reset_expires")
+  token          String?       @map("token") @db.VarChar(500)
+  expiresToken   DateTime?     @map("expires_token")
+  refreshToken   String?       @map("refresh_token") @db.VarChar(500)
+  refreshExpires DateTime?     @map("refresh_expires")
+  verifyOtp      String?       @map("verify_otp") @db.VarChar(255)
+  verifyExpires  DateTime?     @map("verify_expires")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at")
+  activityLogs   ActivityLog[]
+
+  @@index([id])
+  @@index([email])
+  @@index([numero])
+  @@map("users")
+}
+
+model ActivityLog {
+  id          Int      @id @default(autoincrement()) @map("id")
+  userId      Int?     @map("user_id") // Optionnel pour les actions système
+  action      String   @map("action") @db.VarChar(255)
+  module      String   @default("SYSTEM") @map("module") @db.VarChar(100)
+  level       String   @default("INFO") @map("level") @db.VarChar(50) // INFO, WARNING, ERROR, SUCCESS
+  description String?  @map("description") @db.Text
+  ipAddress   String?  @map("ip_address") @db.VarChar(45)
+  metadata    Json?    @map("metadata") // Métadonnées au format JSON
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([action])
+  @@index([module])
+  @@index([level])
+  @@map("activity_logs")
+}
+
+model Operateur {
+  id              Int      @id @default(autoincrement()) @map("id")
+  nom             String   @unique @map("nom") @db.VarChar(191)
+  code            String   @map("code") @db.VarChar(50)
+  description     String?  @map("description") @db.Text
+  type            String   @map("type") @db.VarChar(100)
+  statut          String   @map("statut") @db.VarChar(50)
+  anneeCreation   Int?     @map("annee_creation")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  offres                  Offre[]
+  tarifsInterconnexion    TarifInterconnexion[]
+  services                OperateurService[]
+  // Relations pour le trafic
+  trafics                 Trafic[]
+  traficAutresOperateurs  TraficAutreOperateur[]
+  // Relations pour les abonnements
+  abonnements             Abonnement[]
+  // Relations pour les chiffres d'affaire
+  chiffresAffaire         ChiffreAffaire[]
+  // Relations pour les parts de marché
+  partsMarche             PartMarche[]
+
+  @@index([id])
+  @@index([nom])
+  @@index([code])
+  @@index([statut])
+  @@map("operateurs")
+}
+
+model Service {
+  id          Int      @id @default(autoincrement()) @map("id")
+  nom         String   @unique @map("nom") @db.VarChar(191)
+  description String?  @map("description") @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  operateurs  OperateurService[]
+  tarifs      TarifInterconnexionService[]
+  offres      OffreService[]
+  // Relations pour le trafic
+  traficServices TraficService[]
+  // Relations pour les abonnements
+  abonnementServices AbonnementService[]
+  // Relations pour les chiffres d'affaire
+  chiffreAffaireServices ChiffreAffaireService[]
+
+  @@index([id])
+  @@index([nom])
+  @@map("services")
+}
+
+model OperateurService {
+  id          Int       @id @default(autoincrement()) @map("id")
+  operateurId Int       @map("operateur_id")
+  serviceId   Int       @map("service_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  operateur   Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
+  service     Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([operateurId, serviceId], name: "unique_operateur_service")
+  @@index([operateurId])
+  @@index([serviceId])
+  @@map("operateur_services")
+}
+
+model TypeAppel {
+  id          Int      @id @default(autoincrement()) @map("id")
+  libelle     String   @unique @map("libelle") @db.VarChar(191)
+  description String?  @map("description") @db.Text
+  categorie   String   @map("categorie") @db.VarChar(100)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([id])
+  @@index([libelle])
+  @@index([categorie])
+  @@map("type_appels")
+}
+
+model Offre {
+  id                Int       @id @default(autoincrement()) @map("id")
+  operateurId       Int       @map("operateur_id")
+  nom               String    @map("nom") @db.VarChar(191)
+  dateDebutValidite DateTime  @map("date_debut_validite")
+  dateFinValidite   DateTime  @map("date_fin_validite")
+  typeOffre         String    @map("type_offre") @db.VarChar(100)
+  destination       String    @map("destination") @db.VarChar(255)
+  statut            String    @map("statut") @db.VarChar(50)
+  description       String?   @map("description") @db.Text
+
+  // Nouveaux champs tarifaires OnNet et OffNet
+  tp           Decimal?  @default(0) @map("tp") @db.Decimal(10, 2)
+  tnc          Decimal?  @default(0) @map("tnc") @db.Decimal(10, 2)
+  ep           Decimal?  @default(0) @map("ep") @db.Decimal(10, 2)
+  
+  // Nouveaux champs tarifaires OnNet et OffNet
+  tpOnNet           Decimal?  @default(0) @map("tp_onnet") @db.Decimal(10, 2)
+  tfOnNet           Decimal?  @default(0) @map("tf_onnet") @db.Decimal(10, 2)
+  tncOnNet          Decimal?  @default(0) @map("tnc_onnet") @db.Decimal(10, 2)
+  epOnNet           Decimal?  @default(0) @map("ep_onnet") @db.Decimal(10, 2)
+  tpOffNet          Decimal?  @default(0) @map("tp_offnet") @db.Decimal(10, 2)
+  tfOffNet          Decimal?  @default(0) @map("tf_offnet") @db.Decimal(10, 2)
+  tncOffNet         Decimal?  @default(0) @map("tnc_offnet") @db.Decimal(10, 2)
+  epOffNet          Decimal?  @default(0) @map("ep_offnet") @db.Decimal(10, 2)
+  
+  // Champs calculés pour l'effet club
+  taBaseOperateurOffnetHC      Decimal?  @default(0) @map("ta_base_operateur_offnet_hc") @db.Decimal(10, 2)
+  taBaseOperateurOffnetHP      Decimal?  @default(0) @map("ta_base_operateur_offnet_hp") @db.Decimal(10, 2)
+  taBaseOperateurOnnetHC       Decimal?  @default(0) @map("ta_base_operateur_onnet_hc") @db.Decimal(10, 2)
+  taBaseOperateurOnnetHP       Decimal?  @default(0) @map("ta_base_operateur_onnet_hp") @db.Decimal(10, 2)
+  taInterOperateurOffnetHC     Decimal?  @default(0) @map("ta_inter_operateur_offnet_hc") @db.Decimal(10, 2)
+  taInterOperateurOffnetHP     Decimal?  @default(0) @map("ta_inter_operateur_offnet_hp") @db.Decimal(10, 2)
+  taInterOperateurOnnetHC      Decimal?  @default(0) @map("ta_inter_operateur_onnet_hc") @db.Decimal(10, 2)
+  taInterOperateurOnnetHP      Decimal?  @default(0) @map("ta_inter_operateur_onnet_hp") @db.Decimal(10, 2)
+  sommeBaseAutresOperateursOffnetHC    Decimal?  @default(0) @map("somme_base_autres_operateurs_offnet_hc") @db.Decimal(15, 2)
+  sommeBaseAutresOperateursOffnetHP    Decimal?  @default(0) @map("somme_base_autres_operateurs_offnet_hp") @db.Decimal(15, 2)
+  sommeBaseAutresOperateursOnnetHC     Decimal?  @default(0) @map("somme_base_autres_operateurs_onnet_hc") @db.Decimal(15, 2)
+  sommeBaseAutresOperateursOnnetHP     Decimal?  @default(0) @map("somme_base_autres_operateurs_onnet_hp") @db.Decimal(15, 2)
+  sommeInterAutresOperateursOffnetHC   Decimal?  @default(0) @map("somme_inter_autres_operateurs_offnet_hc") @db.Decimal(15, 2)
+  sommeInterAutresOperateursOffnetHP   Decimal?  @default(0) @map("somme_inter_autres_operateurs_offnet_hp") @db.Decimal(15, 2)
+  sommeInterAutresOperateursOnnetHC    Decimal?  @default(0) @map("somme_inter_autres_operateurs_onnet_hc") @db.Decimal(15, 2)
+  sommeInterAutresOperateursOnnetHP    Decimal?  @default(0) @map("somme_inter_autres_operateurs_onnet_hp") @db.Decimal(15, 2)
+  nombreAutresOperateurs       Int?      @map("nombre_autres_operateurs")
+  taMoyenBaseOffnetHC          Decimal?  @default(0) @map("ta_moyen_base_offnet_hc") @db.Decimal(10, 2)
+  taMoyenBaseOffnetHP          Decimal?  @default(0) @map("ta_moyen_base_offnet_hp") @db.Decimal(10, 2)
+  taMoyenBaseOnnetHC           Decimal?  @default(0) @map("ta_moyen_base_onnet_hc") @db.Decimal(10, 2)
+  taMoyenBaseOnnetHP           Decimal?  @default(0) @map("ta_moyen_base_onnet_hp") @db.Decimal(10, 2)
+  taMoyenInterOffnetHC         Decimal?  @default(0) @map("ta_moyen_inter_offnet_hc") @db.Decimal(10, 2)
+  taMoyenInterOffnetHP         Decimal?  @default(0) @map("ta_moyen_inter_offnet_hp") @db.Decimal(10, 2)
+  taMoyenInterOnnetHC          Decimal?  @default(0) @map("ta_moyen_inter_onnet_hc") @db.Decimal(10, 2)
+  taMoyenInterOnnetHP          Decimal?  @default(0) @map("ta_moyen_inter_onnet_hp") @db.Decimal(10, 2)
+  prixOnNet                    Decimal?  @map("prix_on_net") @db.Decimal(10, 2)
+  prixOffNet                   Decimal?  @map("prix_off_net") @db.Decimal(10, 2)
+  
+  // Nouveaux champs pour les revenus moyens
+  revenuMoyenOnNet             Decimal?  @default(0) @map("revenu_moyen_on_net") @db.Decimal(10, 2)
+  revenuMoyenOffNet            Decimal?  @default(0) @map("revenu_moyen_off_net") @db.Decimal(10, 2)
+  
+  // Nouveaux champs pour les calculs de sommes
+  sommeFraisSouscription       Decimal?  @default(0) @map("somme_frais_souscription") @db.Decimal(15, 2)
+  sommeTraficGratuit           Decimal?  @default(0) @map("somme_trafic_gratuit") @db.Decimal(15, 2)
+  sommeTraficOption            Decimal?  @default(0) @map("somme_trafic_option") @db.Decimal(15, 2)
+  
+  effetClub                    Decimal?  @map("effet_club") @db.Decimal(10, 2)
+  
+  // 8 effets club spécifiques pour chaque combinaison de tarifs (MÉTHODE CLASSIQUE - prix)
+  effetClubBaseOffnetHC        Decimal?  @map("effet_club_base_offnet_hc") @db.Decimal(10, 2)
+  effetClubBaseOffnetHP        Decimal?  @map("effet_club_base_offnet_hp") @db.Decimal(10, 2)
+  effetClubBaseOnnetHC         Decimal?  @map("effet_club_base_onnet_hc") @db.Decimal(10, 2)
+  effetClubBaseOnnetHP         Decimal?  @map("effet_club_base_onnet_hp") @db.Decimal(10, 2)
+  effetClubInterOffnetHC       Decimal?  @map("effet_club_inter_offnet_hc") @db.Decimal(10, 2)
+  effetClubInterOffnetHP       Decimal?  @map("effet_club_inter_offnet_hp") @db.Decimal(10, 2)
+  effetClubInterOnnetHC        Decimal?  @map("effet_club_inter_onnet_hc") @db.Decimal(10, 2)
+  effetClubInterOnnetHP        Decimal?  @map("effet_club_inter_onnet_hp") @db.Decimal(10, 2)
+  
+  // 8 effets club spécifiques SELON REVENUS MOYENS (NOUVELLE MÉTHODE)
+  effetClubRevenuBaseOffnetHC    Decimal?  @map("effet_club_revenu_base_offnet_hc") @db.Decimal(10, 2)
+  effetClubRevenuBaseOffnetHP    Decimal?  @map("effet_club_revenu_base_offnet_hp") @db.Decimal(10, 2)
+  effetClubRevenuBaseOnnetHC     Decimal?  @map("effet_club_revenu_base_onnet_hc") @db.Decimal(10, 2)
+  effetClubRevenuBaseOnnetHP     Decimal?  @map("effet_club_revenu_base_onnet_hp") @db.Decimal(10, 2)
+  effetClubRevenuInterOffnetHC   Decimal?  @map("effet_club_revenu_inter_offnet_hc") @db.Decimal(10, 2)
+  effetClubRevenuInterOffnetHP   Decimal?  @map("effet_club_revenu_inter_offnet_hp") @db.Decimal(10, 2)
+  effetClubRevenuInterOnnetHC    Decimal?  @map("effet_club_revenu_inter_onnet_hc") @db.Decimal(10, 2)
+  effetClubRevenuInterOnnetHP    Decimal?  @map("effet_club_revenu_inter_onnet_hp") @db.Decimal(10, 2)
+  
+  // Effet club général selon revenus moyens
+  effetClubRevenus             Decimal?  @map("effet_club_revenus") @db.Decimal(10, 2)
+  
+  // 8 résultats spécifiques (MÉTHODE CLASSIQUE)
+  resultatBaseOffnetHC         String?   @map("resultat_base_offnet_hc") @db.VarChar(100)
+  resultatBaseOffnetHP         String?   @map("resultat_base_offnet_hp") @db.VarChar(100)
+  resultatBaseOnnetHC          String?   @map("resultat_base_onnet_hc") @db.VarChar(100)
+  resultatBaseOnnetHP          String?   @map("resultat_base_onnet_hp") @db.VarChar(100)
+  resultatInterOffnetHC        String?   @map("resultat_inter_offnet_hc") @db.VarChar(100)
+  resultatInterOffnetHP        String?   @map("resultat_inter_offnet_hp") @db.VarChar(100)
+  resultatInterOnnetHC         String?   @map("resultat_inter_onnet_hc") @db.VarChar(100)
+  resultatInterOnnetHP         String?   @map("resultat_inter_onnet_hp") @db.VarChar(100)
+  
+  // 8 résultats spécifiques SELON REVENUS MOYENS (NOUVELLE MÉTHODE)
+  resultatRevenuBaseOffnetHC   String?   @map("resultat_revenu_base_offnet_hc") @db.VarChar(100)
+  resultatRevenuBaseOffnetHP   String?   @map("resultat_revenu_base_offnet_hp") @db.VarChar(100)
+  resultatRevenuBaseOnnetHC    String?   @map("resultat_revenu_base_onnet_hc") @db.VarChar(100)
+  resultatRevenuBaseOnnetHP    String?   @map("resultat_revenu_base_onnet_hp") @db.VarChar(100)
+  resultatRevenuInterOffnetHC  String?   @map("resultat_revenu_inter_offnet_hc") @db.VarChar(100)
+  resultatRevenuInterOffnetHP  String?   @map("resultat_revenu_inter_offnet_hp") @db.VarChar(100)
+  resultatRevenuInterOnnetHC   String?   @map("resultat_revenu_inter_onnet_hc") @db.VarChar(100)
+  resultatRevenuInterOnnetHP   String?   @map("resultat_revenu_inter_onnet_hp") @db.VarChar(100)
+  
+  // Résultat général selon revenus moyens
+  resultatRevenus              String?   @map("resultat_revenus") @db.VarChar(100)
+  
+  // 8 booléens pour indiquer si c'est un effet club (MÉTHODE CLASSIQUE)
+  isEffetClubBaseOffnetHC      Boolean   @default(false) @map("is_effet_club_base_offnet_hc")
+  isEffetClubBaseOffnetHP      Boolean   @default(false) @map("is_effet_club_base_offnet_hp")
+  isEffetClubBaseOnnetHC       Boolean   @default(false) @map("is_effet_club_base_onnet_hc")
+  isEffetClubBaseOnnetHP       Boolean   @default(false) @map("is_effet_club_base_onnet_hp")
+  isEffetClubInterOffnetHC     Boolean   @default(false) @map("is_effet_club_inter_offnet_hc")
+  isEffetClubInterOffnetHP     Boolean   @default(false) @map("is_effet_club_inter_offnet_hp")
+  isEffetClubInterOnnetHC      Boolean   @default(false) @map("is_effet_club_inter_onnet_hc")
+  isEffetClubInterOnnetHP      Boolean   @default(false) @map("is_effet_club_inter_onnet_hp")
+  
+  // 8 booléens pour indiquer si c'est un effet club SELON REVENUS MOYENS (NOUVELLE MÉTHODE)
+  isEffetClubRevenuBaseOffnetHC    Boolean   @default(false) @map("is_effet_club_revenu_base_offnet_hc")
+  isEffetClubRevenuBaseOffnetHP    Boolean   @default(false) @map("is_effet_club_revenu_base_offnet_hp")
+  isEffetClubRevenuBaseOnnetHC     Boolean   @default(false) @map("is_effet_club_revenu_base_onnet_hc")
+  isEffetClubRevenuBaseOnnetHP     Boolean   @default(false) @map("is_effet_club_revenu_base_onnet_hp")
+  isEffetClubRevenuInterOffnetHC   Boolean   @default(false) @map("is_effet_club_revenu_inter_offnet_hc")
+  isEffetClubRevenuInterOffnetHP   Boolean   @default(false) @map("is_effet_club_revenu_inter_offnet_hp")
+  isEffetClubRevenuInterOnnetHC    Boolean   @default(false) @map("is_effet_club_revenu_inter_onnet_hc")
+  isEffetClubRevenuInterOnnetHP    Boolean   @default(false) @map("is_effet_club_revenu_inter_onnet_hp")
+  
+  isEffetClub                  Boolean   @default(false) @map("is_effet_club")
+  // Booléen général selon revenus moyens
+  isEffetClubRevenus           Boolean   @default(false) @map("is_effet_club_revenus")
+  resultat                     String?   @map("resultat") @db.VarChar(100)
+  
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  operateur         Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
+  avantages         OffreAvantage[]
+  services          OffreService[]
+  caracteristiques  Caracteristique[]
+  consommationsMoyennes OffreConsommationMoyenne[]
+  options           Option[]
+
+  @@unique([operateurId, nom], name: "unique_offre_par_operateur")
+  @@index([id])
+  @@index([operateurId])
+  @@index([nom])
+  @@index([typeOffre])
+  @@index([statut])
+  @@index([dateDebutValidite])
+  @@index([dateFinValidite])
+  @@map("offres")
+}
+
+model TarifInterconnexion {
+  id          Int       @id @default(autoincrement()) @map("id")
+  operateurId Int       @map("operateur_id")
+  annee       Int       @map("annee")
+  tarifOffNetHeureCreuse    Decimal   @map("tarif_off_net_heure_creuse") @db.Decimal(10, 2)
+  tarifOffNetHeurePleine    Decimal   @map("tarif_off_net_heure_pleine") @db.Decimal(10, 2)
+  tarifOnNetHeureCreuse     Decimal   @map("tarif_on_net_heure_creuse") @db.Decimal(10, 2)
+  tarifOnNetHeurePleine     Decimal   @map("tarif_on_net_heure_pleine") @db.Decimal(10, 2)
+  typeTarif   String    @default("Standard") @map("type_tarif") @db.VarChar(100)
+  description String?   @map("description") @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  operateur   Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
+  services    TarifInterconnexionService[]
+
+  // Contrainte unique : un opérateur ne peut avoir que deux tarifs par année (avec types différents)
+  @@unique([operateurId, annee, typeTarif], name: "unique_tarif_operateur_annee_type")
+  @@index([id])
+  @@index([operateurId])
+  @@index([annee])
+  @@index([typeTarif])
+  @@map("tarifs_interconnexion")
+}
+
+model TarifInterconnexionService {
+  id                    Int                 @id @default(autoincrement()) @map("id")
+  tarifInterconnexionId Int                 @map("tarif_interconnexion_id")
+  serviceId             Int                 @map("service_id")
+  createdAt             DateTime            @default(now()) @map("created_at")
+
+  // Relations
+  tarifInterconnexion   TarifInterconnexion @relation(fields: [tarifInterconnexionId], references: [id], onDelete: Cascade)
+  service               Service             @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([tarifInterconnexionId, serviceId], name: "unique_tarif_service")
+  @@index([tarifInterconnexionId])
+  @@index([serviceId])
+  @@map("tarif_interconnexion_services")
+}
+
+enum UserRole {
+  UTILISATEUR
+  SUPER_ADMIN
+}
+
+model Avantage {
+  id        Int      @id @default(autoincrement()) @map("id")
+  nom       String   @map("nom") @db.VarChar(255)
+  valeur    Decimal  @map("valeur") @db.Decimal(10, 2)
+  isGratuit Boolean  @default(false) @map("is_gratuit")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations Many-to-Many avec les offres et options
+  offres    OffreAvantage[]
+  options   OptionAvantage[]
+
+  @@index([nom])
+  @@map("avantages")
+}
+
+model OffreAvantage {
+  id          Int      @id @default(autoincrement()) @map("id")
+  offreId     Int      @map("offre_id")
+  avantageId  Int      @map("avantage_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  offre       Offre    @relation(fields: [offreId], references: [id], onDelete: Cascade)
+  avantage    Avantage @relation(fields: [avantageId], references: [id], onDelete: Cascade)
+
+  @@unique([offreId, avantageId], name: "unique_offre_avantage")
+  @@index([offreId])
+  @@index([avantageId])
+  @@map("offre_avantages")
+}
+
+model OffreService {
+  id        Int      @id @default(autoincrement()) @map("id")
+  offreId   Int      @map("offre_id")
+  serviceId Int      @map("service_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  offre     Offre   @relation(fields: [offreId], references: [id], onDelete: Cascade)
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([offreId, serviceId], name: "unique_offre_service")
+  @@index([offreId])
+  @@index([serviceId])
+  @@map("offre_services")
+}
+
+model TypeOperateur {
+  id          Int      @id @default(autoincrement()) @map("id")
+  nom         String   @unique @map("nom") @db.VarChar(191)
+  description String?  @map("description") @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([nom])
+  @@map("types_operateur")
+}
+
+model Trafic {
+  id             Int      @id @default(autoincrement()) @map("id")
+  operateurId    Int      @map("operateur_id")
+  annee          Int      @map("annee")
+  typeTrafic     String   @map("type_trafic") @db.VarChar(100)
+  volume         Decimal  @map("volume") @db.Decimal(18, 4)
+  autreOperateur Json?    @map("autre_operateur") @db.Json
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  operateur      Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
+  services       TraficService[]
+  autresOperateurs TraficAutreOperateur[]
+
+  @@index([id])
+  @@index([operateurId])
+  @@index([annee])
+  @@map("trafics")
+}
+
+model TraficService {
+  id        Int     @id @default(autoincrement()) @map("id")
+  traficId  Int     @map("trafic_id")
+  serviceId Int     @map("service_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  trafic    Trafic  @relation(fields: [traficId], references: [id], onDelete: Cascade)
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([traficId, serviceId], name: "unique_trafic_service")
+  @@index([traficId])
+  @@index([serviceId])
+  @@map("trafic_services")
+}
+
+model TraficAutreOperateur {
+  id               Int       @id @default(autoincrement()) @map("id")
+  traficId         Int       @map("trafic_id")
+  autreOperateurId Int       @map("autre_operateur_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  trafic            Trafic    @relation(fields: [traficId], references: [id], onDelete: Cascade)
+  autreOperateurRef Operateur @relation(fields: [autreOperateurId], references: [id], onDelete: Cascade)
+
+  @@unique([traficId, autreOperateurId], name: "unique_trafic_autre_operateur")
+  @@index([traficId])
+  @@index([autreOperateurId])
+  @@map("trafic_autres_operateurs")
+}
+
+model Abonnement {
+  id              Int      @id @default(autoincrement()) @map("id")
+  operateurId     Int      @map("operateur_id")
+  annee           Int      @map("annee")
+  typeAbonnement  String   @map("type_abonnement") @db.VarChar(100)
+  nombreAbonnes   Int      @map("nombre_abonnes")
+  description     String?  @map("description") @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  operateur Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
+  services  AbonnementService[]
+
+  @@index([id])
+  @@index([operateurId])
+  @@index([annee])
+  @@index([typeAbonnement])
+  @@map("abonnements")
+}
+
+model AbonnementService {
+  id           Int      @id @default(autoincrement()) @map("id")
+  abonnementId Int      @map("abonnement_id")
+  serviceId    Int      @map("service_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  abonnement Abonnement @relation(fields: [abonnementId], references: [id], onDelete: Cascade)
+  service    Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([abonnementId, serviceId], name: "unique_abonnement_service")
+  @@index([abonnementId])
+  @@index([serviceId])
+  @@map("abonnement_services")
+}
+
+model ChiffreAffaire {
+  id            Int      @id @default(autoincrement()) @map("id")
+  operateurId   Int      @map("operateur_id")
+  annee         Int      @map("annee")
+  chiffreAffaire Decimal  @map("chiffre_affaire") @db.Decimal(18, 2)
+  description   String?  @map("description") @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  operateur Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
+  services  ChiffreAffaireService[]
+
+  // Un opérateur ne peut avoir qu'un chiffre d'affaire par année
+  @@unique([operateurId, annee], name: "unique_operateur_annee")
+  @@index([id])
+  @@index([operateurId])
+  @@index([annee])
+  @@map("chiffres_affaire")
+}
+
+model ChiffreAffaireService {
+  id               Int      @id @default(autoincrement()) @map("id")
+  chiffreAffaireId Int      @map("chiffre_affaire_id")
+  serviceId        Int      @map("service_id")
+  montant          Decimal? @map("montant") @db.Decimal(18, 2)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  chiffreAffaire ChiffreAffaire @relation(fields: [chiffreAffaireId], references: [id], onDelete: Cascade)
+  service        Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([chiffreAffaireId, serviceId], name: "unique_chiffre_affaire_service")
+  @@index([chiffreAffaireId])
+  @@index([serviceId])
+  @@map("chiffre_affaire_services")
+}
+
+model PartMarche {
+  id                       Int      @id @default(autoincrement()) @map("id")
+  operateurId              Int      @map("operateur_id")
+  annee                    Int      @map("annee")
+  partMarcheTrafic         Decimal? @map("part_marche_trafic") @db.Decimal(5, 2)
+  partMarcheChiffreAffaire Decimal? @map("part_marche_chiffre_affaire") @db.Decimal(5, 2)
+  partMarcheAbonnes        Decimal? @map("part_marche_abonnes") @db.Decimal(5, 2)
+  
+  // Nouveaux champs pour les sommes
+  sommeTrafic              Decimal? @map("somme_trafic") @db.Decimal(15, 2)
+  sommeAbonnement          Decimal? @map("somme_abonnement") @db.Decimal(15, 2)
+  sommeChiffreAffaire      Decimal? @map("somme_chiffre_affaire") @db.Decimal(18, 2)
+  
+  // Nouveaux champs pour les volumes/données spécifiques
+  volumeTrafic             Decimal? @map("volume_trafic") @db.Decimal(15, 2)
+  nombreAbonne             Int?     @map("nombre_abonne")
+  chiffreAffaire           Decimal? @map("chiffre_affaire") @db.Decimal(18, 2)
+  
+  // Champs IHH calculés pour chaque métrique
+  ihhTrafic                Decimal? @map("ihh_trafic") @db.Decimal(10, 4)
+  ihhAbonne                Decimal? @map("ihh_abonne") @db.Decimal(10, 4)
+  ihhChiffreAffaire        Decimal? @map("ihh_chiffre_affaire") @db.Decimal(10, 4)
+  
+  // Champs booléens pour indiquer si le marché est concentré
+  isConcentreTrafic        Boolean  @default(false) @map("is_concentre_trafic")
+  isConcentreAbonne        Boolean  @default(false) @map("is_concentre_abonne")
+  isConcentreChiffreAffaire Boolean  @default(false) @map("is_concentre_chiffre_affaire")
+  
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  operateur Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
+
+  // Un opérateur ne peut avoir qu'une part de marché par année
+  @@unique([operateurId, annee], name: "unique_operateur_annee_part_marche")
+  @@index([operateurId])
+  @@index([annee])
+  @@map("parts_marche")
+}
+
+model Caracteristique {
+  id           Int      @id @default(autoincrement()) @map("id")
+  offreId      Int      @map("offre_id")
+  type         String   @map("type") @db.VarChar(100)
+  onNet        Decimal  @map("on_net") @db.Decimal(10, 2)
+  offNet       Decimal  @map("off_net") @db.Decimal(10, 2)
+  international Decimal @map("international") @db.Decimal(10, 2)
+  roaming      Decimal  @map("roaming") @db.Decimal(10, 2)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  offre        Offre    @relation(fields: [offreId], references: [id], onDelete: Cascade)
+
+  @@unique([offreId, type], name: "unique_caracteristique_offre_type")
+  @@index([offreId])
+  @@index([type])
+  @@map("caracteristiques")
+}
+
+model Parametre {
+  id           Int      @id @default(autoincrement()) @map("id")
+  type         String   @map("type") @db.VarChar(100)
+  redevanceFst Decimal? @map("redevance_fst") @db.Decimal(10, 2)
+  redevanceRegulation Decimal? @map("redevance_regulation") @db.Decimal(10, 2)
+  droitEntree  Decimal? @map("droit_entree") @db.Decimal(10, 2)
+  coutsCommerciaux Decimal? @map("couts_commerciaux") @db.Decimal(10, 2)
+  tva          Decimal? @map("tva") @db.Decimal(5, 2)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([type], name: "unique_parametre_type")
+  @@index([type])
+  @@map("parametres")
+}
+
+// Modèles pour les consommations moyennes
+model ConsommationMoyenne {
+  id        Int      @id @default(autoincrement()) @map("id")
+  nom       String   @map("nom") @db.VarChar(255)
+  valeur    Float    @map("valeur")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations Many-to-Many avec les offres et options
+  offres    OffreConsommationMoyenne[]
+  options   OptionConsommationMoyenne[]
+
+  @@index([nom])
+  @@map("consommations_moyennes")
+}
+
+model OffreConsommationMoyenne {
+  id                     Int                  @id @default(autoincrement()) @map("id")
+  offreId                Int                  @map("offre_id")
+  consommationMoyenneId  Int                  @map("consommation_moyenne_id")
+  createdAt              DateTime             @default(now()) @map("created_at")
+
+  // Relations
+  offre                  Offre                @relation(fields: [offreId], references: [id], onDelete: Cascade)
+  consommationMoyenne    ConsommationMoyenne  @relation(fields: [consommationMoyenneId], references: [id], onDelete: Cascade)
+
+  @@unique([offreId, consommationMoyenneId], name: "unique_offre_consommation_moyenne")
+  @@index([offreId])
+  @@index([consommationMoyenneId])
+  @@map("offre_consommations_moyennes")
+}
+
+// Modèles pour les options
+model Option {
+  id                     Int      @id @default(autoincrement()) @map("id")
+  offreId                Int      @map("offre_id")
+  nom                    String   @map("nom") @db.VarChar(255)
+  tva                    Decimal  @map("tva") @db.Decimal(5, 2)
+  nombreSouscriptions    Int      @map("nombre_souscriptions")
+  traficOption Decimal?  @map("trafic_option") @db.Decimal(10, 2)
+  fraisSouscription      Decimal  @map("frais_souscription") @db.Decimal(10, 2)
+  tarifMinuteOnNet       Decimal  @map("tarif_minute_on_net") @db.Decimal(10, 2)
+  tarifMinuteOffNet      Decimal  @map("tarif_minute_off_net") @db.Decimal(10, 2)
+  annee                  Int      @map("annee")
+  trafic                 Decimal  @default(0) @map("trafic") @db.Decimal(15, 2)
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  offre                  Offre    @relation(fields: [offreId], references: [id], onDelete: Cascade)
+  structuresTarifaires   OptionStructureTarifaire[]
+  avantages              OptionAvantage[]
+  consommationsMoyennes  OptionConsommationMoyenne[]
+
+  @@index([id])
+  @@index([offreId])
+  @@index([nom])
+  @@index([annee])
+  @@map("options")
+}
+
+model StructureTarifaire {
+  id             Int      @id @default(autoincrement()) @map("id")
+  nom            String   @map("nom") @db.VarChar(255)
+  valeur         Decimal  @map("valeur") @db.Decimal(10, 2)
+  estObligatoire Boolean  @default(false) @map("est_obligatoire")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations avec les options
+  options   OptionStructureTarifaire[]
+
+  @@index([nom])
+  @@map("structures_tarifaires")
+}
+
+model OptionStructureTarifaire {
+  id                    Int                @id @default(autoincrement()) @map("id")
+  optionId              Int                @map("option_id")
+  structureTarifaireId  Int                @map("structure_tarifaire_id")
+  valeur         Decimal?  @map("valeur") @db.Decimal(10, 2)
+  createdAt             DateTime           @default(now()) @map("created_at")
+
+  // Relations
+  option                Option             @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  structureTarifaire    StructureTarifaire @relation(fields: [structureTarifaireId], references: [id], onDelete: Cascade)
+
+  @@unique([optionId, structureTarifaireId], name: "unique_option_structure_tarifaire")
+  @@index([optionId])
+  @@index([structureTarifaireId])
+  @@map("option_structures_tarifaires")
+}
+
+model OptionAvantage {
+  id          Int      @id @default(autoincrement()) @map("id")
+  optionId    Int      @map("option_id")
+  avantageId  Int      @map("avantage_id")
+  valeur         Decimal?  @map("valeur") @db.Decimal(10, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  option      Option   @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  avantage    Avantage @relation(fields: [avantageId], references: [id], onDelete: Cascade)
+
+  @@unique([optionId, avantageId], name: "unique_option_avantage")
+  @@index([optionId])
+  @@index([avantageId])
+  @@map("option_avantages")
+}
+
+model OptionConsommationMoyenne {
+  id                     Int                  @id @default(autoincrement()) @map("id")
+  optionId               Int                  @map("option_id")
+  consommationMoyenneId  Int                  @map("consommation_moyenne_id")
+  valeur         Decimal?  @map("valeur") @db.Decimal(10, 2)
+  createdAt              DateTime             @default(now()) @map("created_at")
+
+  // Relations
+  option                 Option               @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  consommationMoyenne    ConsommationMoyenne  @relation(fields: [consommationMoyenneId], references: [id], onDelete: Cascade)
+
+  @@unique([optionId, consommationMoyenneId], name: "unique_option_consommation_moyenne")
+  @@index([optionId])
+  @@index([consommationMoyenneId])
+  @@map("option_consommations_moyennes")
+}
+
+model CiseauTarifaire {
+  id                  Int      @id @default(autoincrement()) @map("id")
+  annee               Int      @unique @map("annee")
+  coutReseau          Decimal  @default(0) @map("cout_reseau") @db.Decimal(18, 2)
+  coutCommerciaux     Decimal  @default(0) @map("cout_commerciaux") @db.Decimal(18, 2)
+  coutInterconnexion  Decimal  @default(0) @map("cout_interconnexion") @db.Decimal(18, 2)
+  taxe                Decimal  @default(0) @map("taxe") @db.Decimal(18, 2)
+  cout                Decimal  @default(0) @map("cout") @db.Decimal(18, 2)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([id])
+  @@index([annee])
+  @@map("ciseaux_tarifaires")
+}
