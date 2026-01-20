@@ -56,7 +56,7 @@ export class AvantageController {
   @Post()
   @ApiOperation({
     summary: 'Créer plusieurs avantages',
-    description: 'Crée plusieurs avantages avec un nom, une valeur et un indicateur gratuit. Les noms doivent être uniques. Optionnellement associer à une offre.',
+    description: 'Crée plusieurs avantages avec un nom et un indicateur gratuit. Les noms doivent être uniques.',
   })
   @ApiResponse({
     status: 201,
@@ -73,64 +73,16 @@ export class AvantageController {
             {
               id: 15,
               nom: 'Internet 5G Illimité',
-              valeur: 0,
               isGratuit: true,
-              description: 'Accès illimité à Internet en 5G avec débit prioritaire',
-              typeAvantage: 'data',
-              uniteMesure: 'illimite',
-              plafondUtilisation: null,
-              conditionsActivation: 'automatique',
-              dureeValidite: 'mensuelle',
               createdAt: '2025-01-05T19:30:00.000Z',
-              updatedAt: '2025-01-05T19:30:00.000Z',
-              statut: 'actif',
-              popularite: {
-                demande: 'elevee',
-                satisfaction: 4.8,
-                utilisationMoyenne: '89%'
-              },
-              offres: [
-                {
-                  id: 8,
-                  nom: 'Forfait Premium 5G',
-                  prix: 25000,
-                  typeOffre: 'mobile'
-                },
-                {
-                  id: 12,
-                  nom: 'Entreprise Pro Max',
-                  prix: 85000,
-                  typeOffre: 'entreprise'
-                }
-              ]
+              updatedAt: '2025-01-05T19:30:00.000Z'
             },
             {
               id: 16,
               nom: 'Roaming International Gratuit',
-              valeur: 30,
               isGratuit: false,
-              description: 'Communication gratuite dans 30 pays d\'Afrique et d\'Europe',
-              typeAvantage: 'roaming',
-              uniteMesure: 'pays',
-              plafondUtilisation: '30 jours/mois',
-              conditionsActivation: 'sur_demande',
-              dureeValidite: 'mensuelle',
               createdAt: '2025-01-05T19:30:00.000Z',
-              updatedAt: '2025-01-05T19:30:00.000Z',
-              statut: 'actif',
-              popularite: {
-                demande: 'moderee',
-                satisfaction: 4.5,
-                utilisationMoyenne: '45%'
-              },
-              offres: [
-                {
-                  id: 12,
-                  nom: 'Entreprise Pro Max',
-                  prix: 85000,
-                  typeOffre: 'entreprise'
-                }
-              ]
+              updatedAt: '2025-01-05T19:30:00.000Z'
             }
           ]
         }
@@ -156,7 +108,7 @@ export class AvantageController {
         message: { 
           type: 'array',
           items: { type: 'string' },
-          example: ['avantages should not be empty', 'avantages.0.valeur must be a positive number']
+          example: ['avantages should not be empty', 'avantages.0.nom must be a string']
         },
         error: { type: 'string', example: 'Bad Request' },
         statusCode: { type: 'number', example: 400 },
@@ -179,11 +131,6 @@ export class AvantageController {
                 description: 'Nom unique de l\'avantage',
                 example: 'SMS Illimités'
               },
-              valeur: {
-                type: 'number',
-                description: 'Valeur numérique de l\'avantage',
-                example: 0
-              },
               isGratuit: {
                 type: 'boolean',
                 description: 'Indique si l\'avantage est gratuit ou payant',
@@ -191,25 +138,18 @@ export class AvantageController {
                 default: false
               }
             },
-            required: ['nom', 'valeur']
+            required: ['nom']
           },
           example: [
             {
               nom: 'SMS Illimités',
-              valeur: 0,
               isGratuit: true
             },
             {
               nom: 'Appels On-Net 30min',
-              valeur: 30,
               isGratuit: false
             }
           ]
-        },
-        offreId: {
-          type: 'number',
-          description: 'ID optionnel de l\'offre à associer aux avantages',
-          example: 1
         }
       },
       required: ['avantages']
@@ -230,7 +170,7 @@ export class AvantageController {
   @Get()
   @ApiOperation({
     summary: 'Obtenir la liste des avantages',
-    description: 'Récupère la liste paginée des avantages avec filtrage optionnel par nom, valeur, statut gratuit et offre associée.',
+    description: 'Récupère la liste paginée des avantages avec filtrage optionnel par nom et statut gratuit.',
   })
   @ApiQuery({
     name: 'nom',
@@ -240,32 +180,11 @@ export class AvantageController {
     example: 'SMS',
   })
   @ApiQuery({
-    name: 'valeurMin',
-    required: false,
-    type: Number,
-    description: 'Valeur minimale pour filtrer les avantages',
-    example: 0,
-  })
-  @ApiQuery({
-    name: 'valeurMax',
-    required: false,
-    type: Number,
-    description: 'Valeur maximale pour filtrer les avantages',
-    example: 100,
-  })
-  @ApiQuery({
     name: 'isGratuit',
     required: false,
     type: Boolean,
     description: 'Filtrer par statut gratuit (true pour gratuit, false pour payant)',
     example: true,
-  })
-  @ApiQuery({
-    name: 'offreId',
-    required: false,
-    type: Number,
-    description: 'ID de l\'offre pour filtrer les avantages associés à cette offre',
-    example: 1,
   })
   @ApiQuery({
     name: 'page',
@@ -365,7 +284,7 @@ export class AvantageController {
   @Get(':id')
   @ApiOperation({
     summary: 'Obtenir un avantage par ID',
-    description: 'Récupère les détails d\'un avantage spécifique avec la liste des offres associées.',
+    description: 'Récupère les détails d\'un avantage spécifique.',
   })
   @ApiParam({
     name: 'id',
@@ -389,27 +308,9 @@ export class AvantageController {
           properties: {
             id: { type: 'number', example: 1 },
             nom: { type: 'string', example: 'SMS illimités' },
-            valeur: { type: 'number', example: 0 },
             isGratuit: { type: 'boolean', example: true },
             createdAt: { type: 'string', format: 'date-time' },
-            updatedAt: { type: 'string', format: 'date-time' },
-            offres: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'number', example: 1 },
-                  nom: { type: 'string', example: 'Forfait Premium' },
-                  operateur: {
-                    type: 'object',
-                    properties: {
-                      id: { type: 'number', example: 1 },
-                      nom: { type: 'string', example: 'Orange' },
-                    },
-                  },
-                },
-              },
-            },
+            updatedAt: { type: 'string', format: 'date-time' }
           },
         },
       },
@@ -454,19 +355,16 @@ export class AvantageController {
             {
               id: 1,
               nom: 'SMS illimités Premium',
-              valeur: 0,
-              offreId: 2
+              isGratuit: true
             },
             {
               id: 2,
               nom: 'Appels illimités Modifiés',
-              valeur: 15.50
-              // offreId non renseigné = supprime l'association avec les offres
+              isGratuit: false
             },
             {
               id: 3,
-              valeur: 25.00
-              // nom non renseigné = pas de modification du nom
+              isGratuit: true
             }
           ]
         }
@@ -488,23 +386,16 @@ export class AvantageController {
             {
               id: 1,
               nom: 'SMS illimités Premium',
-              valeur: 0,
+              isGratuit: true,
               createdAt: '2025-12-31T14:30:00.000Z',
-              updatedAt: '2026-01-05T16:45:00.000Z',
-              offres: [
-                {
-                  id: 2,
-                  nom: 'Forfait Standard'
-                }
-              ]
+              updatedAt: '2026-01-05T16:45:00.000Z'
             },
             {
               id: 2,
               nom: 'Appels illimités Modifiés',
-              valeur: 15.50,
+              isGratuit: false,
               createdAt: '2025-12-31T14:30:00.000Z',
-              updatedAt: '2026-01-05T16:45:00.000Z',
-              offres: []
+              updatedAt: '2026-01-05T16:45:00.000Z'
             }
           ]
         }
@@ -515,7 +406,7 @@ export class AvantageController {
     description: 'Un ou plusieurs avantages introuvables',
   })
   @ApiConflictResponse({
-    description: 'Conflit de noms avec des avantages existants ou offres introuvables',
+    description: 'Conflit de noms avec des avantages existants',
   })
   @ApiBadRequestResponse({
     description: 'Données de requête invalides',
@@ -553,14 +444,10 @@ export class AvantageController {
           statusCode: 200,
           code: 'AVANTAGE_DELETED',
           title: 'Avantage supprimé',
-          message: 'Avantage "SMS illimités" supprimé avec succès. Les liaisons suivantes ont été supprimées automatiquement: 2 offre(s): Forfait Basic, Forfait Premium, 1 option(s): Option SMS.',
+          message: 'Avantage "SMS illimités" supprimé avec succès. Les liaisons suivantes ont été supprimées automatiquement: 1 option(s): Option SMS.',
           data: {
             id: 1,
-            liaisonsSupprimeesCount: 3,
-            offresLiees: [
-              { id: 1, nom: 'Forfait Basic' },
-              { id: 2, nom: 'Forfait Premium' }
-            ],
+            liaisonsSupprimeesCount: 1,
             optionsLiees: [
               { id: 5, nom: 'Option SMS' }
             ]

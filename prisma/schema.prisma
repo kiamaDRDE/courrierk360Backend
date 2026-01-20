@@ -282,7 +282,6 @@ model Offre {
   // Relations
   operateur         Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
   ciseauTarifaire   CiseauTarifaire? @relation(fields: [ciseauTarifaireId], references: [id], onDelete: SetNull)
-  avantages         OffreAvantage[]
   services          OffreService[]
   caracteristiques  Caracteristique[]
   consommationsMoyennes OffreConsommationMoyenne[]
@@ -350,33 +349,15 @@ enum UserRole {
 model Avantage {
   id        Int      @id @default(autoincrement()) @map("id")
   nom       String   @map("nom") @db.VarChar(255)
-  valeur    Decimal  @map("valeur") @db.Decimal(10, 2)
   isGratuit Boolean  @default(false) @map("is_gratuit")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  // Relations Many-to-Many avec les offres et options
-  offres    OffreAvantage[]
+  // Relations Many-to-Many avec les options
   options   OptionAvantage[]
 
   @@index([nom])
   @@map("avantages")
-}
-
-model OffreAvantage {
-  id          Int      @id @default(autoincrement()) @map("id")
-  offreId     Int      @map("offre_id")
-  avantageId  Int      @map("avantage_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  // Relations
-  offre       Offre    @relation(fields: [offreId], references: [id], onDelete: Cascade)
-  avantage    Avantage @relation(fields: [avantageId], references: [id], onDelete: Cascade)
-
-  @@unique([offreId, avantageId], name: "unique_offre_avantage")
-  @@index([offreId])
-  @@index([avantageId])
-  @@map("offre_avantages")
 }
 
 model OffreService {
@@ -620,7 +601,6 @@ model Parametre {
 model ConsommationMoyenne {
   id        Int      @id @default(autoincrement()) @map("id")
   nom       String   @map("nom") @db.VarChar(255)
-  valeur    Float    @map("valeur")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -680,7 +660,6 @@ model Option {
 model StructureTarifaire {
   id             Int      @id @default(autoincrement()) @map("id")
   nom            String   @map("nom") @db.VarChar(255)
-  valeur         Decimal  @map("valeur") @db.Decimal(10, 2)
   estObligatoire Boolean  @default(false) @map("est_obligatoire")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")

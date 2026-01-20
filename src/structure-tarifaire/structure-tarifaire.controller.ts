@@ -41,18 +41,15 @@ export class StructureTarifaireController {
         value: [
           {
             nom: 'Tarification Standard',
-            valeur: 25.50,
             estObligatoire: true
           },
           {
             nom: 'Tarification Premium',
-            valeur: 45.00,
             estObligatoire: false
           },
           {
             nom: 'Tarification Basic',
             estObligatoire: false
-            // valeur non renseignée = 0 par défaut
             // estObligatoire non renseigné = false par défaut
           }
         ]
@@ -61,7 +58,6 @@ export class StructureTarifaireController {
         summary: 'Création d\'une seule structure tarifaire',
         value: {
           nom: 'Tarification Standard',
-          valeur: 25.50,
           estObligatoire: true
         }
       }
@@ -83,7 +79,6 @@ export class StructureTarifaireController {
             {
               id: 1,
               nom: 'Tarification Standard',
-              valeur: 25.50,
               estObligatoire: true,
               createdAt: '2025-12-31T14:30:00.000Z',
               updatedAt: '2025-12-31T14:30:00.000Z',
@@ -91,7 +86,6 @@ export class StructureTarifaireController {
             {
               id: 2,
               nom: 'Tarification Premium',
-              valeur: 45.00,
               estObligatoire: false,
               createdAt: '2025-12-31T14:30:00.000Z',
               updatedAt: '2025-12-31T14:30:00.000Z',
@@ -99,7 +93,6 @@ export class StructureTarifaireController {
             {
               id: 3,
               nom: 'Tarification Basic',
-              valeur: 0,
               estObligatoire: false,
               createdAt: '2025-12-31T14:30:00.000Z',
               updatedAt: '2025-12-31T14:30:00.000Z',
@@ -118,7 +111,6 @@ export class StructureTarifaireController {
           data: {
             id: 1,
             nom: 'Tarification Standard',
-            valeur: 25.50,
             estObligatoire: true,
             createdAt: '2025-12-31T14:30:00.000Z',
             updatedAt: '2025-12-31T14:30:00.000Z',
@@ -152,7 +144,6 @@ export class StructureTarifaireController {
             {
               id: 1,
               nom: 'Tarification Standard',
-              valeur: 25.50,
               estObligatoire: true,
               createdAt: '2025-12-31T14:30:00.000Z',
               updatedAt: '2025-12-31T14:30:00.000Z',
@@ -160,7 +151,6 @@ export class StructureTarifaireController {
             {
               id: 2,
               nom: 'Tarification Premium',
-              valeur: 45.75,
               estObligatoire: false,
               createdAt: '2025-12-31T14:25:00.000Z',
               updatedAt: '2025-12-31T14:25:00.000Z',
@@ -197,7 +187,6 @@ export class StructureTarifaireController {
         data: {
           id: 1,
           nom: 'Tarification Standard',
-          valeur: 25.50,
           estObligatoire: true,
           createdAt: '2025-12-31T14:30:00.000Z',
           updatedAt: '2025-12-31T14:30:00.000Z',
@@ -228,7 +217,6 @@ export class StructureTarifaireController {
         data: {
           id: 1,
           nom: 'Tarification Premium',
-          valeur: 45.75,
           estObligatoire: false,
           createdAt: '2025-12-31T14:30:00.000Z',
           updatedAt: '2025-12-31T14:35:00.000Z',
@@ -267,18 +255,15 @@ export class StructureTarifaireController {
             {
               id: 1,
               nom: 'Tarification Standard Modifiée',
-              valeur: 30.00,
               estObligatoire: true
             },
             {
               id: 2,
               nom: 'Tarification Premium Modifiée',
-              valeur: 50.00,
               estObligatoire: false
             },
             {
               id: 3,
-              valeur: 15.25,
               estObligatoire: true
               // nom non renseigné = pas de modification du nom
             }
@@ -303,7 +288,6 @@ export class StructureTarifaireController {
             {
               id: 1,
               nom: 'Tarification Standard Modifiée',
-              valeur: 30.00,
               estObligatoire: true,
               createdAt: '2025-12-31T14:30:00.000Z',
               updatedAt: '2026-01-05T15:45:00.000Z',
@@ -311,7 +295,6 @@ export class StructureTarifaireController {
             {
               id: 2,
               nom: 'Tarification Premium Modifiée',
-              valeur: 50.00,
               estObligatoire: false,
               createdAt: '2025-12-31T14:30:00.000Z',
               updatedAt: '2026-01-05T15:45:00.000Z',
@@ -319,7 +302,6 @@ export class StructureTarifaireController {
             {
               id: 3,
               nom: 'Tarification Basic',
-              valeur: 15.25,
               estObligatoire: true,
               createdAt: '2025-12-31T14:30:00.000Z',
               updatedAt: '2026-01-05T15:45:00.000Z',

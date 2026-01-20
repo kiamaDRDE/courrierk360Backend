@@ -14,18 +14,6 @@ export class AvantageItemDto {
   nom: string;
 
   @ApiPropertyOptional({
-    description: 'Valeur de l\'avantage',
-    example: 20.50,
-    type: 'number',
-    default: 0,
-  })
-  @IsOptional()
-  @IsNumber({}, { message: 'La valeur doit être un nombre' })
-  @Min(0, { message: 'La valeur doit être supérieure ou égale à 0' })
-  @Type(() => Number)
-  valeur?: number;
-
-  @ApiPropertyOptional({
     description: 'Indique si l\'avantage est gratuit',
     example: false,
     type: 'boolean',
@@ -38,23 +26,14 @@ export class AvantageItemDto {
 }
 
 export class CreateAvantageDto {
-  @ApiPropertyOptional({
-    description: 'ID de l\'offre associée (optionnel)',
-    example: 1,
-    type: Number,
-  })
-  @IsOptional()
-  @IsInt({ message: 'L\'ID d\'offre doit être un nombre entier' })
-  @Type(() => Number)
-  offreId?: number;
 
   @ApiProperty({
     description: 'Liste des avantages à créer',
     type: [AvantageItemDto],
     example: [
-      { nom: 'SMS illimités', valeur: 0 },
-      { nom: 'Appels illimités' }, // valeur non renseignée = 0 par défaut
-      { nom: 'Réduction 20%', valeur: 20 }
+      { nom: 'SMS illimités', isGratuit: true },
+      { nom: 'Appels illimités' },
+      { nom: 'Réduction 20%', isGratuit: false }
     ]
   })
   @IsArray({ message: 'Les avantages doivent être un tableau' })

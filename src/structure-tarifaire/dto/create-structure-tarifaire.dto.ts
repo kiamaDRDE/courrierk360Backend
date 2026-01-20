@@ -14,17 +14,6 @@ export class CreateStructureTarifaireDto {
   nom: string;
 
   @ApiPropertyOptional({
-    description: 'Valeur de la structure tarifaire',
-    example: 25.50,
-    type: 'number',
-    default: 0,
-  })
-  @IsOptional()
-  @IsNumber({}, { message: 'La valeur doit être un nombre' })
-  @Min(0, { message: 'La valeur doit être supérieure ou égale à 0' })
-  valeur?: number;
-
-  @ApiPropertyOptional({
     description: 'Indique si cette structure tarifaire est obligatoire',
     example: true,
     type: 'boolean',

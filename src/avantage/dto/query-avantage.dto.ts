@@ -13,26 +13,6 @@ export class QueryAvantageDto {
   nom?: string;
 
   @ApiProperty({
-    description: 'Valeur minimale à rechercher',
-    required: false,
-    example: 10.0,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({}, { message: 'La valeur minimale doit être un nombre' })
-  valeurMin?: number;
-
-  @ApiProperty({
-    description: 'Valeur maximale à rechercher',
-    required: false,
-    example: 100.0,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({}, { message: 'La valeur maximale doit être un nombre' })
-  valeurMax?: number;
-
-  @ApiProperty({
     description: 'Filtrer par statut gratuit (true pour gratuit, false pour payant)',
     required: false,
     example: true,
@@ -45,17 +25,6 @@ export class QueryAvantageDto {
   })
   @IsBoolean({ message: 'Le statut gratuit doit être un booléen (true ou false)' })
   isGratuit?: boolean;
-
-  @ApiProperty({
-    description: 'ID de l\'offre pour filtrer les avantages associés',
-    required: false,
-    example: 1,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt({ message: 'L\'ID de l\'offre doit être un nombre entier' })
-  @Min(1, { message: 'L\'ID de l\'offre doit être supérieur à 0' })
-  offreId?: number;
 
   @ApiProperty({
     description: 'Numéro de la page',

@@ -5,10 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { 
-  CreateConsommationMoyenneDto, 
-  BulkUpdateConsommationMoyenneDto 
-} from './dto/create-consommation-moyenne.dto';
+import { CreateConsommationMoyenneDto } from './dto/create-consommation-moyenne.dto';
 import { UpdateConsommationMoyenneDto } from './dto/update-consommation-moyenne.dto';
 import { QueryConsommationMoyenneDto } from './dto/query-consommation-moyenne.dto';
 
@@ -66,7 +63,6 @@ export class ConsommationMoyenneService {
       const consommation = await this.prisma.consommationMoyenne.create({
         data: {
           nom: consommationData.nom,
-          valeur: consommationData.valeur ?? 0, // Valeur par défaut : 0 si non spécifiée
           offres: offreId ? {
             create: {
               offreId: offreId,
@@ -103,7 +99,7 @@ export class ConsommationMoyenneService {
   }
 
   async findAll(query: QueryConsommationMoyenneDto) {
-    const { nom, valeurMin, valeurMax, page = 1, limit = 10 } = query;
+    const { nom, page = 1, limit = 10 } = query;
 
     const where: any = {};
 
@@ -111,16 +107,6 @@ export class ConsommationMoyenneService {
       where.nom = {
         contains: nom,
       };
-    }
-
-    if (valeurMin !== undefined || valeurMax !== undefined) {
-      where.valeur = {};
-      if (valeurMin !== undefined) {
-        where.valeur.gte = valeurMin;
-      }
-      if (valeurMax !== undefined) {
-        where.valeur.lte = valeurMax;
-      }
     }
 
     const skip = (page - 1) * limit;
@@ -208,7 +194,7 @@ export class ConsommationMoyenneService {
   }
 
   async update(id: number, updateConsommationMoyenneDto: UpdateConsommationMoyenneDto) {
-    const { offreId, nom, valeur } = updateConsommationMoyenneDto;
+    const { offreId, nom } = updateConsommationMoyenneDto;
 
     // Vérifier si la consommation existe
     const existingConsommation = await this.prisma.consommationMoyenne.findUnique({
@@ -254,7 +240,6 @@ export class ConsommationMoyenneService {
     // Mettre à jour la consommation
     const updateData: any = {};
     if (nom !== undefined) updateData.nom = nom;
-    if (valeur !== undefined) updateData.valeur = valeur;
 
     if (offreId !== undefined) {
       updateData.offres = {
@@ -289,61 +274,6 @@ export class ConsommationMoyenneService {
       consommationWithOffres,
       'Consommation mise à jour',
       `Consommation moyenne "${updatedConsommation.nom}" mise à jour avec succès.`,
-    );
-  }
-
-  async bulkUpdateValues(bulkUpdateDto: BulkUpdateConsommationMoyenneDto) {
-    const { updates } = bulkUpdateDto;
-
-    // Vérifier que toutes les consommations existent
-    const ids = updates.map(u => u.id);
-    const existingConsommations = await this.prisma.consommationMoyenne.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, nom: true },
-    });
-
-    const existingIds = existingConsommations.map(c => c.id);
-    const missingIds = ids.filter(id => !existingIds.includes(id));
-
-    if (missingIds.length > 0) {
-      throw new NotFoundException(
-        `Consommations moyennes avec les IDs suivants introuvables : ${missingIds.join(', ')}`,
-      );
-    }
-
-    // Mettre à jour les valeurs
-    const updatedConsommations: any[] = [];
-
-    for (const update of updates) {
-      const updatedConsommation = await this.prisma.consommationMoyenne.update({
-        where: { id: update.id },
-        data: { valeur: update.valeur },
-        include: {
-          offres: {
-            include: {
-              offre: {
-                select: {
-                  id: true,
-                  nom: true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-      const consommationWithOffres = {
-        ...updatedConsommation,
-        offres: updatedConsommation.offres.map(o => o.offre),
-      };
-
-      updatedConsommations.push(consommationWithOffres);
-    }
-
-    return this.formatResponse(
-      updatedConsommations,
-      'Valeurs mises à jour',
-      `${updatedConsommations.length} valeur(s) de consommation(s) moyenne(s) mise(s) à jour avec succès.`,
     );
   }
 

@@ -14,16 +14,6 @@ export class UpdateConsommationMoyenneDto {
   nom?: string;
 
   @ApiPropertyOptional({
-    description: 'Valeur de la consommation moyenne (en float)',
-    example: 125.75,
-    type: 'number',
-  })
-  @IsOptional()
-  @IsNumber({}, { message: 'La valeur doit être un nombre' })
-  @Type(() => Number)
-  valeur?: number;
-
-  @ApiPropertyOptional({
     description: 'ID de l\'offre à associer (optionnel)',
     example: 1,
     type: 'number',

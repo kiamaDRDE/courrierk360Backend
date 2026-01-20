@@ -13,26 +13,6 @@ export class QueryStructureTarifaireDto {
   nom?: string;
 
   @ApiProperty({
-    description: 'Valeur minimale à rechercher',
-    required: false,
-    example: 10.0,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({}, { message: 'La valeur minimale doit être un nombre' })
-  valeurMin?: number;
-
-  @ApiProperty({
-    description: 'Valeur maximale à rechercher',
-    required: false,
-    example: 100.0,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({}, { message: 'La valeur maximale doit être un nombre' })
-  valeurMax?: number;
-
-  @ApiProperty({
     description: 'Filtrer par le caractère obligatoire',
     required: false,
     example: true,

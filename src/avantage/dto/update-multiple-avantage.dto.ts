@@ -20,18 +20,15 @@ export class UpdateMultipleAvantageDto {
       {
         id: 1,
         nom: 'SMS illimités Premium',
-        valeur: 0,
-        offreId: 2
+        isGratuit: true
       },
       {
         id: 2,
         nom: 'Appels illimités Modifiés'
-        // valeur non renseignée = pas de modification de la valeur
       },
       {
         id: 3,
-        valeur: 25.00
-        // nom non renseigné = pas de modification du nom
+        isGratuit: false
       }
     ]
   })

@@ -12,24 +12,6 @@ export class QueryConsommationMoyenneDto {
   nom?: string;
 
   @ApiPropertyOptional({
-    description: 'Valeur minimale',
-    example: 50.0
-  })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  valeurMin?: number;
-
-  @ApiPropertyOptional({
-    description: 'Valeur maximale',
-    example: 300.0
-  })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  valeurMax?: number;
-
-  @ApiPropertyOptional({
     description: 'Numéro de page',
     example: 1,
     default: 1

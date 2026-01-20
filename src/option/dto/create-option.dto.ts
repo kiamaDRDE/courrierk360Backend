@@ -137,15 +137,16 @@ export class CreateOptionDto {
   @Type(() => Number)
   tarifMinuteOffNet: number;
 
-  @ApiProperty({
-    description: 'Année de l\'option',
+  @ApiPropertyOptional({
+    description: 'Année de l\'option (par défaut: année courante)',
     example: 2026,
     type: 'integer',
   })
+  @IsOptional()
   @IsInt({ message: 'L\'année doit être un entier' })
   @Min(2020, { message: 'L\'année doit être au minimum 2020' })
   @Type(() => Number)
-  annee: number;
+  annee?: number;
 
   @ApiPropertyOptional({
     description: 'Volume de trafic associé à l\'option',

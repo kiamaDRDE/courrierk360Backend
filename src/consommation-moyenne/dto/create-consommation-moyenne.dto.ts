@@ -12,17 +12,6 @@ export class ConsommationMoyenneItemDto {
   @IsNotEmpty({ message: 'Le nom est obligatoire' })
   @MaxLength(255, { message: 'Le nom ne doit pas dépasser 255 caractères' })
   nom: string;
-
-  @ApiPropertyOptional({
-    description: 'Valeur de la consommation moyenne (en float)',
-    example: 125.75,
-    type: 'number',
-    default: 0,
-  })
-  @IsOptional()
-  @IsNumber({}, { message: 'La valeur doit être un nombre' })
-  @Type(() => Number)
-  valeur?: number;
 }
 
 export class CreateConsommationMoyenneDto {
@@ -41,16 +30,13 @@ export class CreateConsommationMoyenneDto {
     type: [ConsommationMoyenneItemDto],
     example: [
       {
-        nom: 'Consommation Mobile Standard',
-        valeur: 125.75
+        nom: 'Consommation Mobile Standard'
       },
       {
-        nom: 'Consommation Mobile Premium',
-        valeur: 250.50
+        nom: 'Consommation Mobile Premium'
       },
       {
-        nom: 'Consommation Internet',
-        valeur: 500.25
+        nom: 'Consommation Internet'
       }
     ]
   })
@@ -58,28 +44,4 @@ export class CreateConsommationMoyenneDto {
   @ValidateNested({ each: true })
   @Type(() => ConsommationMoyenneItemDto)
   consommationsMoyennes: ConsommationMoyenneItemDto[];
-}
-
-export class UpdateConsommationMoyenneItem {
-  @IsNumber({}, { message: 'L\'ID doit être un nombre' })
-  id: number;
-  
-  @IsNumber({}, { message: 'La valeur doit être un nombre' })
-  valeur: number;
-}
-
-export class BulkUpdateConsommationMoyenneDto {
-  @ApiProperty({
-    description: 'Liste des consommations moyennes avec leurs nouvelles valeurs',
-    type: [UpdateConsommationMoyenneItem],
-    example: [
-      { id: 1, valeur: 150.25 },
-      { id: 2, valeur: 200.75 },
-      { id: 3, valeur: 75.50 }
-    ]
-  })
-  @IsArray({ message: 'Les mises à jour doivent être un tableau' })
-  @ValidateNested({ each: true })
-  @Type(() => UpdateConsommationMoyenneItem)
-  updates: UpdateConsommationMoyenneItem[];
 }

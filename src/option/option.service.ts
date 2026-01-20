@@ -130,7 +130,7 @@ export class OptionService {
           fraisSouscription,
           tarifMinuteOnNet,
           tarifMinuteOffNet,
-          annee,
+          annee: annee ?? new Date().getFullYear(), // Valeur par défaut à l'année courante si non fournie
           trafic: trafic ?? 0, // Valeur par défaut à 0 si non fournie
         },
       });
@@ -141,7 +141,7 @@ export class OptionService {
       // Récupérer toutes les structures obligatoires
       const obligatoryStructures = await tx.structureTarifaire.findMany({
         where: { estObligatoire: true },
-        select: { id: true, valeur: true },
+        select: { id: true },
       });
 
       if (obligatoryStructures.length > 0) {
@@ -152,11 +152,11 @@ export class OptionService {
           os => !providedIds.includes(os.id)
         );
 
-        // Ajouter les structures obligatoires manquantes avec leurs valeurs actuelles
+        // Ajouter les structures obligatoires manquantes
         if (missingObligatory.length > 0) {
           structuresToProcess.push(...missingObligatory.map(s => ({
             id: s.id,
-            valeur: Number(s.valeur), // Conversion Decimal vers Number
+            valeur: 0, // Valeur par défaut pour les structures obligatoires
           })));
         }
       }
@@ -166,18 +166,17 @@ export class OptionService {
         const defaultStructures = await tx.structureTarifaire.findMany({
           take: 2,
           orderBy: { id: 'asc' },
-          select: { id: true, valeur: true },
+          select: { id: true },
         });
         
         structuresToProcess = defaultStructures.map(s => ({
           id: s.id,
-          valeur: Number(s.valeur), // Conversion Decimal vers Number
+          valeur: 0, // Valeur par défaut
         }));
       }
 
-      // Créer les associations et mettre à jour les valeurs des structures tarifaires
+      // Créer les associations avec les structures tarifaires
       for (const structure of structuresToProcess) {
-        // Créer l'association
         await tx.optionStructureTarifaire.create({
           data: {
             optionId: option.id,
@@ -185,18 +184,11 @@ export class OptionService {
             valeur: structure.valeur,
           },
         });
-
-        // Mettre à jour la valeur de la structure tarifaire
-        await tx.structureTarifaire.update({
-          where: { id: structure.id },
-          data: { valeur: structure.valeur },
-        });
       }
 
-      // Créer les associations avec les avantages et mettre à jour leurs valeurs
+      // Créer les associations avec les avantages
       if (avantages && avantages.length > 0) {
         for (const avantage of avantages) {
-          // Créer l'association
           await tx.optionAvantage.create({
             data: {
               optionId: option.id,
@@ -204,31 +196,18 @@ export class OptionService {
               valeur: avantage.valeur,
             },
           });
-
-          // Mettre à jour la valeur de l'avantage
-          await tx.avantage.update({
-            where: { id: avantage.id },
-            data: { valeur: avantage.valeur },
-          });
         }
       }
 
-      // Créer les associations avec les consommations moyennes et mettre à jour leurs valeurs
+      // Créer les associations avec les consommations moyennes
       if (consommationsMoyennes && consommationsMoyennes.length > 0) {
         for (const consommation of consommationsMoyennes) {
-          // Créer l'association
           await tx.optionConsommationMoyenne.create({
             data: {
               optionId: option.id,
               consommationMoyenneId: consommation.id,
               valeur: consommation.valeur,
             },
-          });
-
-          // Mettre à jour la valeur de la consommation moyenne
-          await tx.consommationMoyenne.update({
-            where: { id: consommation.id },
-            data: { valeur: consommation.valeur },
           });
         }
       }
@@ -249,7 +228,6 @@ export class OptionService {
                 select: {
                   id: true,
                   nom: true,
-                  valeur: true,
                   estObligatoire: true,
                 },
               },
@@ -261,7 +239,6 @@ export class OptionService {
                 select: {
                   id: true,
                   nom: true,
-                  valeur: true,
                 },
               },
             },
@@ -272,7 +249,6 @@ export class OptionService {
                 select: {
                   id: true,
                   nom: true,
-                  valeur: true,
                 },
               },
             },
@@ -389,7 +365,6 @@ export class OptionService {
                 select: {
                   id: true,
                   nom: true,
-                  valeur: true,
                   estObligatoire: true,
                 },
               },
@@ -401,7 +376,6 @@ export class OptionService {
                 select: {
                   id: true,
                   nom: true,
-                  valeur: true,
                 },
               },
             },
@@ -412,7 +386,6 @@ export class OptionService {
                 select: {
                   id: true,
                   nom: true,
-                  valeur: true,
                 },
               },
             },
@@ -480,7 +453,6 @@ export class OptionService {
               select: {
                 id: true,
                 nom: true,
-                valeur: true,
                 estObligatoire: true,
               },
             },
@@ -492,7 +464,6 @@ export class OptionService {
               select: {
                 id: true,
                 nom: true,
-                valeur: true,
               },
             },
           },
@@ -503,7 +474,6 @@ export class OptionService {
               select: {
                 id: true,
                 nom: true,
-                valeur: true,
               },
             },
           },
@@ -642,7 +612,7 @@ export class OptionService {
         });
 
         if (structuresTarifaires.length > 0) {
-          // Créer les nouvelles associations et mettre à jour les valeurs
+          // Créer les nouvelles associations
           for (const structure of structuresTarifaires) {
             await tx.optionStructureTarifaire.create({
               data: {
@@ -650,12 +620,6 @@ export class OptionService {
                 structureTarifaireId: structure.id,
                 valeur: structure.valeur,
               },
-            });
-
-            // Mettre à jour la valeur de la structure tarifaire
-            await tx.structureTarifaire.update({
-              where: { id: structure.id },
-              data: { valeur: structure.valeur },
             });
           }
         }
@@ -669,7 +633,7 @@ export class OptionService {
         });
 
         if (avantages.length > 0) {
-          // Créer les nouvelles associations et mettre à jour les valeurs
+          // Créer les nouvelles associations
           for (const avantage of avantages) {
             await tx.optionAvantage.create({
               data: {
@@ -677,12 +641,6 @@ export class OptionService {
                 avantageId: avantage.id,
                 valeur: avantage.valeur,
               },
-            });
-
-            // Mettre à jour la valeur de l'avantage
-            await tx.avantage.update({
-              where: { id: avantage.id },
-              data: { valeur: avantage.valeur },
             });
           }
         }
@@ -696,7 +654,7 @@ export class OptionService {
         });
 
         if (consommationsMoyennes.length > 0) {
-          // Créer les nouvelles associations et mettre à jour les valeurs
+          // Créer les nouvelles associations
           for (const consommation of consommationsMoyennes) {
             await tx.optionConsommationMoyenne.create({
               data: {
@@ -704,12 +662,6 @@ export class OptionService {
                 consommationMoyenneId: consommation.id,
                 valeur: consommation.valeur,
               },
-            });
-
-            // Mettre à jour la valeur de la consommation moyenne
-            await tx.consommationMoyenne.update({
-              where: { id: consommation.id },
-              data: { valeur: consommation.valeur },
             });
           }
         }
@@ -731,7 +683,6 @@ export class OptionService {
                 select: {
                   id: true,
                   nom: true,
-                  valeur: true,
                   estObligatoire: true,
                 },
               },
@@ -743,7 +694,6 @@ export class OptionService {
                 select: {
                   id: true,
                   nom: true,
-                  valeur: true,
                 },
               },
             },
@@ -754,7 +704,6 @@ export class OptionService {
                 select: {
                   id: true,
                   nom: true,
-                  valeur: true,
                 },
               },
             },

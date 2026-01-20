@@ -57,7 +57,6 @@ export class StructureTarifaireService {
     for (const structureData of structures) {
       const dataToCreate = {
         nom: structureData.nom,
-        valeur: structureData.valeur ?? 0, // Valeur par défaut : 0 si non spécifiée
         estObligatoire: structureData.estObligatoire ?? false, // Valeur par défaut : false si non spécifiée
       };
 
@@ -65,12 +64,7 @@ export class StructureTarifaireService {
         data: dataToCreate,
       });
 
-      const structureWithNumber = {
-        ...structure,
-        valeur: Number(structure.valeur),
-      };
-
-      createdStructures.push(structureWithNumber);
+      createdStructures.push(structure);
     }
 
     // Retourner la réponse selon le format d'entrée
@@ -90,7 +84,7 @@ export class StructureTarifaireService {
   }
 
   async findAll(query: QueryStructureTarifaireDto) {
-    const { nom, valeurMin, valeurMax, estObligatoire, page = 1, limit = 10 } = query;
+    const { nom, estObligatoire, page = 1, limit = 10 } = query;
 
     const where: any = {};
 
@@ -98,16 +92,6 @@ export class StructureTarifaireService {
       where.nom = {
         contains: nom,
       };
-    }
-
-    if (valeurMin !== undefined || valeurMax !== undefined) {
-      where.valeur = {};
-      if (valeurMin !== undefined) {
-        where.valeur.gte = valeurMin;
-      }
-      if (valeurMax !== undefined) {
-        where.valeur.lte = valeurMax;
-      }
     }
 
     if (estObligatoire !== undefined) {
@@ -121,22 +105,16 @@ export class StructureTarifaireService {
         where,
         skip,
         take: limit,
-        orderBy: [{ valeur: 'desc' }, { nom: 'asc' }, { createdAt: 'desc' }],
+        orderBy: [{ nom: 'asc' }, { createdAt: 'desc' }],
       }),
       this.prisma.structureTarifaire.count({ where }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
 
-    // Convertir les valeurs Decimal en nombres
-    const structuresWithNumbers = structures.map(structure => ({
-      ...structure,
-      valeur: Number(structure.valeur),
-    }));
-
     return this.formatResponse(
       {
-        structures: structuresWithNumbers,
+        structures: structures,
         pagination: {
           total,
           page,
@@ -162,13 +140,8 @@ export class StructureTarifaireService {
       );
     }
 
-    const structureWithNumber = {
-      ...structure,
-      valeur: Number(structure.valeur),
-    };
-
     return this.formatResponse(
-      structureWithNumber,
+      structure,
       'Structure récupérée',
       `Structure tarifaire "${structure.nom}" récupérée avec succès.`,
     );
@@ -202,20 +175,13 @@ export class StructureTarifaireService {
       }
     }
 
-    // Pour la mise à jour : si valeur n'est pas fourni, on garde l'ancienne valeur
-    // Si valeur est fourni, on prend la valeur fournie (même si c'est 0)
     const updatedStructure = await this.prisma.structureTarifaire.update({
       where: { id },
       data: updateStructureTarifaireDto,
     });
 
-    const structureWithNumber = {
-      ...updatedStructure,
-      valeur: Number(updatedStructure.valeur),
-    };
-
     return this.formatResponse(
-      structureWithNumber,
+      updatedStructure,
       'Structure mise à jour',
       `Structure tarifaire "${updatedStructure.nom}" mise à jour avec succès.`,
     );
@@ -300,12 +266,7 @@ export class StructureTarifaireService {
         data: updateData,
       });
 
-      const structureWithNumber = {
-        ...updatedStructure,
-        valeur: Number(updatedStructure.valeur),
-      };
-
-      updatedStructures.push(structureWithNumber);
+      updatedStructures.push(updatedStructure);
     }
 
     return this.formatResponse(

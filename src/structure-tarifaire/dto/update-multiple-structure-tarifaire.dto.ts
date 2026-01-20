@@ -20,13 +20,11 @@ export class UpdateMultipleStructureTarifaireDto {
       {
         id: 1,
         nom: 'Tarification Standard Modifiée',
-        valeur: 30.00,
         estObligatoire: true
       },
       {
         id: 2,
         nom: 'Tarification Premium Modifiée',
-        valeur: 50.00,
         estObligatoire: false
       }
     ]

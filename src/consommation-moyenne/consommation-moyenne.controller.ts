@@ -23,10 +23,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { ConsommationMoyenneService } from './consommation-moyenne.service';
-import { 
-  CreateConsommationMoyenneDto, 
-  BulkUpdateConsommationMoyenneDto 
-} from './dto/create-consommation-moyenne.dto';
+import { CreateConsommationMoyenneDto } from './dto/create-consommation-moyenne.dto';
 import { UpdateConsommationMoyenneDto } from './dto/update-consommation-moyenne.dto';
 import { QueryConsommationMoyenneDto } from './dto/query-consommation-moyenne.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -53,16 +50,13 @@ export class ConsommationMoyenneController {
           offreId: 1,
           consommationsMoyennes: [
             {
-              nom: 'Consommation Mobile Standard',
-              valeur: 125.75
+              nom: 'Consommation Mobile Standard'
             },
             {
-              nom: 'Consommation Mobile Premium',
-              valeur: 250.50
+              nom: 'Consommation Mobile Premium'
             },
             {
-              nom: 'Consommation Internet',
-              valeur: 500.25
+              nom: 'Consommation Internet'
             }
           ]
         }
@@ -72,12 +66,10 @@ export class ConsommationMoyenneController {
         value: {
           consommationsMoyennes: [
             {
-              nom: 'Consommation Fixe Basic',
-              valeur: 75.25
+              nom: 'Consommation Fixe Basic'
             },
             {
               nom: 'Consommation Fixe Premium'
-              // valeur non renseignée = 0 par défaut
             }
           ]
         }
@@ -102,7 +94,6 @@ export class ConsommationMoyenneController {
             properties: {
               id: { type: 'number', example: 1 },
               nom: { type: 'string', example: 'Consommation Mobile Standard' },
-              valeur: { type: 'number', example: 125.75 },
               createdAt: { type: 'string', format: 'date-time' },
               updatedAt: { type: 'string', format: 'date-time' },
               offres: {
@@ -156,102 +147,6 @@ export class ConsommationMoyenneController {
     return this.consommationMoyenneService.create(data);
   }
 
-  @Patch('bulk-update-values')
-  @ApiOperation({ 
-    summary: 'Mettre à jour les valeurs de plusieurs consommations moyennes',
-    description: 'Permet de modifier les valeurs de plusieurs consommations moyennes en une seule requête. Utile pour les mises à jour en masse.'
-  })
-  @ApiBody({
-    type: BulkUpdateConsommationMoyenneDto,
-    description: 'Liste des consommations moyennes avec leurs nouvelles valeurs',
-    examples: {
-      multipleUpdates: {
-        summary: 'Mise à jour de plusieurs valeurs',
-        value: {
-          updates: [
-            { id: 1, valeur: 150.25 },
-            { id: 2, valeur: 275.50 },
-            { id: 3, valeur: 95.75 }
-          ]
-        }
-      },
-      singleUpdate: {
-        summary: 'Mise à jour d\'une seule valeur',
-        value: {
-          updates: [
-            { id: 1, valeur: 200.00 }
-          ]
-        }
-      }
-    }
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Valeurs des consommations moyennes mises à jour avec succès',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean', example: true },
-        statusCode: { type: 'number', example: 200 },
-        code: { type: 'string', example: 'success' },
-        title: { type: 'string', example: 'Valeurs mises à jour' },
-        message: { type: 'string', example: '3 valeur(s) de consommation(s) moyenne(s) mise(s) à jour avec succès.' },
-        data: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'number', example: 1 },
-              nom: { type: 'string', example: 'Consommation Mobile Standard' },
-              valeur: { type: 'number', example: 150.25 },
-              createdAt: { type: 'string', format: 'date-time', example: '2025-12-31T14:30:00.000Z' },
-              updatedAt: { type: 'string', format: 'date-time', example: '2025-12-31T14:35:00.000Z' },
-              offres: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'number', example: 1 },
-                    nom: { type: 'string', example: 'Offre Premium' }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  })
-  @ApiNotFoundResponse({
-    description: 'Une ou plusieurs consommations moyennes introuvables',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { type: 'string', example: 'Consommations moyennes avec les IDs suivants introuvables : 1, 2' },
-        error: { type: 'string', example: 'Not Found' },
-        statusCode: { type: 'number', example: 404 },
-      },
-    },
-  })
-  @ApiBadRequestResponse({
-    description: 'Données invalides',
-    schema: {
-      type: 'object',
-      properties: {
-        message: { 
-          type: 'array',
-          items: { type: 'string' },
-          example: ['L\'ID doit être un nombre', 'La valeur doit être un nombre']
-        },
-        error: { type: 'string', example: 'Bad Request' },
-        statusCode: { type: 'number', example: 400 },
-      },
-    },
-  })
-  bulkUpdateValues(@Body() bulkUpdateDto: BulkUpdateConsommationMoyenneDto) {
-    return this.consommationMoyenneService.bulkUpdateValues(bulkUpdateDto);
-  }
-
   @Get()
   @ApiOperation({ 
     summary: 'Lister les consommations moyennes avec filtres et pagination',
@@ -263,20 +158,6 @@ export class ConsommationMoyenneController {
     required: false,
     type: 'string',
     example: 'Mobile'
-  })
-  @ApiQuery({
-    name: 'valeurMin',
-    description: 'Valeur minimale pour le filtrage',
-    required: false,
-    type: 'number',
-    example: 100
-  })
-  @ApiQuery({
-    name: 'valeurMax',
-    description: 'Valeur maximale pour le filtrage',
-    required: false,
-    type: 'number',
-    example: 500
   })
   @ApiQuery({
     name: 'page',
@@ -310,7 +191,6 @@ export class ConsommationMoyenneController {
             properties: {
               id: { type: 'number', example: 1 },
               nom: { type: 'string', example: 'Consommation Mobile Standard' },
-              valeur: { type: 'number', example: 125.75 },
               createdAt: { type: 'string', format: 'date-time', example: '2025-12-31T14:30:00.000Z' },
               updatedAt: { type: 'string', format: 'date-time', example: '2025-12-31T14:30:00.000Z' },
               offres: {
@@ -369,7 +249,6 @@ export class ConsommationMoyenneController {
           properties: {
             id: { type: 'number', example: 1 },
             nom: { type: 'string', example: 'Consommation Mobile Standard' },
-            valeur: { type: 'number', example: 125.75 },
             createdAt: { type: 'string', format: 'date-time', example: '2025-12-31T14:30:00.000Z' },
             updatedAt: { type: 'string', format: 'date-time', example: '2025-12-31T14:30:00.000Z' },
             offres: {
@@ -421,14 +300,13 @@ export class ConsommationMoyenneController {
         summary: 'Modification complète',
         value: {
           nom: 'Consommation Mobile Premium+',
-          valeur: 300.75,
           offreId: 2
         }
       },
       updatePartial: {
-        summary: 'Modification partielle (valeur seulement)',
+        summary: 'Modification partielle (nom seulement)',
         value: {
-          valeur: 150.25
+          nom: 'Consommation Mobile Standard+'
         }
       },
       removeOffre: {
@@ -455,7 +333,6 @@ export class ConsommationMoyenneController {
           properties: {
             id: { type: 'number', example: 1 },
             nom: { type: 'string', example: 'Consommation Mobile Premium+' },
-            valeur: { type: 'number', example: 300.75 },
             createdAt: { type: 'string', format: 'date-time', example: '2025-12-31T14:30:00.000Z' },
             updatedAt: { type: 'string', format: 'date-time', example: '2025-12-31T14:35:00.000Z' },
             offres: {
@@ -506,7 +383,7 @@ export class ConsommationMoyenneController {
             { 
               type: 'array', 
               items: { type: 'string' },
-              example: ['Le nom ne doit pas dépasser 255 caractères', 'La valeur doit être un nombre']
+              example: ['Le nom ne doit pas dépasser 255 caractères']
             }
           ]
         },
