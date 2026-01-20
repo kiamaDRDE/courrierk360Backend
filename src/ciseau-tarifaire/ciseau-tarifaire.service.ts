@@ -262,6 +262,158 @@ export class CiseauTarifaireService {
   }
 
   /**
+   * Calculer le ciseau tarifaire selon le revenu moyen OffNet
+   * RevenusMoyen = calculé via calculerRevenuMoyen() du service effet-club
+   * DiffRevenuOffHC = RevenusMoyen - Tarif Interconnexion OffNet HC
+   * DiffRevenuOffHP = RevenusMoyen - Tarif Interconnexion OffNet HP
+   */
+  async calculateCiseauTarifaireAvecRevenuMoyen(offreId: number) {
+    // Récupérer l'offre avec son opérateur
+    const offre = await this.prisma.offre.findUnique({
+      where: { id: offreId },
+      select: {
+        id: true,
+        nom: true,
+        operateurId: true,
+        dateDebutValidite: true,
+        ciseauTarifaireId: true,
+        operateur: {
+          select: {
+            id: true,
+            nom: true
+          }
+        }
+      }
+    });
+
+    if (!offre) {
+      throw new NotFoundException(`Offre avec l'ID ${offreId} non trouvée`);
+    }
+
+    // Calculer le revenu moyen OffNet en utilisant calculerRevenuMoyen du service effet-club
+    const revenuMoyen = await this.effetClubService.calculerRevenuMoyen(
+      offre.operateurId,
+      offreId,
+      'OFFNET'
+    );
+
+    if (!revenuMoyen) {
+      throw new BadRequestException(
+        `Impossible de calculer le revenu moyen OffNet pour l'offre ${offreId}. Vérifiez que l'offre a toutes les données nécessaires (TP, TNC, EP, options).`
+      );
+    }
+
+    // Convertir en Decimal
+    const RevenusMoyen = new Decimal(revenuMoyen);
+
+    // Extraire l'année depuis la date de validité de l'offre
+    const annee = offre.dateDebutValidite.getFullYear();
+
+    // Récupérer le tarif d'interconnexion de l'opérateur pour cette année
+    const tarifInterconnexion = await this.prisma.tarifInterconnexion.findFirst({
+      where: {
+        operateurId: offre.operateurId,
+        annee,
+        typeTarif: 'Interconnexion'
+      }
+    });
+
+    if (!tarifInterconnexion) {
+      throw new NotFoundException(
+        `Tarif d'interconnexion non trouvé pour l'opérateur ${offre.operateur.nom} pour l'année ${annee}`
+      );
+    }
+
+    // Calculer les différences avec le revenu moyen
+    const DiffRevenuOffHC = RevenusMoyen.minus(new Decimal(tarifInterconnexion.tarifOffNetHeureCreuse));
+    const DiffRevenuOffHP = RevenusMoyen.minus(new Decimal(tarifInterconnexion.tarifOffNetHeurePleine));
+
+    // Récupérer le coût depuis la table Parametre pour cette année
+    const parametre = await this.prisma.parametre.findUnique({
+      where: { annee }
+    });
+
+    if (!parametre) {
+      throw new NotFoundException(`Paramètre non trouvé pour l'année ${annee}`);
+    }
+
+    const cout = parametre.cout;
+
+    // Déterminer si c'est un ciseau tarifaire pour chaque différence
+    // Si DiffRevenuOffHC > cout, alors isRevenuOffHC = false, sinon true
+    const isRevenuOffHC = !DiffRevenuOffHC.greaterThan(cout);
+    
+    // Si DiffRevenuOffHP > cout, alors isRevenuOffHP = false, sinon true
+    const isRevenuOffHP = !DiffRevenuOffHP.greaterThan(cout);
+
+    // Vérifier si un ciseau tarifaire existe déjà pour cette année
+    const existingCiseau = await this.prisma.ciseauTarifaire.findUnique({
+      where: { annee }
+    });
+
+    let ciseauTarifaire;
+    if (existingCiseau) {
+      // Mettre à jour avec les valeurs du revenu moyen
+      ciseauTarifaire = await this.prisma.ciseauTarifaire.update({
+        where: { annee },
+        data: {
+          cout,
+          RevenusMoyen,
+          DiffRevenuOffHC,
+          DiffRevenuOffHP,
+          isRevenuOffHC,
+          isRevenuOffHP
+        }
+      });
+    } else {
+      // Créer un nouveau ciseau tarifaire avec les valeurs du revenu moyen
+      ciseauTarifaire = await this.prisma.ciseauTarifaire.create({
+        data: {
+          annee,
+          cout,
+          RevenusMoyen,
+          DiffRevenuOffHC,
+          DiffRevenuOffHP,
+          isRevenuOffHC,
+          isRevenuOffHP
+        }
+      });
+    }
+
+    // Lier le ciseau tarifaire à l'offre si ce n'est pas déjà fait
+    if (offre.ciseauTarifaireId !== ciseauTarifaire.id) {
+      await this.prisma.offre.update({
+        where: { id: offreId },
+        data: {
+          ciseauTarifaireId: ciseauTarifaire.id
+        }
+      });
+    }
+
+    return {
+      offre: {
+        id: offre.id,
+        nom: offre.nom,
+        operateur: {
+          id: offre.operateur.id,
+          nom: offre.operateur.nom
+        }
+      },
+      ciseauTarifaire: this.mapToResponseDtoRevenuMoyen(ciseauTarifaire),
+      resultats: {
+        isRevenuOffHC: ciseauTarifaire.isRevenuOffHC,
+        isRevenuOffHP: ciseauTarifaire.isRevenuOffHP,
+        messageRevenuOffHC: ciseauTarifaire.isRevenuOffHC 
+          ? 'Ciseau tarifaire détecté pour OffNet HC (revenu moyen)' 
+          : 'Pas de ciseau tarifaire pour OffNet HC (revenu moyen)',
+        messageRevenuOffHP: ciseauTarifaire.isRevenuOffHP 
+          ? 'Ciseau tarifaire détecté pour OffNet HP (revenu moyen)' 
+          : 'Pas de ciseau tarifaire pour OffNet HP (revenu moyen)'
+      }
+    };
+  }
+
+  /**
    * Calculer le ciseau tarifaire pour une offre spécifique
    * Récupère l'opérateur de l'offre et calcule le ciseau tarifaire
    */
@@ -495,6 +647,55 @@ export class CiseauTarifaireService {
         tariffacialOffnet: `TF OffNet (moyenne des valeurs tarifaires des options) = ${tariffacialOffnet}`,
         DiffTariffacialOffnetHC: `Tarif Facial OffNet - Tarif Interconnexion OffNet HC = ${DiffTariffacialOffnetHC}`,
         DiffTariffacialOffnetHP: `Tarif Facial OffNet - Tarif Interconnexion OffNet HP = ${DiffTariffacialOffnetHP}`
+      },
+      offres: effetClub.offres || [],
+      createdAt: effetClub.createdAt,
+      updatedAt: effetClub.updatedAt
+    };
+  }
+
+  /**
+   * Mapper pour le ciseau tarifaire avec revenu moyen
+   */
+  private mapToResponseDtoRevenuMoyen(effetClub: any) {
+    const cout = effetClub.cout?.toString() || '0';
+    const RevenusMoyen = effetClub.RevenusMoyen?.toString() || '0';
+    const DiffRevenuOffHC = effetClub.DiffRevenuOffHC?.toString() || '0';
+    const DiffRevenuOffHP = effetClub.DiffRevenuOffHP?.toString() || '0';
+
+    return {
+      id: effetClub.id,
+      annee: effetClub.annee,
+      cout,
+      RevenusMoyen,
+      DiffRevenuOffHC,
+      DiffRevenuOffHP,
+      isRevenuOffHC: effetClub.isRevenuOffHC,
+      isRevenuOffHP: effetClub.isRevenuOffHP,
+      resultats: {
+        offnetHC: {
+          revenusmoyen: RevenusMoyen,
+          difference: DiffRevenuOffHC,
+          cout,
+          isCiseau: effetClub.isRevenuOffHC,
+          resultat: effetClub.isRevenuOffHC 
+            ? `Ciseau tarifaire (${DiffRevenuOffHC} <= ${cout})` 
+            : `Pas de ciseau tarifaire (${DiffRevenuOffHC} > ${cout})`
+        },
+        offnetHP: {
+          revenusmoyen: RevenusMoyen,
+          difference: DiffRevenuOffHP,
+          cout,
+          isCiseau: effetClub.isRevenuOffHP,
+          resultat: effetClub.isRevenuOffHP 
+            ? `Ciseau tarifaire (${DiffRevenuOffHP} <= ${cout})` 
+            : `Pas de ciseau tarifaire (${DiffRevenuOffHP} > ${cout})`
+        }
+      },
+      formules: {
+        RevenusMoyen: `Revenu Moyen OffNet = (TP*TF*(1+TNC)*(1+EP) + Σ(frais)) / (TP + sommeAvantages + sommeTrafic) = ${RevenusMoyen}`,
+        DiffRevenuOffHC: `Revenu Moyen - Tarif Interconnexion OffNet HC = ${DiffRevenuOffHC}`,
+        DiffRevenuOffHP: `Revenu Moyen - Tarif Interconnexion OffNet HP = ${DiffRevenuOffHP}`
       },
       offres: effetClub.offres || [],
       createdAt: effetClub.createdAt,

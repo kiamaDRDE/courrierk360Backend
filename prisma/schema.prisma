@@ -751,11 +751,21 @@ model CiseauTarifaire {
   differenceOffnetHP  Decimal  @default(0) @map("difference_offnet_hp") @db.Decimal(18, 2)
   differenceOnnetHC   Decimal  @default(0) @map("difference_onnet_hc") @db.Decimal(18, 2)
   differenceOnnetHP   Decimal  @default(0) @map("difference_onnet_hp") @db.Decimal(18, 2)
+
   tariffacialOffnet Decimal  @default(0) @map("tariffacial_offnet") @db.Decimal(18, 2)
   DiffTariffacialOffnetHC Decimal  @default(0) @map("diff_tariffacial_offnet_hc") @db.Decimal(18, 2)
   DiffTariffacialOffnetHP Decimal  @default(0) @map("diff_tariffacial_offnet_hp") @db.Decimal(18, 2)
+
+  RevenusMoyen  Decimal  @default(0) @map("revenu_moyen") @db.Decimal(18, 2)
+  DiffRevenuOffHC Decimal  @default(0) @map("diff_revenu_off_hc") @db.Decimal(18, 2)
+  DiffRevenuOffHP Decimal  @default(0) @map("diff_revenu_off_hp") @db.Decimal(18, 2)
+
+  isrevenuOffHC Boolean  @default(false) @map("is_revenu_off_hc")
+  isrevenuOffHP Boolean  @default(false) @map("is_revenu_off_hp")
+
   isCiseauOffHC            Boolean  @default(false) @map("is_ciseau_off_hc")
   isCiseauOffHP            Boolean  @default(false) @map("is_ciseau_off_hp")
+
   isCiseauOffTarifHC            Boolean  @default(false) @map("is_ciseau_off_tarif_hc")
   isCiseauOffTarifHP           Boolean  @default(false) @map("is_ciseau_off_tarif_hp")
 

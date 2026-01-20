@@ -239,4 +239,110 @@ export class CiseauTarifaireController {
       data
     );
   }
+
+  @Post('calculate-revenu-moyen/:offreId')
+  @ApiOperation({ 
+    summary: 'Calculer le ciseau tarifaire selon le revenu moyen',
+    description: 'Calcule automatiquement le revenu moyen OffNet à partir de la formule RM = (TP*TF*(1+TNC)*(1+EP) + Σ(frais)) / (TP + sommeAvantages + sommeTrafic), puis compare avec le tarif d\'interconnexion pour déterminer s\'il y a ciseau tarifaire.'
+  })
+  @ApiParam({
+    name: 'offreId',
+    type: Number,
+    description: 'Identifiant de l\'offre',
+    example: 1
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Ciseau tarifaire avec revenu moyen calculé avec succès',
+    content: {
+      'application/json': {
+        example: {
+          success: true,
+          statusCode: 201,
+          code: 'CISEAU_TARIFAIRE_REVENU_CALCULATED',
+          title: 'Ciseau tarifaire calculé',
+          message: 'Le ciseau tarifaire selon le revenu moyen a été calculé avec succès',
+          data: {
+            offre: {
+              id: 1,
+              nom: 'Offre Mobile Pro',
+              operateur: {
+                id: 1,
+                nom: 'Orange CI'
+              }
+            },
+            ciseauTarifaire: {
+              id: 1,
+              annee: 2024,
+              cout: '2535000',
+              RevenusMoyen: '38.05',
+              DiffRevenuOffHC: '12.55',
+              DiffRevenuOffHP: '7.3',
+              isRevenuOffHC: true,
+              isRevenuOffHP: true,
+              resultats: {
+                offnetHC: {
+                  revenusmoyen: '38.05',
+                  difference: '12.55',
+                  cout: '2535000',
+                  isCiseau: true,
+                  resultat: 'Ciseau tarifaire (12.55 <= 2535000)'
+                },
+                offnetHP: {
+                  revenusmoyen: '38.05',
+                  difference: '7.3',
+                  cout: '2535000',
+                  isCiseau: true,
+                  resultat: 'Ciseau tarifaire (7.3 <= 2535000)'
+                }
+              },
+              formules: {
+                RevenusMoyen: 'Revenu Moyen OffNet = (TP*TF*(1+TNC)*(1+EP) + Σ(frais)) / (TP + sommeAvantages + sommeTrafic) = 38.05',
+                DiffRevenuOffHC: 'Revenu Moyen - Tarif Interconnexion OffNet HC = 12.55',
+                DiffRevenuOffHP: 'Revenu Moyen - Tarif Interconnexion OffNet HP = 7.3'
+              },
+              offres: [],
+              createdAt: '2026-01-20T10:30:00.000Z',
+              updatedAt: '2026-01-20T10:30:00.000Z'
+            },
+            resultats: {
+              isRevenuOffHC: true,
+              isRevenuOffHP: true,
+              messageRevenuOffHC: 'Ciseau tarifaire détecté pour OffNet HC (revenu moyen)',
+              messageRevenuOffHP: 'Ciseau tarifaire détecté pour OffNet HP (revenu moyen)'
+            }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Offre, tarifs ou paramètres non trouvés',
+    content: {
+      'application/json': {
+        example: {
+          success: false,
+          statusCode: 404,
+          code: 'NOT_FOUND',
+          title: 'Ressource non trouvée',
+          message: 'L\'offre ou les données nécessaires n\'ont pas été trouvées',
+          data: null
+        }
+      }
+    }
+  })
+  async calculateRevenuMoyen(
+    @Param('offreId', ParseIntPipe) offreId: number
+  ): Promise<ResponseApi<any>> {
+    const data = await this.ciseauTarifaireService.calculateCiseauTarifaireAvecRevenuMoyen(offreId);
+    return new ResponseApi(
+      true,
+      201,
+      'CISEAU_TARIFAIRE_REVENU_CALCULATED',
+      'Ciseau tarifaire calculé',
+      'Le ciseau tarifaire selon le revenu moyen a été calculé avec succès',
+      data
+    );
+  }
 }
