@@ -81,42 +81,20 @@ export class CiseauTarifaireService {
     // Si differenceOffnetHP >= 0, alors isCiseauOffHP = false, sinon true
     const isCiseauOffHP = differenceOffnetHP.lessThan(0);
 
-    // Vérifier si un ciseau tarifaire existe déjà pour cette année
-    const existingCiseau = await this.prisma.ciseauTarifaire.findUnique({
-      where: { annee }
+    // Créer un nouveau ciseau tarifaire pour cet opérateur et cette année
+    const created = await this.prisma.ciseauTarifaire.create({
+      data: {
+        annee,
+        cout,
+        differenceOffnetHC,
+        differenceOffnetHP,
+        differenceOnnetHC,
+        differenceOnnetHP,
+        isCiseauOffHC,
+        isCiseauOffHP
+      }
     });
-
-    if (existingCiseau) {
-      // Mettre à jour
-      const updated = await this.prisma.ciseauTarifaire.update({
-        where: { annee },
-        data: {
-          cout,
-          differenceOffnetHC,
-          differenceOffnetHP,
-          differenceOnnetHC,
-          differenceOnnetHP,
-          isCiseauOffHC,
-          isCiseauOffHP
-        }
-      });
-      return this.mapToResponseDto(updated);
-    } else {
-      // Créer
-      const created = await this.prisma.ciseauTarifaire.create({
-        data: {
-          annee,
-          cout,
-          differenceOffnetHC,
-          differenceOffnetHP,
-          differenceOnnetHC,
-          differenceOnnetHP,
-          isCiseauOffHC,
-          isCiseauOffHP
-        }
-      });
-      return this.mapToResponseDto(created);
-    }
+    return this.mapToResponseDto(created);
   }
 
   /**
@@ -204,16 +182,12 @@ export class CiseauTarifaireService {
     // Si DiffTariffacialOffnetHP >= 0, alors isCiseauOffTarifHP = false, sinon true
     const isCiseauOffTarifHP = DiffTariffacialOffnetHP.lessThan(0);
 
-    // Vérifier si un ciseau tarifaire existe déjà pour cette année
-    const existingCiseau = await this.prisma.ciseauTarifaire.findUnique({
-      where: { annee }
-    });
-
+    // Vérifier si l'offre a déjà un ciseau tarifaire lié
     let ciseauTarifaire;
-    if (existingCiseau) {
-      // Mettre à jour avec les valeurs du tarif facial
+    if (offre.ciseauTarifaireId) {
+      // Mettre à jour le ciseau tarifaire existant avec les valeurs du tarif facial
       ciseauTarifaire = await this.prisma.ciseauTarifaire.update({
-        where: { annee },
+        where: { id: offre.ciseauTarifaireId },
         data: {
           cout,
           tariffacialOffnet,
@@ -410,16 +384,12 @@ export class CiseauTarifaireService {
       return sum + Number(option.traficOption || 0);
     }, 0);
 
-    // Vérifier si un ciseau tarifaire existe déjà pour cette année
-    const existingCiseau = await this.prisma.ciseauTarifaire.findUnique({
-      where: { annee }
-    });
-
+    // Vérifier si l'offre a déjà un ciseau tarifaire lié
     let ciseauTarifaire;
-    if (existingCiseau) {
-      // Mettre à jour avec les valeurs du revenu moyen
+    if (offre.ciseauTarifaireId) {
+      // Mettre à jour le ciseau tarifaire existant avec les valeurs du revenu moyen
       ciseauTarifaire = await this.prisma.ciseauTarifaire.update({
-        where: { annee },
+        where: { id: offre.ciseauTarifaireId },
         data: {
           cout,
           RevenusMoyen,
@@ -503,8 +473,8 @@ export class CiseauTarifaireService {
       throw new NotFoundException(`Offre avec l'ID ${offreId} non trouvée`);
     }
 
-    // Extraire l'année depuis les dates de validité de l'offre
-    const annee = offre.dateDebutValidite.getFullYear();
+    // Utiliser l'année de l'offre (champ annee)
+    const annee = offre.annee;
 
     // Calculer le ciseau tarifaire pour cet opérateur et cette année
     const ciseauTarifaire = await this.calculateCiseauTarifaire(offre.operateurId, annee);

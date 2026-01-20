@@ -716,7 +716,7 @@ model OptionConsommationMoyenne {
 
 model CiseauTarifaire {
   id                  Int      @id @default(autoincrement()) @map("id")
-  annee               Int      @unique @map("annee")
+  annee               Int      @map("annee")
   cout                Decimal  @default(0) @map("cout") @db.Decimal(18, 2)
   differenceOffnetHC  Decimal  @default(0) @map("difference_offnet_hc") @db.Decimal(18, 2)
   differenceOffnetHP  Decimal  @default(0) @map("difference_offnet_hp") @db.Decimal(18, 2)
