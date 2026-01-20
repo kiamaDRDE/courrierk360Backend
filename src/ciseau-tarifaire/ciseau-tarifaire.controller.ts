@@ -175,14 +175,14 @@ export class CiseauTarifaireController {
               isCiseauOffTarifHC: true,
               isCiseauOffTarifHP: true,
               resultats: {
-                offnetTarifHC: {
+                offnetHC: {
                   tariffacial: '50.00',
                   difference: '35.50',
                   cout: '2250000.00',
                   isCiseau: true,
                   resultat: 'Ciseau tarifaire (35.50 <= 2250000.00)'
                 },
-                offnetTarifHP: {
+                offnetHP: {
                   tariffacial: '50.00',
                   difference: '32.00',
                   cout: '2250000.00',
