@@ -268,7 +268,7 @@ export class CiseauTarifaireService {
    * DiffRevenuOffHP = RevenusMoyen - Tarif Interconnexion OffNet HP
    */
   async calculateCiseauTarifaireAvecRevenuMoyen(offreId: number) {
-    // Récupérer l'offre avec son opérateur
+    // Récupérer l'offre avec son opérateur et les champs nécessaires pour le calcul
     const offre = await this.prisma.offre.findUnique({
       where: { id: offreId },
       select: {
@@ -277,6 +277,9 @@ export class CiseauTarifaireService {
         operateurId: true,
         dateDebutValidite: true,
         ciseauTarifaireId: true,
+        tp: true,
+        tnc: true,
+        ep: true,
         operateur: {
           select: {
             id: true,
@@ -289,6 +292,18 @@ export class CiseauTarifaireService {
     if (!offre) {
       throw new NotFoundException(`Offre avec l'ID ${offreId} non trouvée`);
     }
+
+    // Extraire les valeurs de l'offre
+    const tp = Number(offre.tp || 0);
+    const tnc = Number(offre.tnc || 0);
+    const ep = Number(offre.ep || 0);
+
+    // Calculer TF OffNet
+    const tfOffnet = await this.effetClubService.calculateTF(
+      offre.operateurId,
+      offreId,
+      'OFFNET'
+    );
 
     // Calculer le revenu moyen OffNet en utilisant calculerRevenuMoyen du service effet-club
     const revenuMoyen = await this.effetClubService.calculerRevenuMoyen(
@@ -346,6 +361,59 @@ export class CiseauTarifaireService {
     // Si DiffRevenuOffHP > cout, alors isRevenuOffHP = false, sinon true
     const isRevenuOffHP = !DiffRevenuOffHP.greaterThan(cout);
 
+    // Récupérer les composantes du calcul du revenu moyen
+    // Calculer les sommes nécessaires pour afficher les détails
+    const options = await this.prisma.option.findMany({
+      where: { offreId },
+      include: {
+        avantages: {
+          include: {
+            avantage: {
+              select: {
+                isGratuit: true
+              }
+            }
+          }
+        }
+      },
+      select: {
+        nombreSouscriptions: true,
+        fraisSouscription: true,
+        traficOption: true,
+        avantages: {
+          include: {
+            avantage: {
+              select: {
+                isGratuit: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Calculer la somme des frais
+    const sommeFrais = options.reduce((sum, option) => {
+      const frais = Number(option.fraisSouscription || 0);
+      const nombre = option.nombreSouscriptions || 0;
+      return sum + (frais * nombre);
+    }, 0);
+
+    // Calculer la somme des avantages gratuits
+    let sommeAvantages = 0;
+    for (const option of options) {
+      for (const optionAvantage of option.avantages) {
+        if (optionAvantage.avantage.isGratuit) {
+          sommeAvantages += Number(optionAvantage.valeur || 0);
+        }
+      }
+    }
+
+    // Calculer la somme du trafic option
+    const sommeTrafic = options.reduce((sum, option) => {
+      return sum + Number(option.traficOption || 0);
+    }, 0);
+
     // Vérifier si un ciseau tarifaire existe déjà pour cette année
     const existingCiseau = await this.prisma.ciseauTarifaire.findUnique({
       where: { annee }
@@ -398,6 +466,15 @@ export class CiseauTarifaireService {
           id: offre.operateur.id,
           nom: offre.operateur.nom
         }
+      },
+      parametresCalcul: {
+        tp: Math.round(tp * 100) / 100,
+        tnc: Math.round(tnc * 100) / 100,
+        ep: Math.round(ep * 100) / 100,
+        tfOffnet: Math.round(tfOffnet * 100) / 100,
+        sommeFrais: Math.round(sommeFrais * 100) / 100,
+        sommeAvantages: Math.round(sommeAvantages * 100) / 100,
+        sommeTrafic: Math.round(sommeTrafic * 100) / 100
       },
       ciseauTarifaire: this.mapToResponseDtoRevenuMoyen(ciseauTarifaire),
       resultats: {
