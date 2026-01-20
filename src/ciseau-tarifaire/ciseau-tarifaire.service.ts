@@ -3,6 +3,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaService } from '../prisma/prisma.service';
 import { EffetClubQueryDto } from './dto/effet-club-query.dto';
 import { EffetClubService } from '../effet-club/effet-club.service';
+import { ParametreService } from '../parametre/parametre.service';
 
 interface PaginatedEffetClubResponse {
   data: any[];
@@ -19,7 +20,8 @@ export class CiseauTarifaireService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => EffetClubService))
-    private readonly effetClubService: EffetClubService
+    private readonly effetClubService: EffetClubService,
+    private readonly parametreService: ParametreService
   ) {}
 
   /**
@@ -54,13 +56,23 @@ export class CiseauTarifaireService {
     const differenceOnnetHC = new Decimal(tarifBaseOnNetHC).minus(new Decimal(tarifIntercoOnNetHC));
     const differenceOnnetHP = new Decimal(tarifBaseOnNetHP).minus(new Decimal(tarifIntercoOnNetHP));
 
-    // Récupérer le coût depuis la table Parametre pour cette année
+    // Calculer le coût pour cette année en utilisant le service Parametre
     const parametre = await this.prisma.parametre.findUnique({
       where: { annee }
     });
 
-    // Utiliser 0 par défaut si le paramètre est manquant
-    const cout = parametre?.cout ?? new Decimal(0);
+    // Si aucun paramètre n'existe pour cette année, utiliser 0
+    let cout: Decimal;
+    if (!parametre) {
+      cout = new Decimal(0);
+    } else {
+      // Calculer le coût : coutReseau + coutsCommerciaux + taxe + coutInterconnexion
+      const coutReseau = new Decimal(parametre.coutReseau || 0);
+      const coutsCommerciaux = new Decimal(parametre.coutsCommerciaux || 0);
+      const taxe = new Decimal(parametre.taxe || 0);
+      const coutInterconnexion = new Decimal(parametre.coutInterconnexion || 0);
+      cout = coutReseau.plus(coutsCommerciaux).plus(taxe).plus(coutInterconnexion);
+    }
 
     // Déterminer si c'est un ciseau tarifaire pour chaque différence OffNet
     // Si differenceOffnetHC >= 0, alors isCiseauOffHC = false, sinon true
@@ -166,13 +178,23 @@ export class CiseauTarifaireService {
     const DiffTariffacialOffnetHC = tariffacialOffnet.minus(new Decimal(tarifIntercoOffNetHC));
     const DiffTariffacialOffnetHP = tariffacialOffnet.minus(new Decimal(tarifIntercoOffNetHP));
 
-    // Récupérer le coût depuis la table Parametre pour cette année
+    // Calculer le coût pour cette année en utilisant les données du paramètre
     const parametre = await this.prisma.parametre.findUnique({
       where: { annee }
     });
 
-    // Utiliser 0 par défaut si le paramètre est manquant
-    const cout = parametre?.cout ?? new Decimal(0);
+    // Si aucun paramètre n'existe pour cette année, utiliser 0
+    let cout: Decimal;
+    if (!parametre) {
+      cout = new Decimal(0);
+    } else {
+      // Calculer le coût : coutReseau + coutsCommerciaux + taxe + coutInterconnexion
+      const coutReseau = new Decimal(parametre.coutReseau || 0);
+      const coutsCommerciaux = new Decimal(parametre.coutsCommerciaux || 0);
+      const taxe = new Decimal(parametre.taxe || 0);
+      const coutInterconnexion = new Decimal(parametre.coutInterconnexion || 0);
+      cout = coutReseau.plus(coutsCommerciaux).plus(taxe).plus(coutInterconnexion);
+    }
 
     // Déterminer si c'est un ciseau tarifaire pour chaque différence
     // Si DiffTariffacialOffnetHC >= 0, alors isCiseauOffTarifHC = false, sinon true
@@ -322,13 +344,23 @@ export class CiseauTarifaireService {
     const DiffRevenuOffHC = RevenusMoyen.minus(new Decimal(tarifIntercoOffNetHC));
     const DiffRevenuOffHP = RevenusMoyen.minus(new Decimal(tarifIntercoOffNetHP));
 
-    // Récupérer le coût depuis la table Parametre pour cette année
+    // Calculer le coût pour cette année en utilisant les données du paramètre
     const parametre = await this.prisma.parametre.findUnique({
       where: { annee }
     });
 
-    // Utiliser 0 par défaut si le paramètre est manquant
-    const cout = parametre?.cout ?? new Decimal(0);
+    // Si aucun paramètre n'existe pour cette année, utiliser 0
+    let cout: Decimal;
+    if (!parametre) {
+      cout = new Decimal(0);
+    } else {
+      // Calculer le coût : coutReseau + coutsCommerciaux + taxe + coutInterconnexion
+      const coutReseau = new Decimal(parametre.coutReseau || 0);
+      const coutsCommerciaux = new Decimal(parametre.coutsCommerciaux || 0);
+      const taxe = new Decimal(parametre.taxe || 0);
+      const coutInterconnexion = new Decimal(parametre.coutInterconnexion || 0);
+      cout = coutReseau.plus(coutsCommerciaux).plus(taxe).plus(coutInterconnexion);
+    }
 
     // Déterminer si c'est un ciseau tarifaire pour chaque différence
     // Si DiffRevenuOffHC >= 0, alors isRevenuOffHC = false, sinon true

@@ -3,11 +3,13 @@ import { CiseauTarifaireService } from './ciseau-tarifaire.service';
 import { CiseauTarifaireController } from './ciseau-tarifaire.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EffetClubModule } from '../effet-club/effet-club.module';
+import { ParametreModule } from '../parametre/parametre.module';
 
 @Module({
   imports: [
     PrismaModule,
-    forwardRef(() => EffetClubModule)
+    forwardRef(() => EffetClubModule),
+    ParametreModule
   ],
   controllers: [CiseauTarifaireController],
   providers: [CiseauTarifaireService],
