@@ -21,6 +21,92 @@ export class EffetClubController {
 
 
   @Get('calculateEffetDeClub')
+  @ApiOperation({
+    summary: 'Calcule l\'effet club d\'une offre',
+    description: 'Calcule l\'effet club selon différentes méthodes : tarif facial (BASE/INTERCONNEXION) ou revenus moyens (REVENUS_BASE/REVENUS_INTERCONNEXION). Formule utilisée : (TF/RM Offnet - TF/RM Onnet) - (TB/TA Moyen - TB/TA Opérateur)',
+  })
+  @ApiQuery({
+    name: 'operateurId',
+    description: 'ID de l\'opérateur',
+    type: Number,
+    required: true,
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'offreId',
+    description: 'ID de l\'offre',
+    type: Number,
+    required: true,
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'typeOffre',
+    description: 'Type de réseau pour le calcul TB/TA',
+    enum: ['OFFNET', 'ONNET'],
+    required: true,
+    example: 'OFFNET',
+  })
+  @ApiQuery({
+    name: 'typeHeure',
+    description: 'Période tarifaire pour le calcul TB/TA',
+    enum: ['CREUSE', 'PLEINE'],
+    required: true,
+    example: 'PLEINE',
+  })
+  @ApiQuery({
+    name: 'typeCalcule',
+    description: 'Méthode de calcul : BASE (tarif facial + tarif de base), INTERCONNEXION (tarif facial + tarif interconnexion), REVENUS_BASE (revenus moyens + tarif de base), REVENUS_INTERCONNEXION (revenus moyens + tarif interconnexion)',
+    enum: ['BASE', 'INTERCONNEXION', 'REVENUS_BASE', 'REVENUS_INTERCONNEXION'],
+    required: true,
+    example: 'BASE',
+  })
+  @ApiQuery({
+    name: 'annee',
+    description: 'Année de référence pour les tarifs',
+    type: Number,
+    required: true,
+    example: 2025,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Effet club calculé avec succès',
+    schema: {
+      example: {
+        success: true,
+        statusCode: 201,
+        code: 'success',
+        title: 'Effet club',
+        message: 'Effet club récupéré pour l\'offre',
+        data: {
+          filtres: {
+            operateurId: 1,
+            offreId: 10,
+            annee: 2025,
+            typeOffre: 'OFFNET',
+            typeHeure: 'PLEINE',
+            typeCalcule: 'BASE',
+          },
+          tfOrRmOffnet: 45.50,
+          tfOrRmOnnet: 35.20,
+          ecartTF: 10.30,
+          tbOrTaMoyen: 25.00,
+          tbOrTaOperateur: 20.00,
+          ecartTBorTA: 5.00,
+          effetClubValeur: 5.30,
+          effetClubPresent: true,
+          result: 'EFFET DE CLUB',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Paramètres invalides ou manquants',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Offre ou opérateur introuvable',
+  })
   calculateEffetDeClub(
     @Query('operateurId') operateurId: string,
     @Query('offreId') offreId: string,

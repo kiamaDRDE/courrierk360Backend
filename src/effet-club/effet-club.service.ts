@@ -7,7 +7,7 @@ import { EffetClubFilterDto } from './dto/effet-club-filter.dto';
  */
 export type TypeOffre = 'OFFNET' | 'ONNET';
 export type TypeHeure = 'CREUSE' | 'PLEINE';
-export type TypeCalcule = 'BASE' | 'INTERCONNEXION';
+export type TypeCalcule = 'BASE' | 'INTERCONNEXION' | 'REVENUS_BASE' | 'REVENUS_INTERCONNEXION';
 
 /**
  * Mapping métier → StructureTarifaire.nom
@@ -219,23 +219,54 @@ export class EffetClubService {
         `typeHeure invalide : ${typeHeure}. Valeurs possibles : ${Object.keys(TARIF_COLUMN_MAP[typeOffre]).join(', ')}`,
       );
     }
-    // if (!(typeCalcule in TYPE_TARIF_MAP)) {
-    //   throw new BadRequestException(
-    //     `typeCalcule invalide : ${typeCalcule}. Valeurs possibles : ${Object.keys(TYPE_TARIF_MAP).join(', ')}`,
-    //   );
-    // }
 
-    // 🔹 Lancer les calculs en parallèle
-    const [
-      { tfOffnet, tfOnnet },
-      { tbOrTaMoyen, tbOrTaOperateur },
-    ] = await Promise.all([
-      this.calculateTFOptimized(operateurId, offreId),
-      this.calculateTBandTA(operateurId, typeOffre, typeHeure, typeCalcule, annee),
-    ]);
+    // 🔹 Déterminer si on utilise les revenus moyens ou les tarifs faciaux
+    const useRevenusMoyens = typeCalcule === 'REVENUS_BASE' || typeCalcule === 'REVENUS_INTERCONNEXION';
+
+    let tfOrRmOffnet: number;
+    let tfOrRmOnnet: number;
+
+    if (useRevenusMoyens) {
+      // 🔹 Utiliser les revenus moyens stockés dans l'offre
+      const offre = await this.prisma.offre.findUnique({
+        where: { id: offreId },
+        select: {
+          operateurId: true,
+          revenuMoyenOnNet: true,
+          revenuMoyenOffNet: true,
+        },
+      });
+
+      if (!offre || offre.operateurId !== operateurId) {
+        throw new NotFoundException(
+          'Offre introuvable ou non rattachée à cet opérateur',
+        );
+      }
+
+      tfOrRmOffnet = Number(offre.revenuMoyenOffNet) || 0;
+      tfOrRmOnnet = Number(offre.revenuMoyenOnNet) || 0;
+    } else {
+      // 🔹 Utiliser les tarifs faciaux (comportement actuel)
+      const { tfOffnet, tfOnnet } = await this.calculateTFOptimized(operateurId, offreId);
+      tfOrRmOffnet = tfOffnet;
+      tfOrRmOnnet = tfOnnet;
+    }
+
+    // 🔹 Calculer TB/TA (adapté pour les revenus moyens)
+    const typeCalculeForTarif = useRevenusMoyens 
+      ? (typeCalcule === 'REVENUS_BASE' ? 'BASE' : 'INTERCONNEXION')
+      : typeCalcule;
+
+    const { tbOrTaMoyen, tbOrTaOperateur } = await this.calculateTBandTA(
+      operateurId,
+      typeOffre,
+      typeHeure,
+      typeCalculeForTarif as 'BASE' | 'INTERCONNEXION',
+      annee,
+    );
 
     // 🔹 Calculs intermédiaires
-    const calcul1 = tfOffnet - tfOnnet;
+    const calcul1 = tfOrRmOffnet - tfOrRmOnnet;
     const calcul2 = tbOrTaMoyen - tbOrTaOperateur;
     const effetClubValeur = Math.round((calcul1 - calcul2) * 100) / 100;
 
@@ -248,8 +279,8 @@ export class EffetClubService {
       {
         filtres: { operateurId, offreId, annee, typeOffre, typeHeure, typeCalcule },
 
-        tfOrRmOffnet: Math.round(tfOffnet * 100) / 100,
-        tfOrRmOnnet: Math.round(tfOnnet * 100) / 100,
+        tfOrRmOffnet: Math.round(tfOrRmOffnet * 100) / 100,
+        tfOrRmOnnet: Math.round(tfOrRmOnnet * 100) / 100,
         ecartTF: Math.round(calcul1 * 100) / 100,
 
         tbOrTaMoyen: Math.round(tbOrTaMoyen * 100) / 100,
