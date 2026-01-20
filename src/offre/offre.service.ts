@@ -5,10 +5,14 @@ import { UpdateOffreDto } from './dto/update-offre.dto';
 import { OffreQueryDto } from './dto/offre-query.dto';
 import { EffetClubQueryDto } from './dto/effet-club-query.dto';
 import { Decimal } from '@prisma/client/runtime/library';
+import { EffetClubService } from '../effet-club/effet-club.service';
 
 @Injectable()
 export class OffreService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly effetClubService: EffetClubService,
+  ) {}
 
   // Fonction utilitaire pour formater les réponses
   private formatResponse(data: any, title: string, message: string) {
@@ -575,8 +579,8 @@ export class OffreService {
     // ÉTAPE 5: CALCUL DES REVENUS MOYENS ET 8 EFFETS CLUB
     // ========================================
     let effetClub: number | null = null;
-    let revenuMoyenOnNet: number | null = null;
-    let revenuMoyenOffNet: number | null = null;
+    let revenuMoyenOnNet: number = 0;
+    let revenuMoyenOffNet: number = 0;
 
     // Initialiser les 8 effets club
     let effetClubBaseOffnetHC: number | null = null;
@@ -608,9 +612,10 @@ export class OffreService {
     let isEffetClubInterOnnetHP = false;
 
     // **DIFFÉRENCE PRINCIPALE** : Calculer les revenus moyens au lieu des prix
-    const revenus = await this.calculerRevenusMoyens(offreId);
-    revenuMoyenOnNet = revenus.revenuMoyenOnNet;
-    revenuMoyenOffNet = revenus.revenuMoyenOffNet;
+    // Utiliser la méthode du service effet-club pour calculer les revenus moyens (TF)
+    const { tfOffnet, tfOnnet } = await this.effetClubService.calculateTFOptimized(operateurId, offreId);
+    revenuMoyenOnNet = tfOnnet;
+    revenuMoyenOffNet = tfOffnet;
     
     const differentielRevenus = revenuMoyenOffNet - revenuMoyenOnNet;
 
@@ -873,73 +878,6 @@ export class OffreService {
     }, 0);
 
     return sommeTraficOption;
-  }
-
-  /**
-   * MÉTHODE DE CALCUL DES REVENUS MOYENS ONNET ET OFFNET
-   * ====================================================
-   * 
-   * Cette méthode calcule les revenus moyens OnNet et OffNet pour une offre
-   * en utilisant les formules complexes intégrant les tarifs et les sommes calculées
-   * 
-   * @param offreId - ID de l'offre pour laquelle calculer les revenus moyens
-   * @returns Promise<{revenuMoyenOnNet: number, revenuMoyenOffNet: number}> - Les revenus moyens calculés
-   * 
-   * FORMULES APPLIQUÉES :
-   * - revenuMoyenOnNet = ((tpOnNet*tfOnNet)*(1+tncOnNet)*(1+epOnNet)+sommeFraisSouscription)/(tpOnNet+sommeTraficGratuit+sommeTraficOption)
-   * - revenuMoyenOffNet = ((tpOffNet*tfOffNet)*(1+tncOffNet)*(1+epOffNet)+sommeFraisSouscription)/(tpOffNet+sommeTraficGratuit+sommeTraficOption)
-   */
-  private async calculerRevenusMoyens(offreId: number): Promise<{revenuMoyenOnNet: number, revenuMoyenOffNet: number}> {
-    // Récupérer les données de l'offre avec les champs tarifaires
-    const offre = await this.prisma.offre.findUnique({
-      where: { id: offreId },
-      select: {
-        tpOnNet: true,
-        tfOnNet: true,
-        tncOnNet: true,
-        epOnNet: true,
-        tpOffNet: true,
-        tfOffNet: true,
-        tncOffNet: true,
-        epOffNet: true,
-      },
-    });
-
-    if (!offre) {
-      return { revenuMoyenOnNet: 0, revenuMoyenOffNet: 0 };
-    }
-
-    // Calculer les 3 sommes nécessaires aux formules
-    const sommeFraisSouscription = await this.calculerSommeFraisSouscription(offreId);
-    const sommeTraficGratuit = await this.calculerSommeTraficGratuit(offreId);
-    const sommeTraficOption = await this.calculerSommeTraficOption(offreId);
-
-    // Convertir les valeurs Decimal en nombres
-    const tpOnNet = Number(offre.tpOnNet || 0);
-    const tfOnNet = Number(offre.tfOnNet || 0);
-    const tncOnNet = Number(offre.tncOnNet || 0);
-    const epOnNet = Number(offre.epOnNet || 0);
-    const tpOffNet = Number(offre.tpOffNet || 0);
-    const tfOffNet = Number(offre.tfOffNet || 0);
-    const tncOffNet = Number(offre.tncOffNet || 0);
-    const epOffNet = Number(offre.epOffNet || 0);
-
-    // Calcul du revenu moyen OnNet
-    // Formule: ((tpOnNet*tfOnNet)*(1+tncOnNet)*(1+epOnNet)+sommeFraisSouscription)/(tpOnNet+sommeTraficGratuit+sommeTraficOption)
-    const numerateurOnNet = (tpOnNet * tfOnNet) * (1 + tncOnNet) * (1 + epOnNet) + sommeFraisSouscription;
-    const denominateurOnNet = tpOnNet + sommeTraficGratuit + sommeTraficOption;
-    const revenuMoyenOnNet = denominateurOnNet === 0 ? 0 : numerateurOnNet / denominateurOnNet;
-
-    // Calcul du revenu moyen OffNet
-    // Formule: ((tpOffNet*tfOffNet)*(1+tncOffNet)*(1+epOffNet)+sommeFraisSouscription)/(tpOffNet+sommeTraficGratuit+sommeTraficOption)
-    const numerateurOffNet = (tpOffNet * tfOffNet) * (1 + tncOffNet) * (1 + epOffNet) + sommeFraisSouscription;
-    const denominateurOffNet = tpOffNet + sommeTraficGratuit + sommeTraficOption;
-    const revenuMoyenOffNet = denominateurOffNet === 0 ? 0 : numerateurOffNet / denominateurOffNet;
-
-    return {
-      revenuMoyenOnNet,
-      revenuMoyenOffNet
-    };
   }
 
   // Créer une offre
