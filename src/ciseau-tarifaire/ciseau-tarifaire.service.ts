@@ -133,6 +133,7 @@ export class CiseauTarifaireService {
         id: true,
         nom: true,
         operateurId: true,
+        annee: true,
         dateDebutValidite: true,
         ciseauTarifaireId: true,
         operateur: {
@@ -158,8 +159,8 @@ export class CiseauTarifaireService {
     // Utiliser 0 par défaut si le TF ne peut pas être calculé
     const tariffacialOffnet = new Decimal(tfOffnet || 0);
 
-    // Extraire l'année depuis la date de validité de l'offre
-    const annee = offre.dateDebutValidite.getFullYear();
+    // Utiliser l'année de l'offre (champ annee)
+    const annee = offre.annee;
 
     // Récupérer le tarif d'interconnexion de l'opérateur pour cette année
     const tarifInterconnexion = await this.prisma.tarifInterconnexion.findFirst({
@@ -284,6 +285,7 @@ export class CiseauTarifaireService {
         id: true,
         nom: true,
         operateurId: true,
+        annee: true,
         dateDebutValidite: true,
         ciseauTarifaireId: true,
         tp: true,
@@ -324,8 +326,8 @@ export class CiseauTarifaireService {
     // Utiliser 0 par défaut si le revenu moyen ne peut pas être calculé
     const RevenusMoyen = new Decimal(revenuMoyen || 0);
 
-    // Extraire l'année depuis la date de validité de l'offre
-    const annee = offre.dateDebutValidite.getFullYear();
+    // Utiliser l'année de l'offre (champ annee)
+    const annee = offre.annee;
 
     // Récupérer le tarif d'interconnexion de l'opérateur pour cette année
     const tarifInterconnexion = await this.prisma.tarifInterconnexion.findFirst({
