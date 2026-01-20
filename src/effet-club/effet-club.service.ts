@@ -274,27 +274,20 @@ export class EffetClubService {
     let tfOrRmOnnet: number;
 
     if (useRevenusMoyens) {
-      // 🔹 Vérifier que les revenus moyens sont disponibles
-      if (!offre.revenuMoyenOffNet || !offre.revenuMoyenOnNet) {
-        throw new BadRequestException(
-          `Les revenus moyens ne sont pas calculés pour l'offre "${offre.nom}" (ID: ${offreId}). Veuillez d'abord calculer les revenus moyens via l'API appropriée`,
-        );
-      }
-
-      tfOrRmOffnet = Number(offre.revenuMoyenOffNet);
-      tfOrRmOnnet = Number(offre.revenuMoyenOnNet);
+      // 🔹 Utiliser 0 si les revenus moyens ne sont pas calculés
+      tfOrRmOffnet = offre.revenuMoyenOffNet ? Number(offre.revenuMoyenOffNet) : 0;
+      tfOrRmOnnet = offre.revenuMoyenOnNet ? Number(offre.revenuMoyenOnNet) : 0;
     } else {
-      // 🔹 Vérifier que l'offre a des options pour calculer le TF
+      // 🔹 Utiliser 0 si l'offre n'a pas d'options
       if (!offre.options || offre.options.length === 0) {
-        throw new BadRequestException(
-          `L'offre "${offre.nom}" (ID: ${offreId}) n'a aucune option associée. Le calcul du tarif facial (TF) nécessite au moins une option avec des structures tarifaires`,
-        );
+        tfOrRmOffnet = 0;
+        tfOrRmOnnet = 0;
+      } else {
+        // 🔹 Utiliser les tarifs faciaux (comportement actuel)
+        const { tfOffnet, tfOnnet } = await this.calculateTFOptimized(operateurId, offreId);
+        tfOrRmOffnet = tfOffnet;
+        tfOrRmOnnet = tfOnnet;
       }
-
-      // 🔹 Utiliser les tarifs faciaux (comportement actuel)
-      const { tfOffnet, tfOnnet } = await this.calculateTFOptimized(operateurId, offreId);
-      tfOrRmOffnet = tfOffnet;
-      tfOrRmOnnet = tfOnnet;
     }
 
     // 🔹 Calculer TB/TA (adapté pour les revenus moyens)
@@ -577,25 +570,18 @@ export class EffetClubService {
       }),
     ]);
 
-    // 🔹 Vérifier que des tarifs existent pour cette année (marché)
-    if (!tarifsAll.length) {
-      throw new NotFoundException(
-        `Aucun tarif ${typeCalcule === 'BASE' ? 'de base' : "d'interconnexion"} trouvé pour l'année ${annee} dans la base de données. Veuillez d'abord créer les tarifs pour cette année`,
-      );
+    // 🔹 Utiliser 0 si aucun tarif n'existe pour cette année (marché)
+    let tbOrTaMoyen = 0;
+    if (tarifsAll.length > 0) {
+      const moyenne = (arr: number[]) => Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 100) / 100;
+      tbOrTaMoyen = moyenne(tarifsAll.map(t => Number(t[columnName])));
     }
 
-    // 🔹 Vérifier que l'opérateur a un tarif pour cette année
-    if (!tarifOperateur || tarifOperateur[columnName] === null) {
-      throw new NotFoundException(
-        `L'opérateur avec l'ID ${operateurId} n'a pas de tarif ${typeCalcule === 'BASE' ? 'de base' : "d'interconnexion"} pour l'année ${annee}. Veuillez créer un tarif ${typeOffre} ${typeHeure} pour cet opérateur`,
-      );
+    // 🔹 Utiliser 0 si l'opérateur n'a pas de tarif pour cette année
+    let tbOrTaOperateur = 0;
+    if (tarifOperateur && tarifOperateur[columnName] !== null) {
+      tbOrTaOperateur = Math.round(Number(tarifOperateur[columnName]) * 100) / 100;
     }
-
-    // 🔹 Calcul des moyennes en mémoire
-    const moyenne = (arr: number[]) => Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 100) / 100;
-
-    const tbOrTaMoyen = moyenne(tarifsAll.map(t => Number(t[columnName])));
-    const tbOrTaOperateur = Math.round(Number(tarifOperateur[columnName]) * 100) / 100;
 
     return { tbOrTaMoyen, tbOrTaOperateur };
   }
