@@ -939,6 +939,7 @@ export class OffreService {
         data: {
           operateurId: offreData.operateurId,
           nom: offreData.nom,
+          annee: offreData.annee,
           dateDebutValidite: new Date(offreData.dateDebutValidite),
           dateFinValidite: new Date(offreData.dateFinValidite),
           typeOffre: offreData.typeOffre,
@@ -1182,6 +1183,7 @@ export class OffreService {
 
     if (offreUpdateData.operateurId) updateData.operateurId = offreUpdateData.operateurId;
     if (offreUpdateData.nom) updateData.nom = offreUpdateData.nom;
+    if (offreUpdateData.annee !== undefined) updateData.annee = offreUpdateData.annee;
     if (offreUpdateData.dateDebutValidite)
       updateData.dateDebutValidite = new Date(offreUpdateData.dateDebutValidite);
     if (offreUpdateData.dateFinValidite)
@@ -1731,16 +1733,7 @@ export class OffreService {
 
     const offreFormatted = {
       ...offre,
-      // 🔄 CONVERSION NOUVEAUX CHAMPS TARIFAIRES ONNET/OFFNET EN NUMBER
-      tpOnNet: offre.tpOnNet ? Number(offre.tpOnNet) : null,
-      tfOnNet: offre.tfOnNet ? Number(offre.tfOnNet) : null,
-      tncOnNet: offre.tncOnNet ? Number(offre.tncOnNet) : null,
-      epOnNet: offre.epOnNet ? Number(offre.epOnNet) : null,
-      tpOffNet: offre.tpOffNet ? Number(offre.tpOffNet) : null,
-      tfOffNet: offre.tfOffNet ? Number(offre.tfOffNet) : null,
-      tncOffNet: offre.tncOffNet ? Number(offre.tncOffNet) : null,
-      epOffNet: offre.epOffNet ? Number(offre.epOffNet) : null,
-      // 🔄 CONVERSION NOUVEAUX CHAMPS REVENUS MOYENS EN NUMBER
+      // Conversion des champs revenus moyens en number
       revenuMoyenOnNet: offre.revenuMoyenOnNet ? Number(offre.revenuMoyenOnNet) : null,
       revenuMoyenOffNet: offre.revenuMoyenOffNet ? Number(offre.revenuMoyenOffNet) : null,
      

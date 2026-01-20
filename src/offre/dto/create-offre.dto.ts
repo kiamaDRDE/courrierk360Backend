@@ -32,6 +32,15 @@ export class CreateOffreDto {
   nom: string;
 
   @ApiProperty({
+    description: 'Année de l\'offre',
+    example: 2025,
+  })
+  @IsNotEmpty({ message: 'L\'année est obligatoire' })
+  @IsNumber({}, { message: 'L\'année doit être un nombre' })
+  @IsPositive({ message: 'L\'année doit être positive' })
+  annee: number;
+
+  @ApiProperty({
     description: 'Date de début de validité',
     example: '2025-01-01T00:00:00.000Z',
   })

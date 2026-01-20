@@ -224,6 +224,7 @@ export class OffreController {
               id: 1,
               operateurId: 1,
               nom: 'Forfait Mobile Premium',
+              annee: 2025,
               dateDebutValidite: '2024-01-01T00:00:00.000Z',
               dateFinValidite: '2024-12-31T23:59:59.000Z',
               typeOffre: 'Prépayé',

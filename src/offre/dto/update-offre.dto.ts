@@ -32,6 +32,16 @@ export class UpdateOffreDto {
   nom?: string;
 
   @ApiProperty({
+    description: 'Année de l\'offre',
+    example: 2025,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'L\'année doit être un nombre' })
+  @IsPositive({ message: 'L\'année doit être positive' })
+  annee?: number;
+
+  @ApiProperty({
     description: 'Date de début de validité',
     example: '2025-01-01T00:00:00.000Z',
     required: false,
