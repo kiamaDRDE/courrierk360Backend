@@ -1546,4 +1546,224 @@ export class EffetClubService {
       );
     }
   }
+
+
+
+  /************mise à jour fonction manuella */
+
+  /**
+   * Calculer la somme des frais de souscription pour une offre
+   * Formule: Σ(fraisSouscription × nombreSouscriptions)
+   */
+  private async SommeFraisSouscriptionParNbreSousc(offreId: number): Promise<number> {
+    // Récupérer toutes les options de l'offre avec les champs nécessaires
+    const options = await this.prisma.option.findMany({
+      where: { offreId },
+      select: {
+        nombreSouscriptions: true,
+        fraisSouscription: true,
+      },
+    });
+
+    // Si aucune option, retourner 0
+    if (!options || options.length === 0) {
+      return 0;
+    }
+
+    // Appliquer la formule : Σ(fraisSouscription × nombreSouscriptions)
+    const resultat = options.reduce((sum, option) => {
+      const frais = Number(option.fraisSouscription || 0);
+      const nombre = option.nombreSouscriptions || 0;
+      return sum + (frais * nombre);
+    }, 0);
+
+    return resultat;
+  }
+
+  /**
+   * MÉTHODE DE CALCUL DE LA SOMME DES AVANTAGES GRATUITS
+   * =====================================================
+   * 
+   * Cette méthode calcule la somme des valeurs des avantages gratuits pour une offre
+   * en utilisant les valeurs stockées dans la table OptionAvantage
+   * 
+   * @param offreId - ID de l'offre pour laquelle calculer la somme
+   * @returns Promise<number> - La somme calculée des avantages gratuits
+   * 
+   * LOGIQUE APPLIQUÉE :
+   * - Une offre a plusieurs options
+   * - Chaque option peut avoir plusieurs avantages via la table OptionAvantage
+   * - La table OptionAvantage stocke la valeur spécifique de chaque avantage pour une option
+   * - La table Avantage contient le champ isGratuit pour déterminer si un avantage est gratuit
+   * - Formule: sommeAvantagesGratuits = Σ(optionAvantage.valeur) où avantage.isGratuit = true
+   */
+  private async sommeAvantageGratuit(offreId: number): Promise<number> {
+    // Récupérer toutes les options de l'offre avec leurs avantages
+    const options = await this.prisma.option.findMany({
+      where: { offreId },
+      include: {
+        avantages: {
+          include: {
+            avantage: {
+              select: {
+                id: true,
+                isGratuit: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Si aucune option, retourner 0
+    if (!options || options.length === 0) {
+      return 0;
+    }
+
+    let sommeAvantagesGratuits = 0;
+
+    // Parcourir toutes les options
+    for (const option of options) {
+      // Parcourir tous les avantages de chaque option via la table OptionAvantage
+      for (const optionAvantage of option.avantages) {
+        const avantage = optionAvantage.avantage;
+        
+        // Si l'avantage est gratuit, ajouter la valeur stockée dans OptionAvantage
+        if (avantage.isGratuit) {
+          sommeAvantagesGratuits += Number(optionAvantage.valeur || 0);
+        }
+      }
+    }
+
+    return sommeAvantagesGratuits;
+  }
+
+  /**
+   * MÉTHODE DE CALCUL DE LA SOMME DU TRAFIC OPTION
+   * ===============================================
+   * 
+   * Cette méthode calcule la somme des trafics option pour une offre
+   * en additionnant les valeurs du champ traficOption de toutes ses options
+   * 
+   * @param offreId - ID de l'offre pour laquelle calculer la somme
+   * @returns Promise<number> - La somme calculée du trafic option
+   * 
+   * LOGIQUE APPLIQUÉE :
+   * - Une offre a plusieurs options
+   * - Chaque option a un champ traficOption qui représente le trafic associé à cette option
+   * - Formule: sommeTraficOption = Σ(option.traficOption)
+   */
+  private async sommeTraficOption(offreId: number): Promise<number> {
+    // Récupérer toutes les options de l'offre avec le champ traficOption
+    const options = await this.prisma.option.findMany({
+      where: { offreId },
+      select: {
+        traficOption: true,
+      },
+    });
+
+    // Si aucune option, retourner 0
+    if (!options || options.length === 0) {
+      return 0;
+    }
+
+    // Calculer la somme de tous les traficOption
+    const sommeTraficOption = options.reduce((sum, option) => {
+      return sum + Number(option.traficOption || 0);
+    }, 0);
+
+    return sommeTraficOption;
+  }
+
+  /**
+   * MÉTHODE DE CALCUL DU REVENU MOYEN OFFNET OU ONNET
+   * ==================================================
+   * 
+   * Cette méthode calcule le revenu moyen OffNet ou OnNet d'une offre
+   * en utilisant la formule complète avec tous les paramètres tarifaires
+   * 
+   * @param operateurId - ID de l'opérateur (pour validation et calcul TF)
+   * @param offreId - ID de l'offre pour laquelle calculer le revenu moyen
+   * @param typeOffre - Type d'offre ('OFFNET' ou 'ONNET')
+   * @returns Promise<number> - Le revenu moyen calculé
+   * 
+   * FORMULE APPLIQUÉE :
+   * RM = (TP*TF*(1+TNC)*(1+EP) + Σ(frais)) / (TP + sommeAvantageGratuit + sommeTraficOption)
+   * 
+   * COMPOSANTES :
+   * - TP : Trafic total (de la table Offre)
+   * - TF : Tarif facial OffNet ou OnNet (calculé via calculateTF)
+   * - TNC : Taux net de collecte (de la table Offre)
+   * - EP : Epargne préalable (de la table Offre)
+   * - Σ(frais × nombre) : Somme des frais de souscription pondérés (via SommeFraisSouscriptionParNbreSousc)
+   * - Somme avantages gratuits : Via sommeAvantageGratuit()
+   * - Somme trafic option : Via sommeTraficOption()
+   */
+  async calculerRevenuMoyen(
+    operateurId: number,
+    offreId: number,
+    typeOffre: TypeOffre,
+  ): Promise<number> {
+    // 1️⃣ Récupérer l'offre avec les champs nécessaires
+    const offre = await this.prisma.offre.findUnique({
+      where: { id: offreId },
+      select: {
+        id: true,
+        operateurId: true,
+        tp: true,
+        tnc: true,
+        ep: true,
+      },
+    });
+
+    // Validation de l'offre
+    if (!offre) {
+      throw new NotFoundException(`Offre avec l'ID ${offreId} introuvable`);
+    }
+
+    if (offre.operateurId !== operateurId) {
+      throw new BadRequestException(
+        'Cette offre n\'appartient pas à l\'opérateur spécifié'
+      );
+    }
+
+    // 2️⃣ Extraire les valeurs tarifaires
+    const tp = Number(offre.tp || 0);
+    const tnc = Number(offre.tnc || 0);
+    const ep = Number(offre.ep || 0);
+
+    // Validation : TP doit être > 0 pour éviter division par zéro
+    if (tp === 0) {
+      throw new BadRequestException(
+        'Le trafic total (TP) de l\'offre doit être supérieur à 0'
+      );
+    }
+
+    // 3️⃣ Calculer TF (Tarif Facial) selon le type d'offre
+    const tf = await this.calculateTF(operateurId, offreId, typeOffre);
+
+    // 4️⃣ Calculer les sommes en parallèle pour optimiser les performances
+    const [sommeFrais, sommeAvantages, sommeTrafic] = await Promise.all([
+      this.SommeFraisSouscriptionParNbreSousc(offreId),
+      this.sommeAvantageGratuit(offreId),
+      this.sommeTraficOption(offreId),
+    ]);
+
+    // 5️⃣ Appliquer la formule
+    // RM = (TP*TF*(1+TNC)*(1+EP) + Σ(frais)) / (TP + sommeAvantageGratuit + sommeTraficOption)
+    const numerateur = tp * tf * (1 + tnc) * (1 + ep) + sommeFrais;
+    const denominateur = tp + sommeAvantages + sommeTrafic;
+
+    // Validation : le dénominateur doit être > 0
+    if (denominateur === 0) {
+      throw new BadRequestException(
+        'Le dénominateur de la formule (TP + sommeAvantages + sommeTrafic) doit être supérieur à 0'
+      );
+    }
+
+    const revenuMoyen = numerateur / denominateur;
+
+    // Arrondir à 2 décimales
+    return Math.round(revenuMoyen * 100) / 100;
+  }
 }

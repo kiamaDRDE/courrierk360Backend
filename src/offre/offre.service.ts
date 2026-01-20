@@ -770,18 +770,12 @@ export class OffreService {
       return 0;
     }
 
-    // Calculer la somme des nombreSouscriptions
-    const sommeNombreSouscriptions = options.reduce((sum, option) => {
-      return sum + (option.nombreSouscriptions || 0);
+    // Appliquer la formule : Σ(fraisSouscription × nombreSouscriptions)
+    const resultat = options.reduce((sum, option) => {
+      const frais = Number(option.fraisSouscription || 0);
+      const nombre = option.nombreSouscriptions || 0;
+      return sum + (frais * nombre);
     }, 0);
-
-    // Calculer la somme des fraisSouscription
-    const sommeFraisSouscription = options.reduce((sum, option) => {
-      return sum + Number(option.fraisSouscription || 0);
-    }, 0);
-
-    // Appliquer la formule : (somme nombreSouscriptions) × (somme fraisSouscription)
-    const resultat = sommeNombreSouscriptions * sommeFraisSouscription;
 
     return resultat;
   }
