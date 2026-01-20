@@ -326,13 +326,11 @@ export class EffetClubService {
         },
       });
 
+    // 4️⃣ Calcul de la moyenne - Retourner 0 si aucune valeur trouvée
     if (valeurs.length === 0) {
-      throw new BadRequestException(
-        'Aucune valeur tarifaire trouvée pour cette offre',
-      );
+      return 0;
     }
 
-    // 4️⃣ Calcul de la moyenne
     const somme = valeurs.reduce(
       (total, item) => total + Number(item.valeur),
       0,
@@ -386,15 +384,9 @@ export class EffetClubService {
       }
     }
 
-    if (valeursOffnet.length === 0 || valeursOnnet.length === 0) {
-      throw new BadRequestException(
-        'Aucune valeur tarifaire trouvée pour OFFNET ou ONNET',
-      );
-    }
-
-    // 3️⃣ Calcul de la moyenne
+    // 3️⃣ Calcul de la moyenne - Retourner 0 si aucune valeur trouvée
     const moyenne = (arr: number[]) =>
-      Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 100) / 100;
+      arr.length === 0 ? 0 : Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 100) / 100;
 
     return {
       tfOffnet: moyenne(valeursOffnet),
