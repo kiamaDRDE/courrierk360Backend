@@ -34,37 +34,33 @@ export class CiseauTarifaireService {
       }
     });
 
-    if (tarifs.length === 0) {
-      throw new NotFoundException(`Aucun tarif trouvé pour l'opérateur ${operateurId} pour l'année ${annee}`);
-    }
-
     const tarifBase = tarifs.find(t => t.typeTarif === 'Base');
     const tarifInterconnexion = tarifs.find(t => t.typeTarif === 'Interconnexion');
 
-    if (!tarifBase) {
-      throw new BadRequestException(`Tarif de type "Base" manquant pour l'opérateur ${operateurId} pour l'année ${annee}`);
-    }
+    // Utiliser 0 par défaut si les tarifs sont manquants
+    const tarifBaseOffNetHC = tarifBase?.tarifOffNetHeureCreuse ?? 0;
+    const tarifBaseOffNetHP = tarifBase?.tarifOffNetHeurePleine ?? 0;
+    const tarifBaseOnNetHC = tarifBase?.tarifOnNetHeureCreuse ?? 0;
+    const tarifBaseOnNetHP = tarifBase?.tarifOnNetHeurePleine ?? 0;
 
-    if (!tarifInterconnexion) {
-      throw new BadRequestException(`Tarif de type "Interconnexion" manquant pour l'opérateur ${operateurId} pour l'année ${annee}`);
-    }
+    const tarifIntercoOffNetHC = tarifInterconnexion?.tarifOffNetHeureCreuse ?? 0;
+    const tarifIntercoOffNetHP = tarifInterconnexion?.tarifOffNetHeurePleine ?? 0;
+    const tarifIntercoOnNetHC = tarifInterconnexion?.tarifOnNetHeureCreuse ?? 0;
+    const tarifIntercoOnNetHP = tarifInterconnexion?.tarifOnNetHeurePleine ?? 0;
 
     // Calculer les différences
-    const differenceOffnetHC = new Decimal(tarifBase.tarifOffNetHeureCreuse).minus(new Decimal(tarifInterconnexion.tarifOffNetHeureCreuse));
-    const differenceOffnetHP = new Decimal(tarifBase.tarifOffNetHeurePleine).minus(new Decimal(tarifInterconnexion.tarifOffNetHeurePleine));
-    const differenceOnnetHC = new Decimal(tarifBase.tarifOnNetHeureCreuse).minus(new Decimal(tarifInterconnexion.tarifOnNetHeureCreuse));
-    const differenceOnnetHP = new Decimal(tarifBase.tarifOnNetHeurePleine).minus(new Decimal(tarifInterconnexion.tarifOnNetHeurePleine));
+    const differenceOffnetHC = new Decimal(tarifBaseOffNetHC).minus(new Decimal(tarifIntercoOffNetHC));
+    const differenceOffnetHP = new Decimal(tarifBaseOffNetHP).minus(new Decimal(tarifIntercoOffNetHP));
+    const differenceOnnetHC = new Decimal(tarifBaseOnNetHC).minus(new Decimal(tarifIntercoOnNetHC));
+    const differenceOnnetHP = new Decimal(tarifBaseOnNetHP).minus(new Decimal(tarifIntercoOnNetHP));
 
     // Récupérer le coût depuis la table Parametre pour cette année
     const parametre = await this.prisma.parametre.findUnique({
       where: { annee }
     });
 
-    if (!parametre) {
-      throw new NotFoundException(`Paramètre non trouvé pour l'année ${annee}`);
-    }
-
-    const cout = parametre.cout;
+    // Utiliser 0 par défaut si le paramètre est manquant
+    const cout = parametre?.cout ?? new Decimal(0);
 
     // Déterminer si c'est un ciseau tarifaire pour chaque différence OffNet
     // Si differenceOffnetHC > cout, alors isCiseauOffHC = false, sinon true
@@ -147,12 +143,8 @@ export class CiseauTarifaireService {
       'OFFNET'
     );
 
-    if (!tfOffnet) {
-      throw new BadRequestException(`Impossible de calculer le TF OffNet pour l'offre ${offreId}. Vérifiez que l'offre a des options avec des structures tarifaires OffNet.`);
-    }
-
-    // Le tarif facial OffNet est le TF calculé
-    const tariffacialOffnet = new Decimal(tfOffnet);
+    // Utiliser 0 par défaut si le TF ne peut pas être calculé
+    const tariffacialOffnet = new Decimal(tfOffnet || 0);
 
     // Extraire l'année depuis la date de validité de l'offre
     const annee = offre.dateDebutValidite.getFullYear();
@@ -166,26 +158,21 @@ export class CiseauTarifaireService {
       }
     });
 
-    if (!tarifInterconnexion) {
-      throw new NotFoundException(
-        `Tarif d'interconnexion non trouvé pour l'opérateur ${offre.operateur.nom} pour l'année ${annee}`
-      );
-    }
+    // Utiliser 0 par défaut si le tarif d'interconnexion n'existe pas
+    const tarifIntercoOffNetHC = tarifInterconnexion?.tarifOffNetHeureCreuse ?? 0;
+    const tarifIntercoOffNetHP = tarifInterconnexion?.tarifOffNetHeurePleine ?? 0;
 
     // Calculer les différences avec le tarif facial
-    const DiffTariffacialOffnetHC = tariffacialOffnet.minus(new Decimal(tarifInterconnexion.tarifOffNetHeureCreuse));
-    const DiffTariffacialOffnetHP = tariffacialOffnet.minus(new Decimal(tarifInterconnexion.tarifOffNetHeurePleine));
+    const DiffTariffacialOffnetHC = tariffacialOffnet.minus(new Decimal(tarifIntercoOffNetHC));
+    const DiffTariffacialOffnetHP = tariffacialOffnet.minus(new Decimal(tarifIntercoOffNetHP));
 
     // Récupérer le coût depuis la table Parametre pour cette année
     const parametre = await this.prisma.parametre.findUnique({
       where: { annee }
     });
 
-    if (!parametre) {
-      throw new NotFoundException(`Paramètre non trouvé pour l'année ${annee}`);
-    }
-
-    const cout = parametre.cout;
+    // Utiliser 0 par défaut si le paramètre est manquant
+    const cout = parametre?.cout ?? new Decimal(0);
 
     // Déterminer si c'est un ciseau tarifaire pour chaque différence
     // Si DiffTariffacialOffnetHC > cout, alors isCiseauOffTarifHC = false, sinon true
@@ -312,14 +299,8 @@ export class CiseauTarifaireService {
       'OFFNET'
     );
 
-    if (!revenuMoyen) {
-      throw new BadRequestException(
-        `Impossible de calculer le revenu moyen OffNet pour l'offre ${offreId}. Vérifiez que l'offre a toutes les données nécessaires (TP, TNC, EP, options).`
-      );
-    }
-
-    // Convertir en Decimal
-    const RevenusMoyen = new Decimal(revenuMoyen);
+    // Utiliser 0 par défaut si le revenu moyen ne peut pas être calculé
+    const RevenusMoyen = new Decimal(revenuMoyen || 0);
 
     // Extraire l'année depuis la date de validité de l'offre
     const annee = offre.dateDebutValidite.getFullYear();
@@ -333,26 +314,21 @@ export class CiseauTarifaireService {
       }
     });
 
-    if (!tarifInterconnexion) {
-      throw new NotFoundException(
-        `Tarif d'interconnexion non trouvé pour l'opérateur ${offre.operateur.nom} pour l'année ${annee}`
-      );
-    }
+    // Utiliser 0 par défaut si le tarif d'interconnexion n'existe pas
+    const tarifIntercoOffNetHC = tarifInterconnexion?.tarifOffNetHeureCreuse ?? 0;
+    const tarifIntercoOffNetHP = tarifInterconnexion?.tarifOffNetHeurePleine ?? 0;
 
     // Calculer les différences avec le revenu moyen
-    const DiffRevenuOffHC = RevenusMoyen.minus(new Decimal(tarifInterconnexion.tarifOffNetHeureCreuse));
-    const DiffRevenuOffHP = RevenusMoyen.minus(new Decimal(tarifInterconnexion.tarifOffNetHeurePleine));
+    const DiffRevenuOffHC = RevenusMoyen.minus(new Decimal(tarifIntercoOffNetHC));
+    const DiffRevenuOffHP = RevenusMoyen.minus(new Decimal(tarifIntercoOffNetHP));
 
     // Récupérer le coût depuis la table Parametre pour cette année
     const parametre = await this.prisma.parametre.findUnique({
       where: { annee }
     });
 
-    if (!parametre) {
-      throw new NotFoundException(`Paramètre non trouvé pour l'année ${annee}`);
-    }
-
-    const cout = parametre.cout;
+    // Utiliser 0 par défaut si le paramètre est manquant
+    const cout = parametre?.cout ?? new Decimal(0);
 
     // Déterminer si c'est un ciseau tarifaire pour chaque différence
     // Si DiffRevenuOffHC > cout, alors isRevenuOffHC = false, sinon true
