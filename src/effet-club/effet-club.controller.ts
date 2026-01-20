@@ -23,7 +23,27 @@ export class EffetClubController {
   @Get('calculateEffetDeClub')
   @ApiOperation({
     summary: 'Calcule l\'effet club d\'une offre',
-    description: 'Calcule l\'effet club selon différentes méthodes : tarif facial (BASE/INTERCONNEXION) ou revenus moyens (REVENUS_BASE/REVENUS_INTERCONNEXION). Formule utilisée : (TF/RM Offnet - TF/RM Onnet) - (TB/TA Moyen - TB/TA Opérateur)',
+    description: `Calcule l'effet club selon différentes méthodes avec formules spécifiques :
+    
+**FORMULES SELON LE TYPE DE CALCUL :**
+
+• **BASE** : Effet Club = (TF Offnet - TF Onnet) - (TB Moyen - TB Opérateur)
+  - TF = Tarif Facial (moyenne des structures tarifaires des options)
+  - TB = Tarif de Base
+  
+• **INTERCONNEXION** : Effet Club = (TF Offnet - TF Onnet) - (TA Moyen - TA Opérateur)
+  - TF = Tarif Facial (moyenne des structures tarifaires des options)
+  - TA = Tarif d'Interconnexion
+  
+• **REVENUS_BASE** : Effet Club = (RM Offnet - RM Onnet) - (TB Moyen - TB Opérateur)
+  - RM = Revenus Moyens (stockés dans l'offre)
+  - TB = Tarif de Base
+  
+• **REVENUS_INTERCONNEXION** : Effet Club = (RM Offnet - RM Onnet) - (TA Moyen - TA Opérateur)
+  - RM = Revenus Moyens (stockés dans l'offre)
+  - TA = Tarif d'Interconnexion
+
+**RÉSULTAT :** Si Effet Club > 0 → "EFFET DE CLUB", sinon "PAS D'EFFET DE CLUB"`,
   })
   @ApiQuery({
     name: 'operateurId',
