@@ -143,7 +143,7 @@ model Offre {
   operateurId       Int       @map("operateur_id")
   ciseauTarifaireId Int?      @map("ciseau_tarifaire_id")
   nom               String    @map("nom") @db.VarChar(191)
-  annee             Int       @map("annee")
+  annee             Int       @default(2025) @map("annee")
   dateDebutValidite DateTime  @map("date_debut_validite")
   dateFinValidite   DateTime  @map("date_fin_validite")
   typeOffre         String    @map("type_offre") @db.VarChar(100)
