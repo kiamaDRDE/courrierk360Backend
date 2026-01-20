@@ -581,6 +581,7 @@ model Parametre {
   coutReseau   Decimal  @default(0) @map("cout_reseau") @db.Decimal(18, 2)
   taxe         Decimal  @default(0) @map("taxe") @db.Decimal(18, 2)
   cout         Decimal  @default(0) @map("cout") @db.Decimal(18, 2)
+  wacc         Decimal  @default(0) @map("wacc") @db.Decimal(18, 2)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
 

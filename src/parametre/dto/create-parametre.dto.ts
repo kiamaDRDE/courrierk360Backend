@@ -144,4 +144,16 @@ export class CreateParametreDto {
   @Min(0, { message: 'Le coût d\'interconnexion ne peut pas être négatif' })
   @Type(() => Number)
   coutInterconnexion?: number;
+
+  
+  @ApiProperty({
+    description: 'WACC (Weighted Average Cost of Capital)',
+    example: 12.5,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'Le WACC doit être un nombre' })
+  @Min(0, { message: 'Le WACC ne peut pas être négatif' })
+  @Type(() => Number)
+  wacc?: number;
 }

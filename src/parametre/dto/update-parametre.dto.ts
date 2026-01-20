@@ -111,6 +111,21 @@ export class UpdateParametreDto extends PartialType(CreateParametreDto) {
   tva?: number;
 
   @ApiProperty({
+    description: 'WACC (Weighted Average Cost of Capital)',
+    example: 12.5,
+    type: 'number',
+    format: 'decimal',
+    minimum: 0,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'Le WACC doit être un nombre' })
+  @Min(0, { message: 'Le WACC ne peut pas être négatif' })
+  @Type(() => Number)
+  wacc?: number;
+
+
+  @ApiProperty({
     description: 'Taxe en francs CFA',
     example: 500000.00,
     type: 'number',

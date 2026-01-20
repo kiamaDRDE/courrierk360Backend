@@ -76,6 +76,15 @@ export class ParametreResponseDto {
   tva?: number;
 
   @ApiProperty({
+    description: 'WACC (Weighted Average Cost of Capital)',
+    example: 12.5,
+    type: 'number',
+    format: 'decimal',
+  })
+  wacc: number;
+
+
+  @ApiProperty({
     description: 'Taxe en francs CFA',
     example: 500000.00,
     type: 'number',

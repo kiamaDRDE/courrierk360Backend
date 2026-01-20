@@ -45,6 +45,7 @@ export class ParametreService {
           taxe: taxe,
           coutInterconnexion: coutInterconnexion,
           cout: cout,
+          wacc: new Decimal(createParametreDto.wacc ?? 0),
         }
       });
 
@@ -196,6 +197,11 @@ export class ParametreService {
         updateData.coutReseau = new Decimal(updateParametreDto.coutReseau);
       }
 
+      if (updateParametreDto.wacc !== undefined) {
+        updateData.wacc = new Decimal(updateParametreDto.wacc);
+      }
+
+
       if (updateParametreDto.taxe !== undefined) {
         updateData.taxe = new Decimal(updateParametreDto.taxe);
       }
@@ -283,6 +289,7 @@ export class ParametreService {
       droitEntree: parametre.droitEntree ? Number(parametre.droitEntree) : undefined,
       coutsCommerciaux: parametre.coutsCommerciaux ? Number(parametre.coutsCommerciaux) : undefined,
       tva: parametre.tva ? Number(parametre.tva) : undefined,
+      wacc: parametre.wacc ? Number(parametre.wacc) : 0,
       coutReseau: Number(coutReseau),
       taxe: Number(taxe),
       coutInterconnexion: parametre.coutInterconnexion ? Number(parametre.coutInterconnexion) : undefined,
