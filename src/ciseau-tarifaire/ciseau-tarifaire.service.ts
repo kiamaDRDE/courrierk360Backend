@@ -63,11 +63,11 @@ export class CiseauTarifaireService {
     const cout = parametre?.cout ?? new Decimal(0);
 
     // Déterminer si c'est un ciseau tarifaire pour chaque différence OffNet
-    // Si differenceOffnetHC > cout, alors isCiseauOffHC = false, sinon true
-    const isCiseauOffHC = !differenceOffnetHC.greaterThan(cout);
+    // Si differenceOffnetHC >= 0, alors isCiseauOffHC = false, sinon true
+    const isCiseauOffHC = differenceOffnetHC.lessThan(0);
     
-    // Si differenceOffnetHP > cout, alors isCiseauOffHP = false, sinon true
-    const isCiseauOffHP = !differenceOffnetHP.greaterThan(cout);
+    // Si differenceOffnetHP >= 0, alors isCiseauOffHP = false, sinon true
+    const isCiseauOffHP = differenceOffnetHP.lessThan(0);
 
     // Vérifier si un ciseau tarifaire existe déjà pour cette année
     const existingCiseau = await this.prisma.ciseauTarifaire.findUnique({
@@ -175,11 +175,11 @@ export class CiseauTarifaireService {
     const cout = parametre?.cout ?? new Decimal(0);
 
     // Déterminer si c'est un ciseau tarifaire pour chaque différence
-    // Si DiffTariffacialOffnetHC > cout, alors isCiseauOffTarifHC = false, sinon true
-    const isCiseauOffTarifHC = !DiffTariffacialOffnetHC.greaterThan(cout);
+    // Si DiffTariffacialOffnetHC >= 0, alors isCiseauOffTarifHC = false, sinon true
+    const isCiseauOffTarifHC = DiffTariffacialOffnetHC.lessThan(0);
     
-    // Si DiffTariffacialOffnetHP > cout, alors isCiseauOffTarifHP = false, sinon true
-    const isCiseauOffTarifHP = !DiffTariffacialOffnetHP.greaterThan(cout);
+    // Si DiffTariffacialOffnetHP >= 0, alors isCiseauOffTarifHP = false, sinon true
+    const isCiseauOffTarifHP = DiffTariffacialOffnetHP.lessThan(0);
 
     // Vérifier si un ciseau tarifaire existe déjà pour cette année
     const existingCiseau = await this.prisma.ciseauTarifaire.findUnique({
@@ -331,11 +331,11 @@ export class CiseauTarifaireService {
     const cout = parametre?.cout ?? new Decimal(0);
 
     // Déterminer si c'est un ciseau tarifaire pour chaque différence
-    // Si DiffRevenuOffHC > cout, alors isRevenuOffHC = false, sinon true
-    const isRevenuOffHC = !DiffRevenuOffHC.greaterThan(cout);
+    // Si DiffRevenuOffHC >= 0, alors isRevenuOffHC = false, sinon true
+    const isRevenuOffHC = DiffRevenuOffHC.lessThan(0);
     
-    // Si DiffRevenuOffHP > cout, alors isRevenuOffHP = false, sinon true
-    const isRevenuOffHP = !DiffRevenuOffHP.greaterThan(cout);
+    // Si DiffRevenuOffHP >= 0, alors isRevenuOffHP = false, sinon true
+    const isRevenuOffHP = DiffRevenuOffHP.lessThan(0);
 
     // Récupérer les composantes du calcul du revenu moyen
     // Calculer les sommes nécessaires pour afficher les détails
