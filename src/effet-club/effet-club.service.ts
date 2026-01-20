@@ -208,15 +208,35 @@ export class EffetClubService {
       );
     }
 
-    // 🔹 Validation métier des valeurs
-    if (!(typeOffre in STRUCTURE_TARIFAIRE)) {
+    // 🔹 Validation typeOffre (seulement OFFNET ou ONNET)
+    const valeursTypeOffre: TypeOffre[] = ['OFFNET', 'ONNET'];
+    if (!valeursTypeOffre.includes(typeOffre)) {
       throw new BadRequestException(
-        `typeOffre invalide : ${typeOffre}. Valeurs possibles : ${Object.keys(STRUCTURE_TARIFAIRE).join(', ')}`,
+        `typeOffre invalide : "${typeOffre}". Valeurs acceptées : OFFNET, ONNET`,
       );
     }
-    if (!(typeHeure in TARIF_COLUMN_MAP[typeOffre])) {
+
+    // 🔹 Validation typeHeure (seulement CREUSE ou PLEINE)
+    const valeursTypeHeure: TypeHeure[] = ['CREUSE', 'PLEINE'];
+    if (!valeursTypeHeure.includes(typeHeure)) {
       throw new BadRequestException(
-        `typeHeure invalide : ${typeHeure}. Valeurs possibles : ${Object.keys(TARIF_COLUMN_MAP[typeOffre]).join(', ')}`,
+        `typeHeure invalide : "${typeHeure}". Valeurs acceptées : CREUSE, PLEINE`,
+      );
+    }
+
+    // 🔹 Validation typeCalcule (seulement les 4 valeurs)
+    const valeursTypeCalcule: TypeCalcule[] = ['BASE', 'INTERCONNEXION', 'REVENUS_BASE', 'REVENUS_INTERCONNEXION'];
+    if (!valeursTypeCalcule.includes(typeCalcule)) {
+      throw new BadRequestException(
+        `typeCalcule invalide : "${typeCalcule}". Valeurs acceptées : BASE, INTERCONNEXION, REVENUS_BASE, REVENUS_INTERCONNEXION`,
+      );
+    }
+
+    // 🔹 Validation annee (doit contenir 4 chiffres)
+    const anneeStr = annee.toString();
+    if (!/^\d{4}$/.test(anneeStr)) {
+      throw new BadRequestException(
+        `annee invalide : "${annee}". L'année doit contenir exactement 4 chiffres (exemple : 2025)`,
       );
     }
 
