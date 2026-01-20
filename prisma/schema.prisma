@@ -760,8 +760,8 @@ model CiseauTarifaire {
   DiffRevenuOffHC Decimal  @default(0) @map("diff_revenu_off_hc") @db.Decimal(18, 2)
   DiffRevenuOffHP Decimal  @default(0) @map("diff_revenu_off_hp") @db.Decimal(18, 2)
 
-  isrevenuOffHC Boolean  @default(false) @map("is_revenu_off_hc")
-  isrevenuOffHP Boolean  @default(false) @map("is_revenu_off_hp")
+  isRevenuOffHC Boolean  @default(false) @map("is_revenu_off_hc")
+  isRevenuOffHP Boolean  @default(false) @map("is_revenu_off_hp")
 
   isCiseauOffHC            Boolean  @default(false) @map("is_ciseau_off_hc")
   isCiseauOffHP            Boolean  @default(false) @map("is_ciseau_off_hp")
