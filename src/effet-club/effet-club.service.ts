@@ -240,6 +240,33 @@ export class EffetClubService {
       );
     }
 
+    // 🔹 Vérifier que l'offre existe et appartient à l'opérateur
+    const offre = await this.prisma.offre.findUnique({
+      where: { id: offreId },
+      select: {
+        id: true,
+        operateurId: true,
+        nom: true,
+        revenuMoyenOnNet: true,
+        revenuMoyenOffNet: true,
+        options: {
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!offre) {
+      throw new NotFoundException(
+        `L'offre avec l'ID ${offreId} n'existe pas dans la base de données`,
+      );
+    }
+
+    if (offre.operateurId !== operateurId) {
+      throw new BadRequestException(
+        `L'offre "${offre.nom}" (ID: ${offreId}) n'appartient pas à l'opérateur avec l'ID ${operateurId}. Cette offre appartient à l'opérateur ID: ${offre.operateurId}`,
+      );
+    }
+
     // 🔹 Déterminer si on utilise les revenus moyens ou les tarifs faciaux
     const useRevenusMoyens = typeCalcule === 'REVENUS_BASE' || typeCalcule === 'REVENUS_INTERCONNEXION';
 
@@ -247,25 +274,23 @@ export class EffetClubService {
     let tfOrRmOnnet: number;
 
     if (useRevenusMoyens) {
-      // 🔹 Utiliser les revenus moyens stockés dans l'offre
-      const offre = await this.prisma.offre.findUnique({
-        where: { id: offreId },
-        select: {
-          operateurId: true,
-          revenuMoyenOnNet: true,
-          revenuMoyenOffNet: true,
-        },
-      });
-
-      if (!offre || offre.operateurId !== operateurId) {
-        throw new NotFoundException(
-          'Offre introuvable ou non rattachée à cet opérateur',
+      // 🔹 Vérifier que les revenus moyens sont disponibles
+      if (!offre.revenuMoyenOffNet || !offre.revenuMoyenOnNet) {
+        throw new BadRequestException(
+          `Les revenus moyens ne sont pas calculés pour l'offre "${offre.nom}" (ID: ${offreId}). Veuillez d'abord calculer les revenus moyens via l'API appropriée`,
         );
       }
 
-      tfOrRmOffnet = Number(offre.revenuMoyenOffNet) || 0;
-      tfOrRmOnnet = Number(offre.revenuMoyenOnNet) || 0;
+      tfOrRmOffnet = Number(offre.revenuMoyenOffNet);
+      tfOrRmOnnet = Number(offre.revenuMoyenOnNet);
     } else {
+      // 🔹 Vérifier que l'offre a des options pour calculer le TF
+      if (!offre.options || offre.options.length === 0) {
+        throw new BadRequestException(
+          `L'offre "${offre.nom}" (ID: ${offreId}) n'a aucune option associée. Le calcul du tarif facial (TF) nécessite au moins une option avec des structures tarifaires`,
+        );
+      }
+
       // 🔹 Utiliser les tarifs faciaux (comportement actuel)
       const { tfOffnet, tfOnnet } = await this.calculateTFOptimized(operateurId, offreId);
       tfOrRmOffnet = tfOffnet;
@@ -534,7 +559,9 @@ export class EffetClubService {
     annee: number,
   ): Promise<{ tbOrTaMoyen: number; tbOrTaOperateur: number }> {
     const columnName = TARIF_COLUMN_MAP[typeOffre]?.[typeHeure];
-    if (!columnName) throw new Error('Combinaison OFFNET/ONNET et CREUSE/PLEINE invalide');
+    if (!columnName) {
+      throw new BadRequestException('Combinaison OFFNET/ONNET et CREUSE/PLEINE invalide');
+    }
 
     const typeTarif = TYPE_TARIF_MAP[typeCalcule];
 
@@ -550,11 +577,18 @@ export class EffetClubService {
       }),
     ]);
 
+    // 🔹 Vérifier que des tarifs existent pour cette année (marché)
     if (!tarifsAll.length) {
-      throw new Error(`Aucun tarif trouvé pour ${typeCalcule} ${typeOffre} ${typeHeure} en ${annee}`);
+      throw new NotFoundException(
+        `Aucun tarif ${typeCalcule === 'BASE' ? 'de base' : "d'interconnexion"} trouvé pour l'année ${annee} dans la base de données. Veuillez d'abord créer les tarifs pour cette année`,
+      );
     }
+
+    // 🔹 Vérifier que l'opérateur a un tarif pour cette année
     if (!tarifOperateur || tarifOperateur[columnName] === null) {
-      throw new Error('Tarif introuvable pour cet opérateur, cette année et ce type');
+      throw new NotFoundException(
+        `L'opérateur avec l'ID ${operateurId} n'a pas de tarif ${typeCalcule === 'BASE' ? 'de base' : "d'interconnexion"} pour l'année ${annee}. Veuillez créer un tarif ${typeOffre} ${typeHeure} pour cet opérateur`,
+      );
     }
 
     // 🔹 Calcul des moyennes en mémoire
