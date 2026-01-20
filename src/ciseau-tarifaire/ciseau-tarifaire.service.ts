@@ -375,20 +375,6 @@ export class CiseauTarifaireService {
             }
           }
         }
-      },
-      select: {
-        nombreSouscriptions: true,
-        fraisSouscription: true,
-        traficOption: true,
-        avantages: {
-          include: {
-            avantage: {
-              select: {
-                isGratuit: true
-              }
-            }
-          }
-        }
       }
     });
 
