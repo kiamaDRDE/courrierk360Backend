@@ -47,20 +47,11 @@ export class OffreController {
           destination: 'National',
           statut: 'Actif',
           description: 'Forfait premium avec services multiples',
-          // 🔄 NOUVEAUX CHAMPS TARIFAIRES ONNET/OFFNET
+          // Champs tarifaires de base
           tp: 150.75,
           tnc: 125.30,
           ep: 85.25,
-          // 🔄 NOUVEAUX CHAMPS TARIFAIRES ONNET/OFFNET
-          tpOnNet: 150.75,
-          tfOnNet: 200.50,
-          tncOnNet: 125.30,
-          epOnNet: 85.25,
-          tpOffNet: 175.80,
-          tfOffNet: 225.75,
-          tncOffNet: 140.60,
-          epOffNet: 95.45,
-          // 🔄 NOUVEAUX CHAMPS REVENUS MOYENS
+          // Champs revenus moyens
           revenuMoyenOnNet: 0.0,
           revenuMoyenOffNet: 0.0,
           taOperateur: null,
@@ -132,16 +123,7 @@ export class OffreController {
           destination: 'National',
           statut: 'Actif',
           description: 'Forfait premium modifié',
-          // 🔄 NOUVEAUX CHAMPS TARIFAIRES ONNET/OFFNET
-          tpOnNet: 160.00,
-          tfOnNet: 210.75,
-          tncOnNet: 130.50,
-          epOnNet: 90.00,
-          tpOffNet: 185.25,
-          tfOffNet: 235.80,
-          tncOffNet: 145.75,
-          epOffNet: 105.30,
-          // 🔄 NOUVEAUX CHAMPS REVENUS MOYENS
+          // Champs revenus moyens
           revenuMoyenOnNet: 0.0,
           revenuMoyenOffNet: 0.0,
           taOperateur: null,
@@ -248,16 +230,7 @@ export class OffreController {
               destination: 'National',
               statut: 'Actif',
               description: 'Forfait premium avec services multiples',
-              // 🔄 NOUVEAUX CHAMPS TARIFAIRES ONNET/OFFNET
-              tpOnNet: 150.75,
-              tfOnNet: 200.50,
-              tncOnNet: 125.30,
-              epOnNet: 85.25,
-              tpOffNet: 175.80,
-              tfOffNet: 225.75,
-              tncOffNet: 140.60,
-              epOffNet: 95.45,
-              // 🔄 NOUVEAUX CHAMPS REVENUS MOYENS
+              // Champs revenus moyens
               revenuMoyenOnNet: 0.0,
               revenuMoyenOffNet: 0.0,
               taOperateur: 25.5,

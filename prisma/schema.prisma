@@ -155,15 +155,6 @@ model Offre {
   tnc          Decimal?  @default(0) @map("tnc") @db.Decimal(10, 2)
   ep           Decimal?  @default(0) @map("ep") @db.Decimal(10, 2)
   
-  // Nouveaux champs tarifaires OnNet et OffNet
-  tpOnNet           Decimal?  @default(0) @map("tp_onnet") @db.Decimal(10, 2)
-  tfOnNet           Decimal?  @default(0) @map("tf_onnet") @db.Decimal(10, 2)
-  tncOnNet          Decimal?  @default(0) @map("tnc_onnet") @db.Decimal(10, 2)
-  epOnNet           Decimal?  @default(0) @map("ep_onnet") @db.Decimal(10, 2)
-  tpOffNet          Decimal?  @default(0) @map("tp_offnet") @db.Decimal(10, 2)
-  tfOffNet          Decimal?  @default(0) @map("tf_offnet") @db.Decimal(10, 2)
-  tncOffNet         Decimal?  @default(0) @map("tnc_offnet") @db.Decimal(10, 2)
-  epOffNet          Decimal?  @default(0) @map("ep_offnet") @db.Decimal(10, 2)
   
   // Champs calculés pour l'effet club
   taBaseOperateurOffnetHC      Decimal?  @default(0) @map("ta_base_operateur_offnet_hc") @db.Decimal(10, 2)

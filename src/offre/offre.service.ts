@@ -950,15 +950,6 @@ export class OffreService {
           tnc: offreData.tnc ? new Decimal(offreData.tnc) : null,
           ep: offreData.ep ? new Decimal(offreData.ep) : null,
 
-          // 🔄 NOUVEAUX CHAMPS TARIFAIRES ONNET/OFFNET
-          tpOnNet: offreData.tpOnNet ? new Decimal(offreData.tpOnNet) : null,
-          tfOnNet: offreData.tfOnNet ? new Decimal(offreData.tfOnNet) : null,
-          tncOnNet: offreData.tncOnNet ? new Decimal(offreData.tncOnNet) : null,
-          epOnNet: offreData.epOnNet ? new Decimal(offreData.epOnNet) : null,
-          tpOffNet: offreData.tpOffNet ? new Decimal(offreData.tpOffNet) : null,
-          tfOffNet: offreData.tfOffNet ? new Decimal(offreData.tfOffNet) : null,
-          tncOffNet: offreData.tncOffNet ? new Decimal(offreData.tncOffNet) : null,
-          epOffNet: offreData.epOffNet ? new Decimal(offreData.epOffNet) : null,
           // Champs calculés de l'effet club (null par défaut, calculés à la demande)
           taBaseOperateurOffnetHC: null,
           taBaseOperateurOffnetHP: null,
@@ -1212,29 +1203,6 @@ export class OffreService {
       updateData.tnc = offreUpdateData.tnc ? new Decimal(offreUpdateData.tnc) : null;
     if (offreUpdateData.ep !== undefined) 
       updateData.ep = offreUpdateData.ep ? new Decimal(offreUpdateData.ep) : null;
-
-
-
-
-
-
-    // 🔄 MISE À JOUR DES NOUVEAUX CHAMPS TARIFAIRES ONNET/OFFNET
-    if (offreUpdateData.tpOnNet !== undefined) 
-      updateData.tpOnNet = offreUpdateData.tpOnNet ? new Decimal(offreUpdateData.tpOnNet) : null;
-    if (offreUpdateData.tfOnNet !== undefined) 
-      updateData.tfOnNet = offreUpdateData.tfOnNet ? new Decimal(offreUpdateData.tfOnNet) : null;
-    if (offreUpdateData.tncOnNet !== undefined) 
-      updateData.tncOnNet = offreUpdateData.tncOnNet ? new Decimal(offreUpdateData.tncOnNet) : null;
-    if (offreUpdateData.epOnNet !== undefined) 
-      updateData.epOnNet = offreUpdateData.epOnNet ? new Decimal(offreUpdateData.epOnNet) : null;
-    if (offreUpdateData.tpOffNet !== undefined) 
-      updateData.tpOffNet = offreUpdateData.tpOffNet ? new Decimal(offreUpdateData.tpOffNet) : null;
-    if (offreUpdateData.tfOffNet !== undefined) 
-      updateData.tfOffNet = offreUpdateData.tfOffNet ? new Decimal(offreUpdateData.tfOffNet) : null;
-    if (offreUpdateData.tncOffNet !== undefined) 
-      updateData.tncOffNet = offreUpdateData.tncOffNet ? new Decimal(offreUpdateData.tncOffNet) : null;
-    if (offreUpdateData.epOffNet !== undefined) 
-      updateData.epOffNet = offreUpdateData.epOffNet ? new Decimal(offreUpdateData.epOffNet) : null;
 
     // Ne plus recalculer l'effet club à la mise à jour (calcul à la demande uniquement)
     // Si l'opérateur change, réinitialiser les champs calculés
