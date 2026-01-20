@@ -806,6 +806,7 @@ export class OffreService {
             avantage: {
               select: {
                 id: true,
+                valeur: true,
                 isGratuit: true,
               },
             },
@@ -827,9 +828,9 @@ export class OffreService {
       for (const optionAvantage of option.avantages) {
         const avantage = optionAvantage.avantage;
         
-        // Si l'avantage est gratuit, utiliser la valeur de la liaison
+        // Si l'avantage est gratuit, ajouter sa valeur à la somme
         if (avantage.isGratuit) {
-          sommeTraficGratuit += Number(optionAvantage.valeur || 0);
+          sommeTraficGratuit += Number(avantage.valeur || 0);
         }
       }
     }

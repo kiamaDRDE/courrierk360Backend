@@ -135,16 +135,14 @@ export class TraficService {
 
     if (typeTrafic) {
       where.typeTrafic = {
-        contains: typeTrafic,
-        mode: 'insensitive'
+        contains: typeTrafic
       };
     }
 
     if (operateurNom) {
       where.operateur = {
         nom: {
-          contains: operateurNom,
-          mode: 'insensitive'
+          contains: operateurNom
         }
       };
     }
