@@ -41,10 +41,10 @@ export class OptionService {
       consommationsMoyennes,
     } = createOptionDto;
 
-    // Vérifier que l'offre existe
+    // Vérifier que l'offre existe et récupérer son année
     const existingOffre = await this.prisma.offre.findUnique({
       where: { id: offreId },
-      select: { id: true, nom: true },
+      select: { id: true, nom: true, annee: true },
     });
 
     if (!existingOffre) {
@@ -130,7 +130,7 @@ export class OptionService {
           fraisSouscription,
           tarifMinuteOnNet,
           tarifMinuteOffNet,
-          annee: annee ?? new Date().getFullYear(), // Valeur par défaut à l'année courante si non fournie
+          annee: annee ?? existingOffre.annee, // Utiliser l'année de l'offre si non fournie
           trafic: trafic ?? 0, // Valeur par défaut à 0 si non fournie
         },
       });
