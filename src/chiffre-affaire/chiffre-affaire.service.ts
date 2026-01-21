@@ -101,6 +101,7 @@ export class ChiffreAffaireService {
       annee, 
       operateurNom, 
       serviceId, 
+      search,
       chiffreAffaireMin,
       chiffreAffaireMax,
       sortBy = 'annee',
@@ -118,11 +119,50 @@ export class ChiffreAffaireService {
       where.annee = annee;
     }
 
+    // Recherche globale
+    if (search) {
+      const searchTerm = search.trim();
+      const searchNumber = parseFloat(searchTerm);
+      const isNumeric = !isNaN(searchNumber);
+
+      where.OR = [
+        // Recherche dans le nom de l'opérateur
+        {
+          operateur: {
+            nom: {
+              contains: searchTerm
+            }
+          }
+        },
+        // Recherche dans le code de l'opérateur
+        {
+          operateur: {
+            code: {
+              contains: searchTerm
+            }
+          }
+        },
+        // Recherche dans la description
+        {
+          description: {
+            contains: searchTerm
+          }
+        }
+      ];
+
+      // Si c'est numérique, rechercher aussi dans l'année et le montant
+      if (isNumeric) {
+        where.OR.push(
+          { annee: Math.floor(searchNumber) },
+          { chiffreAffaire: searchNumber }
+        );
+      }
+    }
+
     if (operateurNom) {
       where.operateur = {
         nom: {
-          contains: operateurNom,
-          mode: 'insensitive'
+          contains: operateurNom
         }
       };
     }

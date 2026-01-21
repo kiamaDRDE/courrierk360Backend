@@ -136,7 +136,7 @@ export class TarifInterconnexionService {
   }
 
   async findAll(query: QueryTarifInterconnexionDto) {
-    const { operateurId, annee, typeTarif, service, page = 1, limit = 10 } = query;
+    const { operateurId, annee, typeTarif, service, search, page = 1, limit = 10 } = query;
 
     const where: any = {};
 
@@ -150,6 +150,55 @@ export class TarifInterconnexionService {
 
     if (typeTarif) {
       where.typeTarif = typeTarif;
+    }
+
+    // Recherche globale
+    if (search) {
+      const searchTerm = search.trim();
+      const searchNumber = parseFloat(searchTerm);
+      const isNumeric = !isNaN(searchNumber);
+
+      where.OR = [
+        // Recherche dans le nom de l'opérateur
+        {
+          operateur: {
+            nom: {
+              contains: searchTerm
+            }
+          }
+        },
+        // Recherche dans le code de l'opérateur
+        {
+          operateur: {
+            code: {
+              contains: searchTerm
+            }
+          }
+        },
+        // Recherche dans le type de tarif
+        {
+          typeTarif: {
+            contains: searchTerm
+          }
+        },
+        // Recherche dans la description
+        {
+          description: {
+            contains: searchTerm
+          }
+        }
+      ];
+
+      // Si c'est numérique, rechercher aussi dans les tarifs et l'année
+      if (isNumeric) {
+        where.OR.push(
+          { annee: Math.floor(searchNumber) },
+          { tarifOffNetHeureCreuse: searchNumber },
+          { tarifOffNetHeurePleine: searchNumber },
+          { tarifOnNetHeureCreuse: searchNumber },
+          { tarifOnNetHeurePleine: searchNumber }
+        );
+      }
     }
 
     if (service) {

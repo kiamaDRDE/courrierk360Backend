@@ -63,6 +63,14 @@ export class ChiffreAffaireQueryDto {
   serviceId?: number;
 
   @ApiPropertyOptional({ 
+    description: 'Recherche globale dans tous les champs (opérateur, année, montant, description)',
+    example: 'MTN'
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({ 
     description: 'Montant minimum du chiffre d\'affaire',
     example: 50000
   })

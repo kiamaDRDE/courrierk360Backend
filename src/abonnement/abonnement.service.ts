@@ -105,16 +105,14 @@ export class AbonnementService {
 
     if (typeAbonnement) {
       where.typeAbonnement = {
-        contains: typeAbonnement,
-        mode: 'insensitive'
+        contains: typeAbonnement
       };
     }
 
     if (operateurNom) {
       where.operateur = {
         nom: {
-          contains: operateurNom,
-          mode: 'insensitive'
+          contains: operateurNom
         }
       };
     }

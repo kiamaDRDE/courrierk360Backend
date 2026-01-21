@@ -43,6 +43,15 @@ export class QueryTarifInterconnexionDto {
   service?: string;
 
   @ApiProperty({
+    description: 'Recherche globale dans tous les champs (opérateur, type, année, tarifs, description)',
+    example: 'MTN',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiProperty({
     description: 'Numéro de page',
     example: 1,
     default: 1,
