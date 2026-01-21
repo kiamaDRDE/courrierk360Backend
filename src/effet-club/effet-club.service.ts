@@ -274,9 +274,20 @@ export class EffetClubService {
     let tfOrRmOnnet: number;
 
     if (useRevenusMoyens) {
-      // 🔹 Utiliser 0 si les revenus moyens ne sont pas calculés
-      tfOrRmOffnet = offre.revenuMoyenOffNet ? Number(offre.revenuMoyenOffNet) : 0;
-      tfOrRmOnnet = offre.revenuMoyenOnNet ? Number(offre.revenuMoyenOnNet) : 0;
+      // Calculer le revenu moyen OffNet
+      const rmOffnet = await this.calculerRevenuMoyen(operateurId, offreId, 'OFFNET');
+      // Calculer le revenu moyen OnNet
+      const rmOnnet = await this.calculerRevenuMoyen(operateurId, offreId, 'ONNET');
+      // Stocker dans l'offre
+      await this.prisma.offre.update({
+        where: { id: offreId },
+        data: {
+          revenuMoyenOffNet: rmOffnet,
+          revenuMoyenOnNet: rmOnnet,
+        },
+      });
+      tfOrRmOffnet = rmOffnet;
+      tfOrRmOnnet = rmOnnet;
     } else {
       // 🔹 Utiliser 0 si l'offre n'a pas d'options
       if (!offre.options || offre.options.length === 0) {
