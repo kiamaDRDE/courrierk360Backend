@@ -503,6 +503,22 @@ export class CiseauTarifaireService {
       });
     }
 
+    // Récupérer les tarifs de base et d'interconnexion pour l'opérateur et l'année
+    const tarifs = await this.prisma.tarifInterconnexion.findMany({
+      where: {
+        operateurId: offre.operateurId,
+        annee: offre.annee
+      }
+    });
+
+    const tarifBase = tarifs.find(t => t.typeTarif === 'Base');
+    const tarifInterconnexion = tarifs.find(t => t.typeTarif === 'Interconnexion');
+
+    const tarifBaseOffNetHC = tarifBase?.tarifOffNetHeureCreuse ?? 0;
+    const tarifBaseOffNetHP = tarifBase?.tarifOffNetHeurePleine ?? 0;
+    const tarifIntercoOffNetHC = tarifInterconnexion?.tarifOffNetHeureCreuse ?? 0;
+    const tarifIntercoOffNetHP = tarifInterconnexion?.tarifOffNetHeurePleine ?? 0;
+
     return {
       offre: {
         id: offre.id,
@@ -526,12 +542,12 @@ export class CiseauTarifaireService {
       // Bloc supplémentaire pour les tarifs demandés
       tarifs: {
         base: {
-          offnetHC: ciseauTarifaire.differenceOffnetHC.plus(ciseauTarifaire.cout).plus(0).toNumber(), // tarifBaseOffNetHC
-          offnetHP: ciseauTarifaire.differenceOffnetHP.plus(ciseauTarifaire.cout).plus(0).toNumber(), // tarifBaseOffNetHP
+          offnetHC: Number(tarifBaseOffNetHC), // Tarif Base OffNet HC
+          offnetHP: Number(tarifBaseOffNetHP)  // Tarif Base OffNet HP
         },
         interconnexion: {
-          offnetHC: ciseauTarifaire.differenceOffnetHC.negated().plus(ciseauTarifaire.differenceOffnetHC.plus(ciseauTarifaire.cout).plus(0)).toNumber(), // tarifIntercoOffNetHC
-          offnetHP: ciseauTarifaire.differenceOffnetHP.negated().plus(ciseauTarifaire.differenceOffnetHP.plus(ciseauTarifaire.cout).plus(0)).toNumber(), // tarifIntercoOffNetHP
+          offnetHC: Number(tarifIntercoOffNetHC), // Tarif Interconnexion OffNet HC
+          offnetHP: Number(tarifIntercoOffNetHP)  // Tarif Interconnexion OffNet HP
         }
       },
     };
