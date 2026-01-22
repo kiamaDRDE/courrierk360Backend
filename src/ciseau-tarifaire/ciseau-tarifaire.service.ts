@@ -75,11 +75,9 @@ export class CiseauTarifaireService {
     }
 
     // Déterminer si c'est un ciseau tarifaire pour chaque différence OffNet
-    // Si differenceOffnetHC >= 0, alors isCiseauOffHC = false, sinon true
-    const isCiseauOffHC = differenceOffnetHC.lessThan(0);
-    
-    // Si differenceOffnetHP >= 0, alors isCiseauOffHP = false, sinon true
-    const isCiseauOffHP = differenceOffnetHP.lessThan(0);
+    // Si difference >= cout, alors isCiseau = false, sinon true
+    const isCiseauOffHC = differenceOffnetHC.greaterThanOrEqualTo(cout) ? false : true;
+    const isCiseauOffHP = differenceOffnetHP.greaterThanOrEqualTo(cout) ? false : true;
 
     // Créer un nouveau ciseau tarifaire pour cet opérateur et cette année
     const created = await this.prisma.ciseauTarifaire.create({
@@ -176,11 +174,9 @@ export class CiseauTarifaireService {
     }
 
     // Déterminer si c'est un ciseau tarifaire pour chaque différence
-    // Si DiffTariffacialOffnetHC >= 0, alors isCiseauOffTarifHC = false, sinon true
-    const isCiseauOffTarifHC = DiffTariffacialOffnetHC.lessThan(0);
-    
-    // Si DiffTariffacialOffnetHP >= 0, alors isCiseauOffTarifHP = false, sinon true
-    const isCiseauOffTarifHP = DiffTariffacialOffnetHP.lessThan(0);
+    // Si différence >= cout, alors isCiseau = false, sinon true
+    const isCiseauOffTarifHC = DiffTariffacialOffnetHC.greaterThanOrEqualTo(cout) ? false : true;
+    const isCiseauOffTarifHP = DiffTariffacialOffnetHP.greaterThanOrEqualTo(cout) ? false : true;
 
     // Vérifier si l'offre a déjà un ciseau tarifaire lié
     let ciseauTarifaire;
@@ -665,16 +661,16 @@ export class CiseauTarifaireService {
           cout,
           isCiseau: effetClub.isCiseauOffHC,
           resultat: effetClub.isCiseauOffHC 
-            ? `Ciseau tarifaire (${differenceOffnetHC} <= ${cout})` 
-            : `Pas de ciseau tarifaire (${differenceOffnetHC} > ${cout})`
+            ? `Ciseau tarifaire (${differenceOffnetHC} < ${cout})` 
+            : `Pas de ciseau tarifaire (${differenceOffnetHC} >= ${cout})`
         },
         offnetHP: {
           difference: differenceOffnetHP,
           cout,
           isCiseau: effetClub.isCiseauOffHP,
           resultat: effetClub.isCiseauOffHP 
-            ? `Ciseau tarifaire (${differenceOffnetHP} <= ${cout})` 
-            : `Pas de ciseau tarifaire (${differenceOffnetHP} > ${cout})`
+            ? `Ciseau tarifaire (${differenceOffnetHP} < ${cout})` 
+            : `Pas de ciseau tarifaire (${differenceOffnetHP} >= ${cout})`
         }
       },
       formules: {
@@ -714,8 +710,8 @@ export class CiseauTarifaireService {
           cout,
           isCiseau: effetClub.isCiseauOffTarifHC,
           resultat: effetClub.isCiseauOffTarifHC 
-            ? `Ciseau tarifaire (${DiffTariffacialOffnetHC} <= ${cout})` 
-            : `Pas de ciseau tarifaire (${DiffTariffacialOffnetHC} > ${cout})`
+            ? `Ciseau tarifaire (${DiffTariffacialOffnetHC} < ${cout})` 
+            : `Pas de ciseau tarifaire (${DiffTariffacialOffnetHC} >= ${cout})`
         },
         offnetTarifHP: {
           tariffacial: tariffacialOffnet,
@@ -723,8 +719,8 @@ export class CiseauTarifaireService {
           cout,
           isCiseau: effetClub.isCiseauOffTarifHP,
           resultat: effetClub.isCiseauOffTarifHP 
-            ? `Ciseau tarifaire (${DiffTariffacialOffnetHP} <= ${cout})` 
-            : `Pas de ciseau tarifaire (${DiffTariffacialOffnetHP} > ${cout})`
+            ? `Ciseau tarifaire (${DiffTariffacialOffnetHP} < ${cout})` 
+            : `Pas de ciseau tarifaire (${DiffTariffacialOffnetHP} >= ${cout})`
         }
       },
       formules: {
