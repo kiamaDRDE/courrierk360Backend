@@ -89,6 +89,16 @@ export class CiseauTarifaireController {
                 differenceOnnetHC: 'Tarif Base OnNet HC - Tarif Interconnexion OnNet HC = 12.00',
                 differenceOnnetHP: 'Tarif Base OnNet HP - Tarif Interconnexion OnNet HP = 14.50'
               },
+              tarifs: {
+                base: {
+                  offnetHC: 25.5, // Tarif Base OffNet HC
+                  offnetHP: 28.0  // Tarif Base OffNet HP
+                },
+                interconnexion: {
+                  offnetHC: 10.0, // Tarif Interconnexion OffNet HC
+                  offnetHP: 12.0  // Tarif Interconnexion OffNet HP
+                }
+              },
               offres: [],
               createdAt: '2026-01-19T10:30:00.000Z',
               updatedAt: '2026-01-19T10:30:00.000Z'
@@ -169,6 +179,11 @@ export class CiseauTarifaireController {
               id: 1,
               annee: 2024,
               cout: '2250000.00',
+              tarifs: {
+                facialOffnet: '50.00',
+                interconnexionOffnetHC: '14.50',
+                interconnexionOffnetHP: '18.00'
+              },
               tariffacialOffnet: '50.00',
               DiffTariffacialOffnetHC: '35.50',
               DiffTariffacialOffnetHP: '32.00',
@@ -304,6 +319,10 @@ export class CiseauTarifaireController {
               offres: [],
               createdAt: '2026-01-20T10:30:00.000Z',
               updatedAt: '2026-01-20T10:30:00.000Z'
+            },
+            tarifs: {
+              interconnexionOffnetHC: 25.5,
+              interconnexionOffnetHP: 30.75
             },
             resultats: {
               isRevenuOffHC: true,

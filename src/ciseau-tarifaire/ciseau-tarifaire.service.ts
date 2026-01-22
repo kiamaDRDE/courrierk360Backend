@@ -241,7 +241,17 @@ export class CiseauTarifaireService {
         messageOffTarifHP: ciseauTarifaire.isCiseauOffTarifHP 
           ? 'Ciseau tarifaire détecté pour OffNet HP (tarif facial)' 
           : 'Pas de ciseau tarifaire pour OffNet HP (tarif facial)'
-      }
+      },
+      // Bloc supplémentaire pour les tarifs demandés
+      tarifs: {
+        facial: {
+          offnet: Number(tariffacialOffnet), // Tarif Facial OffNet
+        },
+        interconnexion: {
+          offnetHC: Number(tarifIntercoOffNetHC), // Tarif Interconnexion OffNet HC
+          offnetHP: Number(tarifIntercoOffNetHP) // Tarif Interconnexion OffNet HP
+        }
+      },
     };
   }
 
@@ -443,6 +453,10 @@ export class CiseauTarifaireService {
         sommeTrafic: Math.round(sommeTrafic * 100) / 100
       },
       ciseauTarifaire: this.mapToResponseDtoRevenuMoyen(ciseauTarifaire),
+      tarifs: {
+        interconnexionOffnetHC: Number(tarifIntercoOffNetHC),
+        interconnexionOffnetHP: Number(tarifIntercoOffNetHP)
+      },
       resultats: {
         isRevenuOffHC: ciseauTarifaire.isRevenuOffHC,
         isRevenuOffHP: ciseauTarifaire.isRevenuOffHP,
@@ -508,7 +522,18 @@ export class CiseauTarifaireService {
         messageOffHP: ciseauTarifaire.isCiseauOffHP 
           ? 'Ciseau tarifaire détecté pour OffNet HP' 
           : 'Pas de ciseau tarifaire pour OffNet HP'
-      }
+      },
+      // Bloc supplémentaire pour les tarifs demandés
+      tarifs: {
+        base: {
+          offnetHC: ciseauTarifaire.differenceOffnetHC.plus(ciseauTarifaire.cout).plus(0).toNumber(), // tarifBaseOffNetHC
+          offnetHP: ciseauTarifaire.differenceOffnetHP.plus(ciseauTarifaire.cout).plus(0).toNumber(), // tarifBaseOffNetHP
+        },
+        interconnexion: {
+          offnetHC: ciseauTarifaire.differenceOffnetHC.negated().plus(ciseauTarifaire.differenceOffnetHC.plus(ciseauTarifaire.cout).plus(0)).toNumber(), // tarifIntercoOffNetHC
+          offnetHP: ciseauTarifaire.differenceOffnetHP.negated().plus(ciseauTarifaire.differenceOffnetHP.plus(ciseauTarifaire.cout).plus(0)).toNumber(), // tarifIntercoOffNetHP
+        }
+      },
     };
   }
 
