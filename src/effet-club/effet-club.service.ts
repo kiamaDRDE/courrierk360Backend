@@ -1870,15 +1870,19 @@ export class EffetClubService {
       );
     }
 
+    // Si aucun tarif trouvé, utiliser des valeurs par défaut à 0
+    const tarifOffNetHeureCreuse = Number(tarifInterconnexion?.tarifOffNetHeureCreuse || 0);
+    const tarifOnNetHeureCreuse = Number(tarifInterconnexion?.tarifOnNetHeureCreuse || 0);
+    const tarifOffNetHeurePleine = Number(tarifInterconnexion?.tarifOffNetHeurePleine || 0);
+    const tarifOnNetHeurePleine = Number(tarifInterconnexion?.tarifOnNetHeurePleine || 0);
+
     // Appliquer la formule selon la période
     let difference: number;
     
     if (typeHeure === 'CREUSE') {
-      difference = Number(tarifInterconnexion.tarifOffNetHeureCreuse) - 
-      Number(tarifInterconnexion.tarifOnNetHeureCreuse);
+      difference = tarifOffNetHeureCreuse - tarifOnNetHeureCreuse;
     } else { // PLEINE
-      difference = Number(tarifInterconnexion.tarifOffNetHeurePleine) - 
-      Number(tarifInterconnexion.tarifOnNetHeurePleine);
+      difference = tarifOffNetHeurePleine - tarifOnNetHeurePleine;
     }
 
     // Arrondir à 2 décimales
@@ -1922,25 +1926,19 @@ export class EffetClubService {
       },
     });
 
-    // Vérifier qu'il y a au moins un autre opérateur
-    if (tarifsAutresOperateurs.length === 0) {
-      throw new NotFoundException(
-        `Aucun tarif d'interconnexion trouvé pour les autres opérateurs en ${annee}`
-      );
+    // Si aucun tarif trouvé, on retourne 0 directement
+    if (!tarifsAutresOperateurs || tarifsAutresOperateurs.length === 0) {
+      return 0;
     }
 
     // Calculer la somme selon le type d'heure
-    let sommeTarifs = 0;
-    
-    if (typeHeure === 'CREUSE') {
-      sommeTarifs = tarifsAutresOperateurs.reduce((sum, tarif) => {
+    const sommeTarifs = tarifsAutresOperateurs.reduce((sum, tarif) => {
+      if (typeHeure === 'CREUSE') {
         return sum + Number(tarif.tarifOffNetHeureCreuse || 0);
-      }, 0);
-    } else { // PLEINE
-      sommeTarifs = tarifsAutresOperateurs.reduce((sum, tarif) => {
+      } else { // PLEINE
         return sum + Number(tarif.tarifOffNetHeurePleine || 0);
-      }, 0);
-    }
+      }
+    }, 0);
 
     // Calculer la moyenne
     const nombreAutresOperateurs = tarifsAutresOperateurs.length;
@@ -1949,6 +1947,7 @@ export class EffetClubService {
     // Arrondir à 2 décimales
     return Math.round(taMoyen * 100) / 100;
   }
+
 
   /**
    * Récupère le tarif d'interconnexion de l'opérateur sélectionné
@@ -1981,25 +1980,21 @@ export class EffetClubService {
       },
     });
 
-    // Vérifier que le tarif existe
+    // Si aucun tarif trouvé, retourner 0
     if (!tarifInterconnexion) {
-      throw new NotFoundException(
-        `Aucun tarif d'interconnexion trouvé pour l'opérateur ${operateurId} en ${annee}`
-      );
+      return 0;
     }
 
     // Retourner la valeur selon le type d'heure
-    let tarif: number;
-    
-    if (typeHeure === 'CREUSE') {
-      tarif = Number(tarifInterconnexion.tarifOffNetHeureCreuse || 0);
-    } else { // PLEINE
-      tarif = Number(tarifInterconnexion.tarifOffNetHeurePleine || 0);
-    }
+    const tarif =
+      typeHeure === 'CREUSE'
+        ? Number(tarifInterconnexion.tarifOffNetHeureCreuse || 0)
+        : Number(tarifInterconnexion.tarifOffNetHeurePleine || 0);
 
     // Arrondir à 2 décimales
     return Math.round(tarif * 100) / 100;
   }
+
 
   /**
    * Calcule la différence entre le tarif moyen des autres opérateurs
