@@ -188,71 +188,16 @@ export class EffetClubController {
         title: 'Calcul détaillé de l\'effet club',
         message: 'Toutes les étapes de calcul avec données sources',
         data: {
-          parametres: {
-            operateurId: 1,
-            operateurNom: 'MTN',
             typeHeure: 'PLEINE',
             annee: 2025,
-          },
-          etape1_DifferenceBase: {
-            formule: 'tarifOffNetHeurePleine - tarifOnNetHeurePleine',
-            donneesSource: {
-              tarifId: 123,
-              typeTarif: 'Base',
-              annee: 2025,
-              operateur: { id: 1, nom: 'MTN' },
-              tarifOffNet: 50.0,
-              tarifOnNet: 30.0,
-              tousLesTarifs: {
-                tarifOffNetHeureCreuse: 40.0,
-                tarifOffNetHeurePleine: 50.0,
-                tarifOnNetHeureCreuse: 25.0,
-                tarifOnNetHeurePleine: 30.0,
-              },
-            },
-            calcul: '50 - 30',
-            resultat: 20.0,
-          },
-          tarifsBaseDetails: {  // <-- nouveaux champs exposés clairement
-            tarifOffNet: 50.0,
-            tarifOnNet: 30.0
-          },
-          etape2_TaMoyenAutresOperateurs: {
-            formule: 'Σ(tarifs autres opérateurs) / nombre d\'opérateurs',
-            donneesSource: {
-              nombreOperateurs: 2,
-              tarifsDetails: [
-                { operateurId: 2, operateurNom: 'Orange', tarifId: 456, valeur: 45.0, typeTarif: 'Interconnexion', annee: 2025 },
-                { operateurId: 3, operateurNom: 'Camtel', tarifId: 789, valeur: 48.0, typeTarif: 'Interconnexion', annee: 2025 },
-              ],
-              sommeTarifs: 93.0,
-            },
-            calcul: '93 / 2',
-            resultat: 46.5,
-          },
-          etape3_TarifOperateur: {
-            formule: 'tarifOffNetHeurePleine',
-            donneesSource: {
-              tarifId: 124,
-              typeTarif: 'Interconnexion',
-              annee: 2025,
-              operateur: { id: 1, nom: 'MTN' },
-              tousLesTarifs: { tarifOffNetHeureCreuse: 42.0, tarifOffNetHeurePleine: 52.0 },
-            },
-            resultat: 52.0,
-          },
-          etape4_DifferenceTaMoyenTaOperateur: {
-            formule: 'TaMoyen - TaOpérateur',
-            calcul: '46.5 - 52',
-            resultat: -5.5,
-          },
-          resultatFinal: {
-            formule: 'Effet Club = DifferenceBase - (TaMoyen - TaOpérateur)',
-            calcul: '20 - (-5.5)',
-            effetClubValeur: 25.5,
+            differenceBase: 20.0,
+            taMoyenAutresOperateurs: 46.5,
+            tarifOperateur: 52.0,
+            differenceTaMoyenTaOperateur: -5.5,
             isEffetClub: true,
-            resultat: 'EFFET DE CLUB',
-            regleDetermination: 'Si DifferenceBase > (TaMoyen - TaOpérateur) alors "EFFET DE CLUB"',
+            tarifsBaseDetails:{
+              tarifOffNet: 50.0,
+              tarifOnNet: 30.0
           },
         },
       },
