@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsOptional, IsString, IsNumber, Min } from 'class-validator';
+import { TypeHeure } from '../effet-club.service';
 
 export class EffetClubFilterDto {
   @ApiProperty({
@@ -109,4 +110,6 @@ export class EffetClubFilterDto {
   @IsOptional()
   @IsString({ message: 'L\'ordre de tri doit être une chaîne de caractères' })
   sortOrder?: string;
+
+  
 }

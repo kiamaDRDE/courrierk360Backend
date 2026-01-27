@@ -1840,4 +1840,261 @@ export class EffetClubService {
     // Arrondir à 2 décimales
     return Math.round(revenuMoyen * 100) / 100;
   }
+
+//////////////////////////////////////////////////////////****************************************** */
+
+  /*****calcul de l'effet de club selon le cas 1 27-01-2026 */
+/**
+ * Calcule la différence tarifaire basée sur le tarif de base
+ * Formule: 
+ * - Si HC: différence = tarifOffNetHeureCreuse - tarifOnNetHeureCreuse
+ * - Si HP: différence = tarifOffNetHeurePleine - tarifOnNetHeurePleine
+ */
+  async calculerDifferenceTarifaireBase(
+    operateurId: number,
+    typeHeure: TypeHeure,
+    annee: number,
+  ): Promise<number> {
+    // Récupérer le tarif d'interconnexion de type "Base" pour l'opérateur
+    const tarifInterconnexion = await this.prisma.tarifInterconnexion.findFirst({
+      where: {
+        operateurId,
+        annee,
+        typeTarif: TYPE_TARIF_MAP.BASE, // "Base"
+      },
+    });
+
+    if (!tarifInterconnexion) {
+      throw new NotFoundException(
+        `Aucun tarif de base trouvé pour l'opérateur ${operateurId} en ${annee}`
+      );
+    }
+
+    // Appliquer la formule selon la période
+    let difference: number;
+    
+    if (typeHeure === 'CREUSE') {
+      difference = Number(tarifInterconnexion.tarifOffNetHeureCreuse) - 
+      Number(tarifInterconnexion.tarifOnNetHeureCreuse);
+    } else { // PLEINE
+      difference = Number(tarifInterconnexion.tarifOffNetHeurePleine) - 
+      Number(tarifInterconnexion.tarifOnNetHeurePleine);
+    }
+
+    // Arrondir à 2 décimales
+    return Math.round(difference * 100) / 100;
+  }
+
+  /**
+   * Calcule le tarif moyen d'interconnexion (TaMoyen) des autres opérateurs
+   * (type "Interconnexion", en excluant l'opérateur sélectionné)
+   * 
+   * @param operateurId - ID de l'opérateur à exclure du calcul
+   * @param typeHeure - Type d'heure ('CREUSE' ou 'PLEINE')
+   * @param annee - Année du tarif
+   * @returns Promise<number> - Le tarif moyen calculé
+   * 
+   * LOGIQUE APPLIQUÉE :
+   * - Récupère tous les tarifs d'interconnexion de type "Interconnexion"
+   * - Exclut l'opérateur sélectionné
+   * - Si HC: TaMoyen = Σ(tarifOffNetHeureCreuse) / nombre d'autres opérateurs
+   * - Si HP: TaMoyen = Σ(tarifOffNetHeurePleine) / nombre d'autres opérateurs
+   */
+  async calculerTaMoyenAutresOperateurs(
+    operateurId: number,
+    typeHeure: TypeHeure,
+    annee: number,
+  ): Promise<number> {
+    // Récupérer tous les tarifs d'interconnexion de type "Interconnexion"
+    // en excluant l'opérateur sélectionné
+    const tarifsAutresOperateurs = await this.prisma.tarifInterconnexion.findMany({
+      where: {
+        operateurId: {
+          not: operateurId, // Exclure l'opérateur sélectionné
+        },
+        annee,
+        typeTarif: TYPE_TARIF_MAP.INTERCONNEXION, // "Interconnexion"
+      },
+      select: {
+        tarifOffNetHeureCreuse: true,
+        tarifOffNetHeurePleine: true,
+        operateurId: true,
+      },
+    });
+
+    // Vérifier qu'il y a au moins un autre opérateur
+    if (tarifsAutresOperateurs.length === 0) {
+      throw new NotFoundException(
+        `Aucun tarif d'interconnexion trouvé pour les autres opérateurs en ${annee}`
+      );
+    }
+
+    // Calculer la somme selon le type d'heure
+    let sommeTarifs = 0;
+    
+    if (typeHeure === 'CREUSE') {
+      sommeTarifs = tarifsAutresOperateurs.reduce((sum, tarif) => {
+        return sum + Number(tarif.tarifOffNetHeureCreuse || 0);
+      }, 0);
+    } else { // PLEINE
+      sommeTarifs = tarifsAutresOperateurs.reduce((sum, tarif) => {
+        return sum + Number(tarif.tarifOffNetHeurePleine || 0);
+      }, 0);
+    }
+
+    // Calculer la moyenne
+    const nombreAutresOperateurs = tarifsAutresOperateurs.length;
+    const taMoyen = sommeTarifs / nombreAutresOperateurs;
+
+    // Arrondir à 2 décimales
+    return Math.round(taMoyen * 100) / 100;
+  }
+
+  /**
+   * Récupère le tarif d'interconnexion de l'opérateur sélectionné
+   * selon le type d'heure choisi
+   * 
+   * @param operateurId - ID de l'opérateur
+   * @param typeHeure - Type d'heure ('CREUSE' ou 'PLEINE')
+   * @param annee - Année du tarif
+   * @returns Promise<number> - La valeur du tarif
+   * 
+   * LOGIQUE APPLIQUÉE :
+   * - Si HC: retourne tarifOffNetHeureCreuse
+   * - Si HP: retourne tarifOffNetHeurePleine
+   */
+  async getTarifOperateur(
+    operateurId: number,
+    typeHeure: TypeHeure,
+    annee: number,
+  ): Promise<number> {
+    // Récupérer le tarif d'interconnexion de type "Interconnexion" pour l'opérateur
+    const tarifInterconnexion = await this.prisma.tarifInterconnexion.findFirst({
+      where: {
+        operateurId,
+        annee,
+        typeTarif: TYPE_TARIF_MAP.INTERCONNEXION, // "Interconnexion"
+      },
+      select: {
+        tarifOffNetHeureCreuse: true,
+        tarifOffNetHeurePleine: true,
+      },
+    });
+
+    // Vérifier que le tarif existe
+    if (!tarifInterconnexion) {
+      throw new NotFoundException(
+        `Aucun tarif d'interconnexion trouvé pour l'opérateur ${operateurId} en ${annee}`
+      );
+    }
+
+    // Retourner la valeur selon le type d'heure
+    let tarif: number;
+    
+    if (typeHeure === 'CREUSE') {
+      tarif = Number(tarifInterconnexion.tarifOffNetHeureCreuse || 0);
+    } else { // PLEINE
+      tarif = Number(tarifInterconnexion.tarifOffNetHeurePleine || 0);
+    }
+
+    // Arrondir à 2 décimales
+    return Math.round(tarif * 100) / 100;
+  }
+
+  /**
+   * Calcule la différence entre le tarif moyen des autres opérateurs
+   * et le tarif de l'opérateur sélectionné
+   * 
+   * @param operateurId - ID de l'opérateur
+   * @param typeHeure - Type d'heure ('CREUSE' ou 'PLEINE')
+   * @param annee - Année du tarif
+   * @returns Promise<number> - La différence calculée
+   * 
+   * LOGIQUE APPLIQUÉE :
+   * - Formule: Différence = TaMoyen - TaOpérateur
+   * - Si HC: Différence = TaMoyenHC(autres opérateurs) - TaOpérateurHC
+   * - Si HP: Différence = TaMoyenHP(autres opérateurs) - TaOpérateurHP
+   */
+  async calculerDifferenceTaMoyenTaOperateur(
+    operateurId: number,
+    typeHeure: TypeHeure,
+    annee: number,
+  ): Promise<number> {
+    // Récupérer le tarif moyen des autres opérateurs
+    const taMoyen = await this.calculerTaMoyenAutresOperateurs(
+      operateurId,
+      typeHeure,
+      annee,
+    );
+
+    // Récupérer le tarif de l'opérateur sélectionné
+    const taOperateur = await this.getTarifOperateur(
+      operateurId,
+      typeHeure,
+      annee,
+    );
+
+    // Calculer la différence
+    const difference = taMoyen - taOperateur;
+
+    // Arrondir à 2 décimales
+    return Math.round(difference * 100) / 100;
+  }
+
+  /**
+   * Calcule l'effet club et retourne toutes les valeurs calculées
+   * selon la période choisie (Heure Creuse ou Heure Pleine)
+   */
+  async calculerResultatEffetClub(
+    operateurId: number,
+    typeHeure: TypeHeure,
+    annee: number,
+  ): Promise<{
+    typeHeure: TypeHeure;
+    differenceBase: number;
+    taMoyenAutresOperateurs: number;
+    tarifOperateur: number;
+    differenceTaMoyenTaOperateur: number;
+    isEffetClub: boolean;
+  }> {
+    // 1️⃣ Différence tarifaire basée sur le tarif de base
+    const differenceBase = await this.calculerDifferenceTarifaireBase(
+      operateurId,
+      typeHeure,
+      annee,
+    );
+
+    // 2️⃣ Tarif moyen des autres opérateurs
+    const taMoyenAutresOperateurs = await this.calculerTaMoyenAutresOperateurs(
+      operateurId,
+      typeHeure,
+      annee,
+    );
+
+    // 3️⃣ Tarif de l'opérateur sélectionné
+    const tarifOperateur = await this.getTarifOperateur(
+      operateurId,
+      typeHeure,
+      annee,
+    );
+
+    // 4️⃣ Différence entre TaMoyen et tarif opérateur
+    const differenceTaMoyenTaOperateur =
+      taMoyenAutresOperateurs - tarifOperateur;
+
+    // 5️⃣ Application de la règle Effet Club
+    const isEffetClub = differenceBase > differenceTaMoyenTaOperateur;
+
+    // 6️⃣ Retourner toutes les données sans exception
+    return {
+      typeHeure,
+      differenceBase: Math.round(differenceBase * 100) / 100,
+      taMoyenAutresOperateurs: Math.round(taMoyenAutresOperateurs * 100) / 100,
+      tarifOperateur: Math.round(tarifOperateur * 100) / 100,
+      differenceTaMoyenTaOperateur:
+        Math.round(differenceTaMoyenTaOperateur * 100) / 100,
+      isEffetClub,
+    };
+  }
+
 }

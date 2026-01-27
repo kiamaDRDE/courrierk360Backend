@@ -439,4 +439,175 @@ export class EffetClubController {
   async getAllEffetsClubComplete(@Query() query: EffetClubFilterDto) {
     return this.effetClubService.getAllEffetsClubComplete(query);
   }
+
+  /**
+   * Calcule l'effet club avec tous les détails de calcul
+   */
+  @Get('calculer-avec-details')
+  @ApiOperation({
+    summary: 'Calcule l\'effet club avec tous les détails des données sources',
+    description: `Retourne un calcul détaillé de l'effet club avec toutes les données intermédiaires :
+    
+**ÉTAPES DU CALCUL :**
+
+1️⃣ **Différence Base** : TarifOffNet - TarifOnNet (selon type heure)
+   - Retourne les tarifs de base utilisés (OffNet et OnNet)
+   - Affiche la formule et le calcul appliqué
+
+2️⃣ **Tarif Moyen Autres Opérateurs** : Moyenne des tarifs d'interconnexion
+   - Liste tous les tarifs des autres opérateurs
+   - Détaille le calcul de la moyenne
+   
+3️⃣ **Tarif Opérateur** : Tarif d'interconnexion de l'opérateur sélectionné
+   - Retourne le tarif utilisé selon la période (HC/HP)
+   
+4️⃣ **Différence TaMoyen - TaOpérateur**
+   - Calcul de la différence entre moyenne marché et opérateur
+   
+5️⃣ **Résultat Final** : Effet Club = DifferenceBase - (TaMoyen - TaOpérateur)
+   - Détermine si "EFFET DE CLUB" ou "PAS D'EFFET DE CLUB"
+
+**UTILITÉ :** Permet d'auditer et comprendre chaque étape du calcul avec les données sources`,
+  })
+  @ApiQuery({
+    name: 'operateurId',
+    description: 'ID de l\'opérateur',
+    type: Number,
+    required: true,
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'typeHeure',
+    description: 'Période tarifaire',
+    enum: ['CREUSE', 'PLEINE'],
+    required: true,
+    example: 'PLEINE',
+  })
+  @ApiQuery({
+    name: 'annee',
+    description: 'Année de référence',
+    type: Number,
+    required: true,
+    example: 2025,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Calcul détaillé retourné avec succès',
+    schema: {
+      example: {
+        success: true,
+        statusCode: 201,
+        code: 'success',
+        title: 'Calcul détaillé de l\'effet club',
+        message: 'Toutes les étapes de calcul avec données sources',
+        data: {
+          parametres: {
+            operateurId: 1,
+            operateurNom: 'MTN',
+            typeHeure: 'PLEINE',
+            annee: 2025,
+          },
+          etape1_DifferenceBase: {
+            formule: 'tarifOffNetHeurePleine - tarifOnNetHeurePleine',
+            donneesSource: {
+              tarifId: 123,
+              typeTarif: 'Base',
+              annee: 2025,
+              operateur: {
+                id: 1,
+                nom: 'MTN',
+              },
+              tarifOffNet: 50.0,
+              tarifOnNet: 30.0,
+              tousLesTarifs: {
+                tarifOffNetHeureCreuse: 40.0,
+                tarifOffNetHeurePleine: 50.0,
+                tarifOnNetHeureCreuse: 25.0,
+                tarifOnNetHeurePleine: 30.0,
+              },
+            },
+            calcul: '50 - 30',
+            resultat: 20.0,
+          },
+          etape2_TaMoyenAutresOperateurs: {
+            formule: 'Σ(tarifs autres opérateurs) / nombre d\'opérateurs',
+            donneesSource: {
+              nombreOperateurs: 2,
+              tarifsDetails: [
+                {
+                  operateurId: 2,
+                  operateurNom: 'Orange',
+                  tarifId: 456,
+                  valeur: 45.0,
+                  typeTarif: 'Interconnexion',
+                  annee: 2025,
+                },
+                {
+                  operateurId: 3,
+                  operateurNom: 'Camtel',
+                  tarifId: 789,
+                  valeur: 48.0,
+                  typeTarif: 'Interconnexion',
+                  annee: 2025,
+                },
+              ],
+              sommeTarifs: 93.0,
+            },
+            calcul: '93 / 2',
+            resultat: 46.5,
+          },
+          etape3_TarifOperateur: {
+            formule: 'tarifOffNetHeurePleine',
+            donneesSource: {
+              tarifId: 124,
+              typeTarif: 'Interconnexion',
+              annee: 2025,
+              operateur: {
+                id: 1,
+                nom: 'MTN',
+              },
+              tousLesTarifs: {
+                tarifOffNetHeureCreuse: 42.0,
+                tarifOffNetHeurePleine: 52.0,
+              },
+            },
+            resultat: 52.0,
+          },
+          etape4_DifferenceTaMoyenTaOperateur: {
+            formule: 'TaMoyen - TaOpérateur',
+            calcul: '46.5 - 52',
+            resultat: -5.5,
+          },
+          resultatFinal: {
+            formule: 'Effet Club = DifferenceBase - (TaMoyen - TaOpérateur)',
+            calcul: '20 - (-5.5)',
+            effetClubValeur: 25.5,
+            isEffetClub: true,
+            resultat: 'EFFET DE CLUB',
+            regleDetermination: 'Si DifferenceBase > (TaMoyen - TaOpérateur) alors "EFFET DE CLUB"',
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Paramètres invalides ou manquants',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Opérateur ou tarifs introuvables',
+  })
+  async calculerEffetClubAvecDetails(
+    @Query('operateurId') operateurId: string,
+    @Query('typeHeure') typeHeure: TypeHeure,
+    @Query('annee') annee: string,
+  ) {
+    return this.effetClubService.calculerResultatEffetClub(
+      Number(operateurId),
+      typeHeure,
+      Number(annee),
+    );
+  }
+
 }
