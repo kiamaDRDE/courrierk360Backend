@@ -2051,6 +2051,7 @@ export class EffetClubService {
     tarifOperateur: number;
     differenceTaMoyenTaOperateur: number;
     isEffetClub: boolean;
+    tarifsBaseDetails: { tarifOffNet: number; tarifOnNet: number }; // <-- nouveau champ
   }> {
     // 1️⃣ Différence tarifaire basée sur le tarif de base
     const differenceBase = await this.calculerDifferenceTarifaireBase(
@@ -2058,6 +2059,23 @@ export class EffetClubService {
       typeHeure,
       annee,
     );
+
+    // Récupérer les tarifs de base pour inclure dans la réponse
+    const tarifBase = await this.prisma.tarifInterconnexion.findFirst({
+      where: {
+        operateurId,
+        annee,
+        typeTarif: TYPE_TARIF_MAP.BASE,
+      },
+    });
+
+    const tarifOffNet = typeHeure === 'CREUSE'
+      ? Number(tarifBase?.tarifOffNetHeureCreuse || 0)
+      : Number(tarifBase?.tarifOffNetHeurePleine || 0);
+
+    const tarifOnNet = typeHeure === 'CREUSE'
+      ? Number(tarifBase?.tarifOnNetHeureCreuse || 0)
+      : Number(tarifBase?.tarifOnNetHeurePleine || 0);
 
     // 2️⃣ Tarif moyen des autres opérateurs
     const taMoyenAutresOperateurs = await this.calculerTaMoyenAutresOperateurs(
@@ -2080,7 +2098,7 @@ export class EffetClubService {
     // 5️⃣ Application de la règle Effet Club
     const isEffetClub = differenceBase > differenceTaMoyenTaOperateur;
 
-    // 6️⃣ Retourner toutes les données sans exception
+    // 6️⃣ Retourner toutes les données
     return {
       typeHeure,
       differenceBase: Math.round(differenceBase * 100) / 100,
@@ -2089,7 +2107,12 @@ export class EffetClubService {
       differenceTaMoyenTaOperateur:
         Math.round(differenceTaMoyenTaOperateur * 100) / 100,
       isEffetClub,
+      tarifsBaseDetails: {
+        tarifOffNet: Math.round(tarifOffNet * 100) / 100,
+        tarifOnNet: Math.round(tarifOnNet * 100) / 100,
+      },
     };
   }
+
 
 }
