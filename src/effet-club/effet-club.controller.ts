@@ -440,7 +440,7 @@ export class EffetClubController {
     return this.effetClubService.getAllEffetsClubComplete(query);
   }
 
-  /**
+   /**
    * Calcule l'effet club avec tous les détails de calcul
    */
   @Get('calculer-avec-details')
@@ -451,7 +451,8 @@ export class EffetClubController {
 **ÉTAPES DU CALCUL :**
 
 1️⃣ **Différence Base** : TarifOffNet - TarifOnNet (selon type heure)
-   - Retourne les tarifs de base utilisés (OffNet et OnNet)
+   - Si CREUSE : retourne tarifOffNetHeureCreuse et tarifOnNetHeureCreuse
+   - Si PLEINE : retourne tarifOffNetHeurePleine et tarifOnNetHeurePleine
    - Affiche la formule et le calcul appliqué
 
 2️⃣ **Tarif Moyen Autres Opérateurs** : Moyenne des tarifs d'interconnexion
@@ -517,14 +518,12 @@ export class EffetClubController {
                 id: 1,
                 nom: 'MTN',
               },
-              tarifOffNet: 50.0,
-              tarifOnNet: 30.0,
-              tousLesTarifs: {
-                tarifOffNetHeureCreuse: 40.0,
-                tarifOffNetHeurePleine: 50.0,
-                tarifOnNetHeureCreuse: 25.0,
-                tarifOnNetHeurePleine: 30.0,
-              },
+              // 👇 Si typeHeure = 'PLEINE', retourne ces 2 champs
+              tarifOffNetHeurePleine: 50.0,
+              tarifOnNetHeurePleine: 30.0,
+              // 👇 Si typeHeure = 'CREUSE', retournerait plutôt :
+              // tarifOffNetHeureCreuse: 40.0,
+              // tarifOnNetHeureCreuse: 25.0,
             },
             calcul: '50 - 30',
             resultat: 20.0,
@@ -598,7 +597,7 @@ export class EffetClubController {
     status: 404,
     description: 'Opérateur ou tarifs introuvables',
   })
-  async calculerEffetClubAvecDetails(
+  async calculerResultatEffetClub(
     @Query('operateurId') operateurId: string,
     @Query('typeHeure') typeHeure: TypeHeure,
     @Query('annee') annee: string,
