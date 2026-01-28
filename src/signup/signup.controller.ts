@@ -120,7 +120,7 @@ export class SignupController {
   @ApiQuery({ name: 'email', required: false, description: 'Filtrer par email (recherche partielle)', example: 'jean@example.com' })
   @ApiQuery({ name: 'numero', required: false, description: 'Filtrer par numéro', example: '+237' })
   @ApiQuery({ name: 'fonction', required: false, description: 'Filtrer par fonction', example: 'Développeur' })
-  @ApiQuery({ name: 'role', required: false, description: 'Filtrer par rôle', enum: ['SUPER_ADMIN', 'ADMIN', 'USER'] })
+  @ApiQuery({ name: 'role', required: false, description: 'Filtrer par rôle', enum: ['SUPER_ADMIN', 'UTILISATEUR'] })
   @ApiQuery({ name: 'statut', required: false, description: 'Filtrer par statut', enum: ['Actif', 'Inactif'] })
   @ApiResponse({
     status: 200,
@@ -144,7 +144,7 @@ export class SignupController {
                     email: 'jean.dupont@example.com',
                     numero: '+237699999999',
                     fonction: 'Développeur',
-                    role: 'USER',
+                    role: 'UTILISATEUR',
                     statut: 'Actif',
                     createdAt: '2025-12-12T10:41:24.000Z',
                     updatedAt: '2025-12-12T10:41:24.000Z',
