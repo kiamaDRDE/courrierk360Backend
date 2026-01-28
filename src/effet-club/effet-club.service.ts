@@ -2115,4 +2115,99 @@ export class EffetClubService {
   }
 
 
+  /*****************************fin Effet Club cas 1 */
+
+  ////////////////////////////////////////********************Cas 2 calul de l'effet club selon le tarif facial */
+  async calculateOffnetOnnetDifference(
+    operateurId: number,
+    offreId: number,
+  ): Promise<{
+    tarifOffnet: number;
+    tarifOnnet: number;
+    difference: number;
+  }> {
+    const tarifOffnet = await this.calculateTF(
+      operateurId,
+      offreId,
+      'OFFNET',
+    );
+
+    const tarifOnnet = await this.calculateTF(
+      operateurId,
+      offreId,
+      'ONNET',
+    );
+
+    return {
+      tarifOffnet,
+      tarifOnnet,
+      difference: tarifOffnet - tarifOnnet,
+    };
+  }
+
+  /**
+   * Calcule l'effet club basé sur le tarif facial (TF) et retourne toutes les valeurs calculées
+   * selon la période choisie (Heure Creuse ou Heure Pleine)
+   * 
+   * @param operateurId - ID de l'opérateur
+   * @param offreId - ID de l'offre
+   * @param typeHeure - Type d'heure ('CREUSE' ou 'PLEINE')
+   * @param annee - Année du tarif
+   * @returns Objet contenant tous les calculs de l'effet club basé sur TF
+   */
+  async calculerResultatEffetClubTarifFacial(
+    operateurId: number,
+    offreId: number,
+    typeHeure: TypeHeure,
+    annee: number,
+  ): Promise<{
+    typeHeure: TypeHeure;
+    tarifOffnet: number;
+    tarifOnnet: number;
+    differenceTarifFacial: number;
+    taMoyenAutresOperateurs: number;
+    tarifOperateur: number;
+    differenceTaMoyenTaOperateur: number;
+    isEffetClub: boolean;
+  }> {
+    // 1️⃣ Calcul de la différence entre tarif facial OffNet et OnNet
+    const { tarifOffnet, tarifOnnet, difference: differenceTarifFacial } = 
+      await this.calculateOffnetOnnetDifference(operateurId, offreId);
+
+    // 2️⃣ Tarif moyen des autres opérateurs (selon le type d'heure)
+    const taMoyenAutresOperateurs = await this.calculerTaMoyenAutresOperateurs(
+      operateurId,
+      typeHeure,
+      annee,
+    );
+
+    // 3️⃣ Tarif de l'opérateur sélectionné (selon le type d'heure)
+    const tarifOperateur = await this.getTarifOperateur(
+      operateurId,
+      typeHeure,
+      annee,
+    );
+
+    // 4️⃣ Différence entre TaMoyen et tarif opérateur
+    const differenceTaMoyenTaOperateur =
+      taMoyenAutresOperateurs - tarifOperateur;
+
+    // 5️⃣ Application de la règle Effet Club
+    // La différence TF (OffNet - OnNet) reste constante quelle que soit la période
+    // Ce qui change c'est la différence TaMoyen - TaOperateur selon HC ou HP
+    const isEffetClub = differenceTarifFacial > differenceTaMoyenTaOperateur;
+
+    // 6️⃣ Retourner toutes les données
+    return {
+      typeHeure,
+      tarifOffnet: Math.round(tarifOffnet * 100) / 100,
+      tarifOnnet: Math.round(tarifOnnet * 100) / 100,
+      differenceTarifFacial: Math.round(differenceTarifFacial * 100) / 100,
+      taMoyenAutresOperateurs: Math.round(taMoyenAutresOperateurs * 100) / 100,
+      tarifOperateur: Math.round(tarifOperateur * 100) / 100,
+      differenceTaMoyenTaOperateur:
+        Math.round(differenceTaMoyenTaOperateur * 100) / 100,
+      isEffetClub,
+    };
+  }
 }

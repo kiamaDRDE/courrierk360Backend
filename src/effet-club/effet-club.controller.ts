@@ -226,5 +226,92 @@ export class EffetClubController {
     };
   }
 
+  /**
+   * Calcule l'effet club basé sur le tarif facial avec tous les détails
+   * @param operateurId - ID de l'opérateur
+   * @param offreId - ID de l'offre
+   * @param typeHeure - Type d'heure (CREUSE ou PLEINE)
+   * @param annee - Année du tarif
+   */
+  @Get('calculer-tarif-facial-avec-details')
+  @ApiOperation({ 
+    summary: 'Calcule l\'effet club basé sur le tarif facial avec détails',
+    description: 'Calcule l\'effet club en utilisant la différence entre tarif facial OffNet et OnNet (TF), et compare avec la différence entre le tarif moyen des autres opérateurs et le tarif de l\'opérateur sélectionné selon la période (HC/HP)'
+  })
+  @ApiQuery({ 
+    name: 'operateurId', 
+    type: Number, 
+    description: 'ID de l\'opérateur',
+    example: 1
+  })
+  @ApiQuery({ 
+    name: 'offreId', 
+    type: Number, 
+    description: 'ID de l\'offre',
+    example: 5
+  })
+  @ApiQuery({ 
+    name: 'typeHeure', 
+    enum: ['CREUSE', 'PLEINE'], 
+    description: 'Type d\'heure (CREUSE ou PLEINE)',
+    example: 'CREUSE'
+  })
+  @ApiQuery({ 
+    name: 'annee', 
+    type: Number, 
+    description: 'Année du tarif',
+    example: 2025
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Calcul de l\'effet club basé sur le tarif facial réussi',
+    schema: {
+      example: {
+        success: true,
+        statusCode: 201,
+        code: 'success',
+        title: 'Effet club (Tarif Facial)',
+        message: 'Calcul de l\'effet club basé sur le tarif facial effectué avec succès',
+        data: {
+          typeHeure: 'CREUSE',
+          tarifOffnet: 45.50,
+          tarifOnnet: 25.30,
+          differenceTarifFacial: 20.20,
+          taMoyenAutresOperateurs: 35.80,
+          tarifOperateur: 28.50,
+          differenceTaMoyenTaOperateur: 7.30,
+          isEffetClub: true
+        }
+      }
+    }
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Paramètres invalides'
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Opérateur ou offre introuvable'
+  })
+  async calculerEffetClubTarifFacialAvecDetails(
+    @Query('operateurId', ParseIntPipe) operateurId: number,
+    @Query('offreId', ParseIntPipe) offreId: number,
+    @Query('typeHeure') typeHeure: TypeHeure,
+    @Query('annee', ParseIntPipe) annee: number,
+  ) {
+    // Validation du typeHeure (la validation sera gérée par le service)
+    const resultat = await this.effetClubService.calculerResultatEffetClubTarifFacial(
+      operateurId,
+      offreId,
+      typeHeure,
+      annee,
+    );
+
+    return this.effetClubService['formatResponse'](
+      resultat,
+      'Effet club (Tarif Facial)',
+      'Calcul de l\'effet club basé sur le tarif fiscal effectué avec succès',
+    );
+  }
 
 }
