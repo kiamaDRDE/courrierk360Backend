@@ -62,10 +62,10 @@ export class UserQueryDto {
   @ApiPropertyOptional({
     description: 'Filtrer par rôle',
     example: 'SUPER_ADMIN',
-    enum: ['SUPER_ADMIN', 'ADMIN', 'USER'],
+    enum: ['SUPER_ADMIN', 'UTILISATEUR'],
   })
   @IsOptional()
-  @IsEnum(['SUPER_ADMIN', 'ADMIN', 'USER'])
+  @IsEnum(['SUPER_ADMIN', 'UTILISATEUR'])
   role?: string;
 
   @ApiPropertyOptional({
