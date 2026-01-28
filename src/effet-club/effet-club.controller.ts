@@ -235,7 +235,7 @@ export class EffetClubController {
    */
   @Get('calculer-tarif-facial')
   @ApiOperation({ 
-    summary: 'Cas 2 ; Calcule l\'effet club basé sur le tarif facial',
+    summary: 'Cas 2 : Calcule l\'effet club basé sur le tarif facial',
     description: 'Calcule l\'effet club en utilisant la différence entre tarif facial OffNet et OnNet (TF), et compare avec la différence entre le tarif moyen des autres opérateurs et le tarif de l\'opérateur sélectionné selon la période (HC/HP)'
   })
   @ApiQuery({ 
