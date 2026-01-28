@@ -2210,4 +2210,119 @@ export class EffetClubService {
       isEffetClub,
     };
   }
+
+  /*************fin calcul de l'effet club cas 2 */
+
+
+  ///////////////////////////**************************cas 3 calcule de l'effet club selon le revenu moyen */
+
+  /**
+   * Calcule la différence entre le revenu moyen OffNet et OnNet
+   * 
+   * @param operateurId - ID de l'opérateur
+   * @param offreId - ID de l'offre
+   * @returns Promise<object> - Objet contenant les revenus moyens et leur différence
+   * 
+   * FORMULE APPLIQUÉE :
+   * Différence = RMoffnet - RMonnet
+   * 
+   * COMPOSANTES :
+   * - RMoffnet : Revenu moyen OffNet (calculé via calculerRevenuMoyen)
+   * - RMonnet : Revenu moyen OnNet (calculé via calculerRevenuMoyen)
+   */
+  async calculerDifferenceRevenusMoyens(
+    operateurId: number,
+    offreId: number,
+  ): Promise<{
+    revenuMoyenOffnet: number;
+    revenuMoyenOnnet: number;
+    difference: number;
+  }> {
+    // 1️⃣ Calculer les revenus moyens en parallèle pour optimiser les performances
+    const [revenuMoyenOffnet, revenuMoyenOnnet] = await Promise.all([
+      this.calculerRevenuMoyen(operateurId, offreId, 'OFFNET'),
+      this.calculerRevenuMoyen(operateurId, offreId, 'ONNET'),
+    ]);
+
+    // 2️⃣ Calculer la différence
+    const difference = revenuMoyenOffnet - revenuMoyenOnnet;
+
+    // 3️⃣ Retourner les valeurs avec arrondi à 2 décimales
+    return {
+      revenuMoyenOffnet: Math.round(revenuMoyenOffnet * 100) / 100,
+      revenuMoyenOnnet: Math.round(revenuMoyenOnnet * 100) / 100,
+      difference: Math.round(difference * 100) / 100,
+    };
+  }
+
+  /**
+   * Calcule l'effet club basé sur le revenu moyen et retourne toutes les valeurs calculées
+   * selon la période choisie (Heure Creuse ou Heure Pleine)
+   * 
+   * @param operateurId - ID de l'opérateur
+   * @param offreId - ID de l'offre
+   * @param typeHeure - Type d'heure ('CREUSE' ou 'PLEINE')
+   * @param annee - Année du tarif
+   * @returns Objet contenant tous les calculs de l'effet club basé sur le revenu moyen
+   * 
+   * LOGIQUE APPLIQUÉE :
+   * - Calcule la différence entre revenu moyen OffNet et OnNet (reste constant pour HC et HP)
+   * - Calcule la différence TaMoyen - TaOperateur (varie selon HC ou HP)
+   * - Détermine si effet club présent : differenceRevenusMoyens > differenceTaMoyenTaOperateur
+   */
+  async calculerResultatEffetClubRevenuMoyen(
+    operateurId: number,
+    offreId: number,
+    typeHeure: TypeHeure,
+    annee: number,
+  ): Promise<{
+    typeHeure: TypeHeure;
+    revenuMoyenOffnet: number;
+    revenuMoyenOnnet: number;
+    differenceRevenusMoyens: number;
+    taMoyenAutresOperateurs: number;
+    tarifOperateur: number;
+    differenceTaMoyenTaOperateur: number;
+    isEffetClub: boolean;
+  }> {
+    // 1️⃣ Calcul de la différence entre revenus moyens OffNet et OnNet
+    const { revenuMoyenOffnet, revenuMoyenOnnet, difference: differenceRevenusMoyens } = 
+      await this.calculerDifferenceRevenusMoyens(operateurId, offreId);
+
+    // 2️⃣ Tarif moyen des autres opérateurs (selon le type d'heure)
+    const taMoyenAutresOperateurs = await this.calculerTaMoyenAutresOperateurs(
+      operateurId,
+      typeHeure,
+      annee,
+    );
+
+    // 3️⃣ Tarif de l'opérateur sélectionné (selon le type d'heure)
+    const tarifOperateur = await this.getTarifOperateur(
+      operateurId,
+      typeHeure,
+      annee,
+    );
+
+    // 4️⃣ Différence entre TaMoyen et tarif opérateur
+    const differenceTaMoyenTaOperateur =
+      taMoyenAutresOperateurs - tarifOperateur;
+
+    // 5️⃣ Application de la règle Effet Club
+    // La différence revenus moyens (OffNet - OnNet) reste constante quelle que soit la période
+    // Ce qui change c'est la différence TaMoyen - TaOperateur selon HC ou HP
+    const isEffetClub = differenceRevenusMoyens > differenceTaMoyenTaOperateur;
+
+    // 6️⃣ Retourner toutes les données
+    return {
+      typeHeure,
+      revenuMoyenOffnet: Math.round(revenuMoyenOffnet * 100) / 100,
+      revenuMoyenOnnet: Math.round(revenuMoyenOnnet * 100) / 100,
+      differenceRevenusMoyens: Math.round(differenceRevenusMoyens * 100) / 100,
+      taMoyenAutresOperateurs: Math.round(taMoyenAutresOperateurs * 100) / 100,
+      tarifOperateur: Math.round(tarifOperateur * 100) / 100,
+      differenceTaMoyenTaOperateur:
+        Math.round(differenceTaMoyenTaOperateur * 100) / 100,
+      isEffetClub,
+    };
+  }
 }

@@ -314,4 +314,106 @@ export class EffetClubController {
     );
   }
 
+  /**
+   * Calcule l'effet club basé sur le revenu moyen avec tous les détails
+   * @param operateurId - ID de l'opérateur
+   * @param offreId - ID de l'offre
+   * @param typeHeure - Type d'heure (CREUSE ou PLEINE)
+   * @param annee - Année du tarif
+   */
+  @Get('calculer-revenu-moyen')
+  @ApiOperation({ 
+    summary: 'Cas 3 : Calcule l\'effet club basé sur le revenu moyen',
+    description: `Calcule l'effet club en utilisant la différence entre revenus moyens OffNet et OnNet (RM), et compare avec la différence entre le tarif moyen des autres opérateurs et le tarif de l'opérateur sélectionné selon la période (HC/HP).
+    
+    **ÉTAPES DU CALCUL :**
+    
+    1️⃣ **Revenus Moyens** : Calcul des RM OffNet et OnNet selon la formule :
+      RM = (TP*TF*(1+TNC)*(1+EP) + Σ(frais)) / (TP + sommeAvantageGratuit + sommeTraficOption)
+    
+    2️⃣ **Différence Revenus** : RMoffnet - RMonnet (reste constant pour HC et HP)
+    
+    3️⃣ **Tarif Moyen Autres Opérateurs** : Moyenne des tarifs d'interconnexion selon HC/HP
+    
+    4️⃣ **Tarif Opérateur** : Tarif d'interconnexion de l'opérateur selon HC/HP
+    
+    5️⃣ **Différence Tarifaire** : TaMoyen - TaOpérateur (varie selon HC/HP)
+    
+    6️⃣ **Résultat Final** : Si DifferenceRevenus > DifferenceTarifaire → EFFET DE CLUB`
+  })
+  @ApiQuery({ 
+    name: 'operateurId', 
+    type: Number, 
+    description: 'ID de l\'opérateur',
+    example: 1
+  })
+  @ApiQuery({ 
+    name: 'offreId', 
+    type: Number, 
+    description: 'ID de l\'offre',
+    example: 5
+  })
+  @ApiQuery({ 
+    name: 'typeHeure', 
+    enum: ['CREUSE', 'PLEINE'], 
+    description: 'Type d\'heure (CREUSE ou PLEINE)',
+    example: 'CREUSE'
+  })
+  @ApiQuery({ 
+    name: 'annee', 
+    type: Number, 
+    description: 'Année du tarif',
+    example: 2025
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Calcul de l\'effet club basé sur le revenu moyen réussi',
+    schema: {
+      example: {
+        success: true,
+        statusCode: 201,
+        code: 'success',
+        title: 'Effet club (Revenu Moyen)',
+        message: 'Calcul de l\'effet club basé sur le revenu moyen effectué avec succès',
+        data: {
+          typeHeure: 'CREUSE',
+          revenuMoyenOffnet: 52.75,
+          revenuMoyenOnnet: 28.40,
+          differenceRevenusMoyens: 24.35,
+          taMoyenAutresOperateurs: 35.80,
+          tarifOperateur: 28.50,
+          differenceTaMoyenTaOperateur: 7.30,
+          isEffetClub: true
+        }
+      }
+    }
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Paramètres invalides'
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Opérateur ou offre introuvable'
+  })
+  async calculerEffetClubRevenuMoyenAvecDetails(
+    @Query('operateurId', ParseIntPipe) operateurId: number,
+    @Query('offreId', ParseIntPipe) offreId: number,
+    @Query('typeHeure') typeHeure: TypeHeure,
+    @Query('annee', ParseIntPipe) annee: number,
+  ) {
+    const resultat = await this.effetClubService.calculerResultatEffetClubRevenuMoyen(
+      operateurId,
+      offreId,
+      typeHeure,
+      annee,
+    );
+
+    return this.effetClubService['formatResponse'](
+      resultat,
+      'Effet club (Revenu Moyen)',
+      'Calcul de l\'effet club basé sur le revenu moyen effectué avec succès',
+    );
+  }
+
 }
