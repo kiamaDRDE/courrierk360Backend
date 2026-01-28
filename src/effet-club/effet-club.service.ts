@@ -2269,6 +2269,7 @@ export class EffetClubService {
    * - Calcule la différence entre revenu moyen OffNet et OnNet (reste constant pour HC et HP)
    * - Calcule la différence TaMoyen - TaOperateur (varie selon HC ou HP)
    * - Détermine si effet club présent : differenceRevenusMoyens > differenceTaMoyenTaOperateur
+   * - Retourne également tous les détails du calcul : TF, TP, TNC, EP, sommes intermédiaires
    */
   async calculerResultatEffetClubRevenuMoyen(
     operateurId: number,
@@ -2284,35 +2285,91 @@ export class EffetClubService {
     tarifOperateur: number;
     differenceTaMoyenTaOperateur: number;
     isEffetClub: boolean;
+    detailsCalculRevenuMoyen: {
+      tarifsFaciaux: {
+        tfOffnet: number;
+        tfOnnet: number;
+      };
+      parametresOffre: {
+        tp: number;
+        tnc: number;
+        ep: number;
+      };
+      sommesIntermediaires: {
+        sommeFraisSouscription: number;
+        sommeAvantagesGratuits: number;
+        sommeTraficOption: number;
+      };
+    };
   }> {
-    // 1️⃣ Calcul de la différence entre revenus moyens OffNet et OnNet
-    const { revenuMoyenOffnet, revenuMoyenOnnet, difference: differenceRevenusMoyens } = 
-      await this.calculerDifferenceRevenusMoyens(operateurId, offreId);
+    // 1️⃣ Récupérer l'offre avec les paramètres nécessaires
+    const offre = await this.prisma.offre.findUnique({
+      where: { id: offreId },
+      select: {
+        id: true,
+        operateurId: true,
+        tp: true,
+        tnc: true,
+        ep: true,
+      },
+    });
 
-    // 2️⃣ Tarif moyen des autres opérateurs (selon le type d'heure)
+    if (!offre) {
+      throw new NotFoundException(`Offre avec l'ID ${offreId} introuvable`);
+    }
+
+    if (offre.operateurId !== operateurId) {
+      throw new BadRequestException(
+        'Cette offre n\'appartient pas à l\'opérateur spécifié'
+      );
+    }
+
+    // 2️⃣ Récupérer les tarifs faciaux OffNet et OnNet
+    const { tfOffnet, tfOnnet } = await this.calculateTFOptimized(operateurId, offreId);
+
+    // 3️⃣ Récupérer les paramètres de l'offre
+    const tp = Number(offre.tp || 0);
+    const tnc = Number(offre.tnc || 0);
+    const ep = Number(offre.ep || 0);
+
+    // 4️⃣ Calculer les sommes intermédiaires en parallèle
+    const [sommeFraisSouscription, sommeAvantagesGratuits, sommeTraficOption] = await Promise.all([
+      this.SommeFraisSouscriptionParNbreSousc(offreId),
+      this.sommeAvantageGratuit(offreId),
+      this.sommeTraficOption(offreId),
+    ]);
+
+    // 5️⃣ Calculer les numérateurs et dénominateur
+    const numerateurOffnet = tp * tfOffnet * (1 + tnc) * (1 + ep) + sommeFraisSouscription;
+    const numerateurOnnet = tp * tfOnnet * (1 + tnc) * (1 + ep) + sommeFraisSouscription;
+    const denominateur = tp + sommeAvantagesGratuits + sommeTraficOption;
+
+    // 6️⃣ Calculer les revenus moyens
+    const revenuMoyenOffnet = denominateur !== 0 ? numerateurOffnet / denominateur : 0;
+    const revenuMoyenOnnet = denominateur !== 0 ? numerateurOnnet / denominateur : 0;
+    const differenceRevenusMoyens = revenuMoyenOffnet - revenuMoyenOnnet;
+
+    // 7️⃣ Tarif moyen des autres opérateurs (selon le type d'heure)
     const taMoyenAutresOperateurs = await this.calculerTaMoyenAutresOperateurs(
       operateurId,
       typeHeure,
       annee,
     );
 
-    // 3️⃣ Tarif de l'opérateur sélectionné (selon le type d'heure)
+    // 8️⃣ Tarif de l'opérateur sélectionné (selon le type d'heure)
     const tarifOperateur = await this.getTarifOperateur(
       operateurId,
       typeHeure,
       annee,
     );
 
-    // 4️⃣ Différence entre TaMoyen et tarif opérateur
-    const differenceTaMoyenTaOperateur =
-      taMoyenAutresOperateurs - tarifOperateur;
+    // 9️⃣ Différence entre TaMoyen et tarif opérateur
+    const differenceTaMoyenTaOperateur = taMoyenAutresOperateurs - tarifOperateur;
 
-    // 5️⃣ Application de la règle Effet Club
-    // La différence revenus moyens (OffNet - OnNet) reste constante quelle que soit la période
-    // Ce qui change c'est la différence TaMoyen - TaOperateur selon HC ou HP
+    // 🔟 Application de la règle Effet Club
     const isEffetClub = differenceRevenusMoyens > differenceTaMoyenTaOperateur;
 
-    // 6️⃣ Retourner toutes les données
+    // 1️⃣1️⃣ Retourner toutes les données avec détails complets
     return {
       typeHeure,
       revenuMoyenOffnet: Math.round(revenuMoyenOffnet * 100) / 100,
@@ -2320,9 +2377,24 @@ export class EffetClubService {
       differenceRevenusMoyens: Math.round(differenceRevenusMoyens * 100) / 100,
       taMoyenAutresOperateurs: Math.round(taMoyenAutresOperateurs * 100) / 100,
       tarifOperateur: Math.round(tarifOperateur * 100) / 100,
-      differenceTaMoyenTaOperateur:
-        Math.round(differenceTaMoyenTaOperateur * 100) / 100,
+      differenceTaMoyenTaOperateur: Math.round(differenceTaMoyenTaOperateur * 100) / 100,
       isEffetClub,
+      detailsCalculRevenuMoyen: {
+        tarifsFaciaux: {
+          tfOffnet: Math.round(tfOffnet * 100) / 100,
+          tfOnnet: Math.round(tfOnnet * 100) / 100,
+        },
+        parametresOffre: {
+          tp: Math.round(tp * 100) / 100,
+          tnc: Math.round(tnc * 100) / 100,
+          ep: Math.round(ep * 100) / 100,
+        },
+        sommesIntermediaires: {
+          sommeFraisSouscription: Math.round(sommeFraisSouscription * 100) / 100,
+          sommeAvantagesGratuits: Math.round(sommeAvantagesGratuits * 100) / 100,
+          sommeTraficOption: Math.round(sommeTraficOption * 100) / 100,
+        },
+      },
     };
   }
 }

@@ -330,6 +330,13 @@ export class EffetClubController {
     
     1️⃣ **Revenus Moyens** : Calcul des RM OffNet et OnNet selon la formule :
       RM = (TP*TF*(1+TNC)*(1+EP) + Σ(frais)) / (TP + sommeAvantageGratuit + sommeTraficOption)
+      
+      Où :
+      - TP = Trafic total de l'offre
+      - TF = Tarif Facial (moyenne des structures tarifaires des options)
+      - TNC = Taux net de collecte
+      - EP = Épargne préalable
+      - Σ(frais) = Somme des frais de souscription
     
     2️⃣ **Différence Revenus** : RMoffnet - RMonnet (reste constant pour HC et HP)
     
@@ -339,7 +346,13 @@ export class EffetClubController {
     
     5️⃣ **Différence Tarifaire** : TaMoyen - TaOpérateur (varie selon HC/HP)
     
-    6️⃣ **Résultat Final** : Si DifferenceRevenus > DifferenceTarifaire → EFFET DE CLUB`
+    6️⃣ **Résultat Final** : Si DifferenceRevenus > DifferenceTarifaire → EFFET DE CLUB
+    
+    **DÉTAILS RETOURNÉS :**
+    - Revenus moyens calculés (OffNet et OnNet)
+    - Tarifs faciaux utilisés dans le calcul
+    - Paramètres de l'offre (TP, TNC, EP)
+    - Sommes intermédiaires (frais, avantages gratuits, trafic option)`
   })
   @ApiQuery({ 
     name: 'operateurId', 
@@ -367,7 +380,7 @@ export class EffetClubController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Calcul de l\'effet club basé sur le revenu moyen réussi',
+    description: 'Calcul de l\'effet club basé sur le revenu moyen réussi avec tous les détails',
     schema: {
       example: {
         success: true,
@@ -383,7 +396,23 @@ export class EffetClubController {
           taMoyenAutresOperateurs: 35.80,
           tarifOperateur: 28.50,
           differenceTaMoyenTaOperateur: 7.30,
-          isEffetClub: true
+          isEffetClub: true,
+          detailsCalculRevenuMoyen: {
+            tarifsFaciaux: {
+              tfOffnet: 45.50,
+              tfOnnet: 25.30
+            },
+            parametresOffre: {
+              tp: 1000.00,
+              tnc: 0.15,
+              ep: 0.10
+            },
+            sommesIntermediaires: {
+              sommeFraisSouscription: 5000.00,
+              sommeAvantagesGratuits: 200.00,
+              sommeTraficOption: 150.00
+            }
+          }
         }
       }
     }
