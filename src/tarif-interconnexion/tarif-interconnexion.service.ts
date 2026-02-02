@@ -33,6 +33,13 @@ export class TarifInterconnexionService {
       );
     }
 
+    // Vérifier que l'année du tarif n'est pas inférieure à l'année de création de l'opérateur
+    if (operateur.anneeCreation && createDto.annee < operateur.anneeCreation) {
+      throw new BadRequestException(
+        `L'année du tarif (${createDto.annee}) ne peut pas être inférieure à l'année de création de l'opérateur "${operateur.nom}" (${operateur.anneeCreation})`,
+      );
+    }
+
     // Vérifier si un tarif avec le même type existe déjà pour cet opérateur et cette année
     const existingTarif = await this.prisma.tarifInterconnexion.findFirst({
       where: {
@@ -428,17 +435,28 @@ export class TarifInterconnexionService {
       const newOperateurId = data.operateurId || existingTarif.operateurId;
       const newAnnee = data.annee || existingTarif.annee;
 
-      // Vérifier si l'opérateur existe
+      // Récupérer l'opérateur pour les vérifications
+      let operateur = existingTarif.operateur;
+      
+      // Vérifier si l'opérateur existe (si changé)
       if (data.operateurId) {
-        const operateur = await this.prisma.operateur.findUnique({
+        const newOperateur = await this.prisma.operateur.findUnique({
           where: { id: data.operateurId },
         });
 
-        if (!operateur) {
+        if (!newOperateur) {
           throw new NotFoundException(
             `Opérateur avec l'ID ${data.operateurId} introuvable`,
           );
         }
+        operateur = newOperateur;
+      }
+
+      // Vérifier que l'année du tarif n'est pas inférieure à l'année de création de l'opérateur
+      if (operateur.anneeCreation && newAnnee < operateur.anneeCreation) {
+        throw new BadRequestException(
+          `L'année du tarif (${newAnnee}) ne peut pas être inférieure à l'année de création de l'opérateur "${operateur.nom}" (${operateur.anneeCreation})`,
+        );
       }
 
       // Vérifier si un autre tarif existe pour cette combinaison  
