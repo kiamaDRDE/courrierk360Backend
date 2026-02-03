@@ -1,23 +1,31 @@
 // src/auth/auth.service.ts
 
 import * as bcrypt from 'bcryptjs';
-import { Injectable, BadRequestException, UnauthorizedException, Logger } from '@nestjs/common';
+import * as nodemailer from 'nodemailer';
+import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
-import { MailerService } from '../mailer/mailer.service';
 import { LoginDto } from './dto/login.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @Injectable()
 export class AuthService {
-  private readonly logger = new Logger(AuthService.name);
+  private transporter: nodemailer.Transporter;
 
   constructor(
     private readonly prismaService: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly mailerService: MailerService,
-  ) {}
+  ) {
+    // Configuration du transporteur d'email
+    this.transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'ppatnuc@gmail.com',
+        pass: 'jyqkjhovvrdmujrs',
+      },
+    });
+  }
 
   // Fonction utilitaire pour formater les réponses
   private formatResponse(data: any, title: string, message: string) {
@@ -34,6 +42,50 @@ export class AuthService {
   // Générer un code OTP à 6 chiffres
   private generateOtp(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  // Envoyer un email avec le code OTP
+  private async sendOtpEmail(email: string, otp: string, nom: string) {
+    console.log('📧 Tentative d\'envoi d\'email OTP à:', email);
+    
+    const mailOptions = {
+      from: 'ppatnuc@gmail.com',
+      to: email,
+      subject: 'Code de vérification - Patnuc Segmentation',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Code de vérification</h2>
+          <p>Bonjour <strong>${nom}</strong>,</p>
+          <p>Votre code de vérification pour vous connecter à Patnuc Segmentation est :</p>
+          <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
+            ${otp}
+          </div>
+          <p style="color: #666;">Ce code expirera dans <strong>5 minutes</strong>.</p>
+          <p style="color: #666;">Si vous n'avez pas demandé ce code, veuillez ignorer cet email.</p>
+          <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+          <p style="font-size: 12px; color: #999;">© ${new Date().getFullYear()} Patnuc Segmentation. Tous droits réservés.</p>
+        </div>
+      `,
+    };
+
+    try {
+      console.log('📤 Configuration transporter:', {
+        service: 'gmail',
+        user: 'ppatnuc@gmail.com',
+        hasPassword: !!this.transporter,
+      });
+      
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log('✅ Email OTP envoyé avec succès:', info.messageId);
+      console.log('📊 Détails:', info);
+    } catch (error) {
+      console.error('❌ ERREUR COMPLÈTE lors de l\'envoi de l\'email OTP:');
+      console.error('Message:', error.message);
+      console.error('Code:', error.code);
+      console.error('Stack:', error.stack);
+      console.error('Détails complets:', JSON.stringify(error, null, 2));
+      // Ne pas bloquer le processus si l'email échoue
+    }
   }
 
   // 🔐 API 1: Connexion et génération d'OTP
@@ -70,18 +122,13 @@ export class AuthService {
       },
     });
 
-    // 5️⃣ Envoyer l'OTP par email
-    try {
-      const emailSent = await this.mailerService.sendOtpEmail(email, otp, user.nom);
-      if (!emailSent) {
-        this.logger.warn(`L'email OTP n'a pas pu être envoyé à ${email}, mais l'OTP a été généré`);
-      } else {
-        this.logger.log(`Code OTP envoyé avec succès à ${email}`);
-      }
-    } catch (error) {
-      this.logger.error(`Erreur lors de l'envoi du code OTP à ${email}:`, error);
-      // Ne pas bloquer le processus si l'email échoue
-    }
+    // 5️⃣ Envoyer l'OTP par email de manière asynchrone
+    console.log('🚀 Démarrage de l\'envoi d\'email OTP pour:', email);
+    this.sendOtpEmail(email, otp, user.nom).catch(err => {
+      console.error('❌ ÉCHEC d\'envoi email OTP - Erreur capturée:', err);
+      console.error('Type d\'erreur:', err.constructor.name);
+      console.error('Message:', err.message);
+    });
 
     // 6️⃣ Retourner la réponse avec l'OTP
     return this.formatResponse(
