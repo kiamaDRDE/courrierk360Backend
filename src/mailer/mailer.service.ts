@@ -206,6 +206,76 @@ export class MailerService {
   }
 
   /**
+   * Envoie un email avec le code OTP pour la connexion
+   */
+  async sendOtpEmail(email: string, otp: string, nom: string): Promise<boolean> {
+    try {
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1);">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; text-align: center;">
+              <h1 style="margin: 0; font-size: 28px;">🔐 Code de vérification</h1>
+            </div>
+            
+            <div style="padding: 40px 30px;">
+              <h2 style="color: #333; margin-top: 0;">Bonjour <strong>${nom}</strong>,</h2>
+              <p style="font-size: 16px; color: #555;">Votre code de vérification pour vous connecter à <strong>KIAMA RegTar</strong> est :</p>
+              
+              <div style="background-color: #f8f9fa; padding: 25px; text-align: center; border-radius: 8px; margin: 30px 0; border: 2px dashed #667eea;">
+                <div style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #667eea;">
+                  ${otp}
+                </div>
+              </div>
+              
+              <div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; border-radius: 4px; margin: 20px 0;">
+                <p style="margin: 0; color: #856404;">
+                  ⏱️ <strong>Ce code expirera dans 5 minutes</strong>
+                </p>
+              </div>
+              
+              <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                Si vous n'avez pas demandé ce code, veuillez ignorer cet email et assurez-vous que votre compte est sécurisé.
+              </p>
+            </div>
+            
+            <div style="background-color: #2c3e50; color: white; text-align: center; padding: 20px; font-size: 14px;">
+              <p style="margin: 0;"><strong>KIAMA RegTar</strong> - Plateforme de Régulation Tarifaire</p>
+              <p style="margin: 10px 0 0 0; font-size: 12px; color: #95a5a6;">
+                © ${new Date().getFullYear()} Tous droits réservés.
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const mailOptions = {
+        from: {
+          name: 'KIAMA RegTar',
+          address: 'ppatnuc@gmail.com',
+        },
+        to: email,
+        subject: '🔐 Code de vérification - KIAMA RegTar',
+        html: htmlContent,
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Code OTP envoyé avec succès à ${email}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Erreur lors de l'envoi du code OTP à ${email}:`, error);
+      this.logger.error('Détails de l\'erreur:', error.message);
+      return false;
+    }
+  }
+
+  /**
    * Envoie un email générique
    */
   async sendEmail(to: string, subject: string, htmlContent: string): Promise<boolean> {
