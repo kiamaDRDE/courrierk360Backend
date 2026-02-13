@@ -158,6 +158,7 @@ export class ServiceController {
                 id: 2,
                 nom: 'Service Informatique',
                 sigle: 'SI',
+                type: 'TECHNIQUE',
                 parentId: 1,
                 idServiceParent: {
                   id: 1,
@@ -215,6 +216,7 @@ export class ServiceController {
             id: 2,
             nom: 'Service Informatique',
             sigle: 'SI',
+            type: 'TECHNIQUE',
             parentId: 1,
             idServiceParent: {
               id: 1,
@@ -276,6 +278,7 @@ export class ServiceController {
             id: 1,
             nom: 'Direction Générale Modifiée',
             sigle: 'DGM',
+            type: 'ADMINISTRATIF',
             parentId: null,
             idServiceParent: null,
             isActive: false,
@@ -394,6 +397,7 @@ export class ServiceController {
                 id: 3,
                 nom: 'Direction Administrative et Financière',
                 sigle: 'DAF',
+                type: 'ADMINISTRATIF',
                 parentId: 1,
                 isActive: true,
                 isDelete: false,

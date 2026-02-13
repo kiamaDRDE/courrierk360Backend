@@ -329,11 +329,11 @@ pm2 logs courrierk360-backend
 ```bash
 pm2 list                             # Liste des applications
 pm2 status                           # Statut
-pm2 logs patnuc_segmentation         # Voir les logs en temps réel
-pm2 logs patnuc_segmentation --lines 100  # 100 dernières lignes
-pm2 restart patnuc_segmentation      # Redémarrer
-pm2 stop patnuc_segmentation         # Arrêter
-pm2 delete patnuc_segmentation       # Supprimer
+pm2 logs courrierk360-backend         # Voir les logs en temps réel
+pm2 logs courrierk360-backend --lines 100  # 100 dernières lignes
+pm2 restart courrierk360-backend      # Redémarrer
+pm2 stop courrierk360-backend         # Arrêter
+pm2 delete courrierk360-backend       # Supprimer
 pm2 monit                            # Monitoring en temps réel
 ```
 
@@ -345,7 +345,7 @@ sudo systemctl restart nginx    # Redémarrer
 sudo systemctl stop nginx       # Arrêter
 sudo systemctl start nginx      # Démarrer
 sudo nginx -t                   # Tester la config
-sudo tail -f /var/log/nginx/patnuc_segmentation-error.log  # Voir les erreurs
+sudo tail -f /var/log/nginx/courrierk360-backend-error.log  # Voir les erreurs
 ```
 
 ### Base de données
@@ -355,14 +355,16 @@ sudo tail -f /var/log/nginx/patnuc_segmentation-error.log  # Voir les erreurs
 mysql -u patnuc_user -p
 
 # Voir les tables
-mysql -u patnuc_user -p -e "USE patnuc_segmentation; SHOW TABLES;"
+mysql -u courrierk360_user -p -e "USE courrierk360-backend; SHOW TABLES;"
 
 # Backup
-mysqldump -u patnuc_user -p patnuc_segmentation > backup_$(date +%Y%m%d).sql
+mysqldump -u courrierk360_user -p courrierk360-backend > backup_$(date +%Y%m%d).sql
 
 # Restaurer
-mysql -u patnuc_user -p patnuc_segmentation < backup_20251212.sql
+mysql -u courrierk360_user -p courrierk360-backend < backup_20251212.sql
 ```
+
+# DATABASE_URL="mysql://courrierk360_user:Courrier2025@127.0.0.1:3306/courrierk360"
 
 ---
 
@@ -378,10 +380,10 @@ mysql -u patnuc_user -p patnuc_segmentation < backup_20251212.sql
 pm2 status
 
 # Voir les logs
-pm2 logs patnuc_segmentation
+pm2 logs courrierk360-backend
 
 # Redémarrer
-pm2 restart patnuc_segmentation
+pm2 restart courrierk360-backend
 ```
 
 ### Erreur 504 Gateway Timeout
@@ -390,7 +392,7 @@ pm2 restart patnuc_segmentation
 
 **Solution** : Augmenter le timeout dans Nginx :
 ```bash
-sudo nano /etc/nginx/sites-available/patnuc_segmentation
+sudo nano /etc/nginx/sites-available/courrierk360-backend
 ```
 
 Ajouter dans le bloc `location /` :
@@ -411,7 +413,7 @@ sudo systemctl restart nginx
 
 **Vérifier les logs** :
 ```bash
-pm2 logs patnuc_segmentation --lines 50
+pm2 logs courrierk360-backend --lines 50
 ```
 
 **Vérifier le fichier .env** :

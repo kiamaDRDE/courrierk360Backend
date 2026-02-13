@@ -365,6 +365,18 @@ export class ServiceService {
         isDelete: false,
       },
       orderBy: { nom: 'asc' },
+      select: {
+        id: true,
+        nom: true,
+        sigle: true,
+        type: true,
+        parentId: true,
+        isActive: true,
+        isDelete: true,
+        isVisible: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     return this.responseFormatter.success(

@@ -55,6 +55,7 @@ export class TraitementController {
     **Règles de validation** :
     - Le courrier (idCourrier) doit exister
     - Le service destinataire (idService) doit exister
+    - Le service destinataire doit avoir le type Poste
     - L'émetteur (idEmetteur) doit exister (si fourni, sinon utilisateur connecté)
     - L'utilisateur connecté ne peut pas transmettre à son propre service
     - Les champs obligatoires sont : idCourrier, idService, dateInstruction, typeTransfert
@@ -264,6 +265,7 @@ export class TraitementController {
     - L'idService final doit être différent du service de l'utilisateur connecté
     - La transmission ne doit pas être reçue, archivée, gelée, instanciée ou supprimée
     - Le service destinataire doit exister
+    - Le service destinataire doit avoir le type Poste
     - Le courrier doit exister si idCourrier est fourni
     - L'émetteur doit exister si idEmetteur est fourni
     `,

@@ -199,6 +199,11 @@ export class TraitementService {
       throw new NotFoundException(`Le service avec l'ID ${idService} n'existe pas.`);
     }
 
+    const serviceType = (service.type || '').toLowerCase();
+    if (serviceType !== 'poste') {
+      throw new BadRequestException('Impossible de créer une transmission vers un service. Le type doit être Poste.');
+    }
+
     // Vérifier que l'émetteur existe
     const emetteur = await this.prismaService.user.findUnique({
       where: { id: emetteurId },
@@ -550,6 +555,11 @@ export class TraitementService {
 
     if (!service) {
       throw new NotFoundException(`Le service avec l'ID ${idServiceFinal} n'existe pas.`);
+    }
+
+    const serviceType = (service.type || '').toLowerCase();
+    if (serviceType !== 'poste') {
+      throw new BadRequestException('Impossible de transmettre vers un service. Le type doit être Poste.');
     }
 
     if (updateTraitementDto.idCourrier) {
