@@ -22,11 +22,13 @@ export class SmsService {
   private readonly apiUrl: string;
   private readonly apiKey: string;
   private readonly sender: string;
+  private readonly balanceUrl: string;
 
   constructor(private configService: ConfigService) {
     this.apiUrl = this.configService.get<string>('SMS_API_URL', 'https://devcodesms.com/developpeur/Send_sms_dev');
     this.apiKey = this.configService.get<string>('SMS_API_KEY', 'GuESKhMezKLPNkYUII01TXZQR3pHSlQ1eEdRS015dVpSZmlXcGFJejZMc2h5aExBSGRnbHNwMXBhRFE9');
     this.sender = this.configService.get<string>('SMS_SENDER', 'KIAMA S.A');
+    this.balanceUrl = this.configService.get<string>('SMS_BALANCE_URL', 'https://devcodesms.com/developpeur/Solde_sms_dev');
   }
 
   /**
@@ -303,6 +305,130 @@ export class SmsService {
         success: false,
         message: 'Erreur de connectivité: ' + error.message,
         response: null,
+      };
+    }
+  }
+
+  /**
+   * Récupère le solde de SMS restants
+   */
+  async getSmsBalance(): Promise<{
+    success: boolean;
+    balance: number | null;
+    qty_acheter?: number | null;
+    qty_envoye?: number | null;
+    message: string;
+    response: any;
+    error_type?: string;
+    http_code?: number;
+  }> {
+    if (!this.isConfigured()) {
+      return {
+        success: false,
+        balance: null,
+        message: 'Configuration SMS manquante (API_KEY, API_URL ou SENDER)',
+        response: null,
+        error_type: 'configuration',
+      };
+    }
+
+    try {
+      const data = new URLSearchParams({
+        api_key: this.apiKey,
+      });
+
+      const response = await axios.post(this.balanceUrl, data.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'KIAMA-SMS-Service/1.0',
+          Accept: 'application/json',
+        },
+        timeout: 30000,
+      });
+
+      if (response.status === 406) {
+        return {
+          success: false,
+          balance: null,
+          message: 'L\'endpoint pour consulter le solde SMS n\'est pas disponible.',
+          response: response.data,
+          error_type: 'endpoint_unavailable',
+          http_code: 406,
+        };
+      }
+
+      if (response.status !== 200) {
+        return {
+          success: false,
+          balance: null,
+          message: 'Erreur HTTP lors de la récupération du solde',
+          response: response.data,
+          error_type: 'http_error',
+          http_code: response.status,
+        };
+      }
+
+      const decoded = response.data;
+      const dataBlock = decoded?.data;
+
+      if (decoded?.success === false) {
+        return {
+          success: false,
+          balance: null,
+          message: decoded?.msg || decoded?.message || 'Erreur API',
+          response: decoded,
+          error_type: 'api_error',
+        };
+      }
+
+      if (dataBlock && typeof dataBlock.solde !== 'undefined') {
+        return {
+          success: true,
+          balance: Number(dataBlock.solde),
+          qty_acheter: typeof dataBlock.qty_acheter !== 'undefined' ? Number(dataBlock.qty_acheter) : null,
+          qty_envoye: typeof dataBlock.qty_envoye !== 'undefined' ? Number(dataBlock.qty_envoye) : null,
+          message: decoded?.msg || 'Solde récupéré avec succès',
+          response: decoded,
+        };
+      }
+
+      const fallbackBalance = decoded?.solde ?? decoded?.balance;
+      if (typeof fallbackBalance !== 'undefined') {
+        return {
+          success: true,
+          balance: Number(fallbackBalance),
+          qty_acheter: null,
+          qty_envoye: null,
+          message: 'Solde récupéré avec succès',
+          response: decoded,
+        };
+      }
+
+      return {
+        success: false,
+        balance: null,
+        message: 'Format de réponse non reconnu',
+        response: decoded,
+        error_type: 'format_unknown',
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return {
+          success: false,
+          balance: null,
+          message: 'Erreur HTTP: ' + error.message,
+          response: error.response?.data || null,
+          error_type: 'http_error',
+          http_code: error.response?.status,
+        };
+      }
+
+      return {
+        success: false,
+        balance: null,
+        message: 'Erreur technique: ' + (error as Error).message,
+        response: null,
+        error_type: 'exception',
       };
     }
   }
