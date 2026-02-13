@@ -49,6 +49,23 @@ export class UserService {
   async getProfile(userId: number) {
     const user = await this.prismaService.user.findUnique({
       where: { id: userId },
+      include: {
+        role: {
+          select: {
+            id: true,
+            nom: true,
+            description: true,
+          },
+        },
+        service: {
+          select: {
+            id: true,
+            nom: true,
+            sigle: true,
+            type: true,
+          },
+        },
+      },
     });
 
     if (!user) {

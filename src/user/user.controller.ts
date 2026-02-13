@@ -125,6 +125,7 @@ export class UserController {
               id: 1,
               nom: 'Direction Réglementaire',
               sigle: 'DR',
+              type: 'POSTE',
             },
             servicesAdditionel: [
               {

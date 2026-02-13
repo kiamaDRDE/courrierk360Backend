@@ -30,7 +30,17 @@ Pour obtenir un token JWT :
     "email": "jean.dupont@example.com",
     "numero": "0612345678",
     "fonction": "Développeur",
-    "role": "UTILISATEUR"
+    "role": {
+      "id": 1,
+      "nom": "Administrateur",
+      "description": "Rôle administrateur complet"
+    },
+    "service": {
+      "id": 1,
+      "nom": "Direction Réglementaire",
+      "sigle": "DR",
+      "type": "POSTE"
+    }
   }
 }
 ```
