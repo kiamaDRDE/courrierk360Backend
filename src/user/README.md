@@ -10,8 +10,7 @@ Authorization: Bearer <votre_token_jwt>
 ```
 
 Pour obtenir un token JWT :
-1. Utilisez l'API `/auth/login` pour obtenir un OTP
-2. Vérifiez l'OTP avec `/auth/verify-otp` pour recevoir votre token
+1. Utilisez l'API `/auth/login` avec email + mot de passe pour recevoir directement les tokens
 
 ## 📋 Routes Disponibles
 
@@ -225,16 +224,12 @@ src/user/
 
 ### Cas 1: Utilisateur change son propre mot de passe
 ```bash
-# 1. Login et obtention du token
+# 1. Login et obtention des tokens
 POST /auth/login
-Body: { "email": "user@example.com" }
+Body: { "email": "user@example.com", "password": "motDePasse" }
+# Réponse: { accessToken: "eyJhbGc...", refreshToken: "..." }
 
-# 2. Vérification OTP
-POST /auth/verify-otp
-Body: { "email": "user@example.com", "otp": "123456" }
-# Réponse: { token: "eyJhbGc...", refreshToken: "..." }
-
-# 3. Changement de mot de passe
+# 2. Changement de mot de passe
 PATCH /user/password
 Authorization: Bearer eyJhbGc...
 Body: { 

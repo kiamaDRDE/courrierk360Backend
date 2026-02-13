@@ -3,6 +3,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
+import { CommonModule } from './common/common.module';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { HttpExceptionFilter } from '../common/filters/httpException.filter';
 import { LoggingInterceptor } from './log/interceptors/logging.interceptor';
@@ -10,57 +11,57 @@ import { SignupModule } from './signup/signup.module';
 import { AuthModule } from './auth/auth.module';
 import { ForgotPasswordModule } from './forgot-password/forgot-password.module';
 import { UserModule } from './user/user.module';
-import { OperateurModule } from './operateur/operateur.module';
-import { TypeAppelModule } from './type-appel/type-appel.module';
-import { OptionModule } from './option/option.module';
-import { ConsommationMoyenneModule } from './consommation-moyenne/consommation-moyenne.module';
-import { OffreModule } from './offre/offre.module';
-import { TarifInterconnexionModule } from './tarif-interconnexion/tarif-interconnexion.module';
-import { ServicesModule } from './services-management/services.module';
-import { StructureTarifaireModule } from './structure-tarifaire/structure-tarifaire.module';
-import { AvantageModule } from './avantage/avantage.module';
-import { TypeOperateurModule } from './type-operateur/type-operateur.module';
 import { MailerModule } from './mailer/mailer.module';
-import { TraficModule } from './trafic/trafic.module';
-import { AbonnementModule } from './abonnement/abonnement.module';
-import { ChiffreAffaireModule } from './chiffre-affaire/chiffre-affaire.module';
-import { IhhModule } from './ihh/ihh.module';
-import { CaracteristiqueModule } from './caracteristique/caracteristique.module';
-import { ParametreModule } from './parametre/parametre.module';
 import { LogModule } from './log/log.module';
-import { DashboardModule } from './dashboard/dashboard.module';
-import { EffetClubModule } from './effet-club/effet-club.module';
-import { CiseauTarifaireModule } from './ciseau-tarifaire/ciseau-tarifaire.module';
+import { ClasseCourrierModule } from './classe-courrier/classe-courrier.module';
+import { TypeCourrierModule } from './type-courrier/type-courrier.module';
+import { CorrespondantModule } from './correspondant/correspondant.module';
+import { CategoriesModule } from './categories/categories.module';
+import { PermissionModule } from './permission/permission.module';
+import { RoleModule } from './role/role.module';
+import { ServiceModule } from './service/service.module';
+import { SalleModule } from './salle/salle.module';
+import { CoffreModule } from './coffre/coffre.module';
+import { ArchiveModule } from './archive/archive.module';
+import { BordereauTransmissionModule } from './bordereau-transmission/bordereau-transmission.module';
+import { CourrierModule } from './courrier/courrier.module';
+import { TraitementModule } from './traitement/traitement.module';
+import { PieceJointeModule } from './piece-jointe/piece-jointe.module';
+import { CourrierInterneModule } from './courrier-interne/courrier-interne.module';
+import { NotificationModule } from './notification/notification.module';
+import { CourrierDepartModule } from './courrier-depart/courrier-depart.module';
+import { StatistiqueModule } from './statistique/statistique.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    CommonModule,
     MailerModule,
     SignupModule,
     AuthModule,
     ForgotPasswordModule,
     UserModule,
-    OperateurModule,
-    TypeAppelModule,
-    OptionModule,
-    ConsommationMoyenneModule,
-    OffreModule,
-    TarifInterconnexionModule,
-    ServicesModule,
-    StructureTarifaireModule,
-    AvantageModule,
-    TypeOperateurModule,
-    TraficModule,
-    AbonnementModule,
-    ChiffreAffaireModule,
-    IhhModule,
-    CaracteristiqueModule,
-    ParametreModule,
     LogModule,
-    DashboardModule,
-    EffetClubModule,
-    CiseauTarifaireModule,
+    ClasseCourrierModule,
+    TypeCourrierModule,
+    CorrespondantModule,
+    CategoriesModule,
+    PermissionModule,
+    RoleModule,
+    ServiceModule,
+    SalleModule,
+    CoffreModule,
+    ArchiveModule,
+    BordereauTransmissionModule,
+    CourrierModule,
+    TraitementModule,
+    PieceJointeModule,
+    CourrierModule,
+    CourrierInterneModule,
+    NotificationModule,
+    CourrierDepartModule,
+    StatistiqueModule,
   ],
   providers: [
     {

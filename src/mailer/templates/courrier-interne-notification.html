@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification Courrier Interne - KIAMA S.A</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .email-container {
+            max-width: 650px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            gap: 10px;
+        }
+        .header-left {
+            text-align: left;
+            flex: 1;
+            font-size: 11px;
+            line-height: 1.5;
+            font-weight: 500;
+            text-transform: uppercase;
+            padding-right: 5px;
+        }
+        .header-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 15px;
+            flex-shrink: 0;
+        }
+        .header-center img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            padding: 5px;
+        }
+        .header-right {
+            text-align: right !important;
+            flex: 1;
+            font-size: 11px;
+            line-height: 1.5;
+            font-weight: 500;
+            text-transform: uppercase;
+            padding-left: 5px;
+            direction: rtl;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 25px;
+        }
+        .content h2 {
+            color: #1e3a8a;
+            margin-top: 0;
+        }
+        .info-list {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0 0 0;
+        }
+        .info-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .info-list li:last-child {
+            border-bottom: none;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #666666;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="header-top">
+                <div class="header-left">
+                    République du Cameroun<br>
+                    Paix - Travail - Patrie<br>
+                    -----------------------<br>
+                    KIAMA S.A
+                </div>
+                <div class="header-center">
+                    <img src="cid:logo" alt="Logo">
+                </div>
+                <div class="header-right">
+                    Republic of Cameroon<br>
+                    Peace - Work - Fatherland<br>
+                    -----------------------<br>
+                    KIAMA S.A
+                </div>
+            </div>
+            <h1>Notification Courrier Interne</h1>
+        </div>
+        <div class="content">
+            <h2>Bonjour {{userFirstName}} {{userLastName}},</h2>
+            <p>Un courrier interne a été créé et transmis à votre service <strong>{{serviceNom}}</strong> pour traitement.</p>
+            <ul class="info-list">
+                <li><strong>Objet:</strong> {{objet}}</li>
+                <li><strong>Classe:</strong> {{classeCourrier}}</li>
+                <li><strong>Type de transmission:</strong> {{typeTransmission}}</li>
+                <li><strong>Commentaire:</strong> {{commentaire}}</li>
+                <li><strong>Date:</strong> {{dateCreation}}</li>
+            </ul>
+        </div>
+        <div class="footer">
+            © 2026 KIAMA S.A - Gestion du Courrier
+        </div>
+    </div>
+</body>
+</html>

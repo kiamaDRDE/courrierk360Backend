@@ -106,7 +106,7 @@ export class LogService {
         user: {
           select: {
             id: true,
-            nom: true,
+            username: true,
             email: true,
           },
         },
@@ -247,7 +247,7 @@ export class LogService {
           user: {
             select: {
               id: true,
-              nom: true,
+              username: true,
               email: true,
             },
           },
@@ -401,7 +401,7 @@ export class LogService {
           user: {
             select: {
               id: true,
-              nom: true,
+              username: true,
               email: true,
             },
           },
@@ -429,14 +429,14 @@ export class LogService {
     const userIds = topUsersRaw.map(item => item.userId).filter(id => id !== null) as number[];
     const users = await this.prisma.user.findMany({
       where: { id: { in: userIds } },
-      select: { id: true, nom: true },
+      select: { id: true, username: true },
     });
 
     const topUsers = topUsersRaw.map(item => {
       const user = users.find(u => u.id === item.userId);
       return {
         userId: item.userId,
-        userName: user?.nom || 'Utilisateur inconnu',
+        userName: user?.username || 'Utilisateur inconnu',
         count: item._count.id,
       };
     });
@@ -538,7 +538,7 @@ export class LogService {
         user: {
           select: {
             id: true,
-            nom: true,
+            username: true,
             email: true,
           },
         },
@@ -547,7 +547,7 @@ export class LogService {
 
     const formattedLogs = logs.map(log => ({
       ...log,
-      userName: log.user?.nom || 'Système',
+      userName: log.user?.username || 'Système',
       userEmail: log.user?.email || 'N/A',
       metadata: log.metadata || null,
     }));

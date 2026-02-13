@@ -1,0 +1,304 @@
+// src/courrier-depart/courrier-depart.controller.ts
+
+import {
+  Controller,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Get,
+  UseGuards,
+  UseInterceptors,
+  UploadedFiles,
+  Param,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiConsumes,
+  ApiBody,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CourrierDepartService } from './courrier-depart.service';
+import { CreateCourrierDepartDto } from './dto/create-courrier-depart.dto';
+import { UpdateCourrierDepartDto } from './dto/update-courrier-depart.dto';
+import { CourrierDepartIdsDto, ListCourrierDepartQueryDto } from './dto/list-courrier-depart-query.dto';
+
+@ApiTags('Courrier Départ')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@Controller('courrier-depart')
+export class CourrierDepartController {
+  constructor(private readonly courrierDepartService: CourrierDepartService) {}
+
+  // 📋 Liste des courriers départ
+  @Get()
+  @ApiOperation({
+    summary: 'Lister les courriers départ',
+    description: 'Liste paginée des courriers départ avec filtres et recherche.',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'dateArriveeDebut', required: false, type: String })
+  @ApiQuery({ name: 'dateArriveeFin', required: false, type: String })
+  @ApiQuery({ name: 'dateEnregistrementDebut', required: false, type: String })
+  @ApiQuery({ name: 'dateEnregistrementFin', required: false, type: String })
+  @ApiQuery({ name: 'priorite', required: false, type: String })
+  @ApiQuery({ name: 'categorie', required: false, type: String })
+  @ApiQuery({ name: 'categorieId', required: false, type: Number })
+  @ApiQuery({ name: 'typeCourrierId', required: false, type: Number })
+  @ApiQuery({ name: 'statut', required: false, type: String })
+  @ApiQuery({ name: 'dernierStatut', required: false, type: String })
+  @ApiQuery({ name: 'serviceId', required: false, type: Number })
+  @ApiQuery({ name: 'dernierServiceId', required: false, type: Number })
+  @ApiQuery({ name: 'provenanceId', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Courriers départ récupérés avec succès.' })
+  list(@Query() query: ListCourrierDepartQueryDto) {
+    return this.courrierDepartService.list(query);
+  }
+
+  // 📝 Créer un courrier départ
+  @Post()
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'document', maxCount: 1 },
+      { name: 'piecesJointes', maxCount: 10 },
+    ]),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Créer un courrier départ',
+    description: 'Crée un courrier départ avec document et pièces jointes. Peut notifier par email et SMS.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['document', 'categorie', 'classeCourrier', 'typeCourrier', 'dateSignature', 'idSignataire'],
+      properties: {
+        numeroReference: { type: 'string', example: 'MINEPIA/2025/09/17/25/A' },
+        categorie: { type: 'string', example: 'Administrative' },
+        idSignataire: { type: 'number', example: 5 },
+        classeCourrier: { type: 'string', example: 'Interne' },
+        typeCourrier: { type: 'string', example: 'Note' },
+        dateSignature: { type: 'string', example: '2025-09-20T16:00:00.000Z' },
+        commentaire: { type: 'string', example: 'Traitement effectué' },
+        email: { type: 'string', example: 'destinataire@example.com' },
+        numeroTelephone: { type: 'string', example: '+237612345678' },
+        nombrePieceJointe: { type: 'number', example: 2 },
+        piecesJointesData: {
+          type: 'string',
+          example: '[{"intitule":"PJ 1"},{"intitule":"PJ 2"}]',
+        },
+        sendNotification: { type: 'boolean', example: true, default: false },
+        document: { type: 'string', format: 'binary' },
+        piecesJointes: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Courrier départ créé avec succès.',
+    schema: {
+      example: {
+        success: true,
+        statusCode: 201,
+        code: 'success',
+        title: 'Création courrier départ',
+        message: 'Courrier départ créé avec succès. 2 pièce(s) jointe(s) ajoutée(s).',
+        data: {
+          courrierDepart: {
+            id: 1,
+            numeroReference: 'MINEPIA/2025/09/17/25/A',
+            categorie: 'Administrative',
+            idSignataire: 5,
+            classeCourrier: 'Interne',
+            typeCourrier: 'Note',
+            dateSignature: '2025-09-20T16:00:00.000Z',
+            commentaire: 'Traitement effectué',
+            email: 'destinataire@example.com',
+            numeroTelephone: '+237612345678',
+            document: 'courrier-depart/1700000000000-document.pdf',
+            nombrePieceJointe: 2,
+          },
+          piecesJointes: [
+            {
+              id: 201,
+              nom: 'pj1.pdf',
+              intitule: 'PJ 1',
+              chemin: 'courrier-depart/1700000000001-pj1.pdf',
+              type: 'application/pdf',
+            },
+          ],
+        },
+      },
+    },
+  })
+  create(
+    @Body() dto: CreateCourrierDepartDto,
+    @UploadedFiles() files: { document?: Express.Multer.File[]; piecesJointes?: Express.Multer.File[] },
+  ) {
+    const document = files?.document?.[0];
+    const piecesJointes = files?.piecesJointes || [];
+    return this.courrierDepartService.create(dto, document, piecesJointes);
+  }
+
+  // ✏️ Mettre à jour un courrier départ
+  @Patch(':id')
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'document', maxCount: 1 },
+      { name: 'piecesJointes', maxCount: 10 },
+    ]),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Mettre à jour un courrier départ',
+    description: 'Met à jour un courrier départ avec document et pièces jointes. Peut notifier par email et SMS.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['document', 'categorie', 'classeCourrier', 'typeCourrier', 'dateSignature', 'idSignataire'],
+      properties: {
+        numeroReference: { type: 'string', example: 'MINEPIA/2025/09/17/25/A' },
+        categorie: { type: 'string', example: 'Administrative' },
+        idSignataire: { type: 'number', example: 5 },
+        classeCourrier: { type: 'string', example: 'Interne' },
+        typeCourrier: { type: 'string', example: 'Note' },
+        dateSignature: { type: 'string', example: '2025-09-20T16:00:00.000Z' },
+        commentaire: { type: 'string', example: 'Traitement effectué' },
+        email: { type: 'string', example: 'destinataire@example.com' },
+        numeroTelephone: { type: 'string', example: '+237612345678' },
+        nombrePieceJointe: { type: 'number', example: 2 },
+        piecesJointesData: {
+          type: 'string',
+          example: '[{"intitule":"PJ 1"},{"intitule":"PJ 2"}]',
+        },
+        sendNotification: { type: 'boolean', example: true, default: false },
+        document: { type: 'string', format: 'binary' },
+        piecesJointes: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Courrier départ mis à jour avec succès.',
+    schema: {
+      example: {
+        success: true,
+        statusCode: 200,
+        code: 'success',
+        title: 'Mise à jour courrier départ',
+        message: 'Courrier départ mis à jour avec succès. 1 pièce(s) jointe(s) ajoutée(s).',
+        data: {
+          courrierDepart: {
+            id: 1,
+            numeroReference: 'MINEPIA/2025/09/17/25/A',
+            categorie: 'Administrative',
+            idSignataire: 5,
+            classeCourrier: 'Interne',
+            typeCourrier: 'Note',
+            dateSignature: '2025-09-20T16:00:00.000Z',
+            commentaire: 'Traitement mis à jour',
+            email: 'destinataire@example.com',
+            numeroTelephone: '+237612345678',
+            document: 'courrier-depart/1700000000000-document.pdf',
+            nombrePieceJointe: 3,
+          },
+          piecesJointes: [
+            {
+              id: 202,
+              nom: 'pj2.pdf',
+              intitule: 'PJ 2',
+              chemin: 'courrier-depart/1700000000002-pj2.pdf',
+              type: 'application/pdf',
+            },
+          ],
+        },
+      },
+    },
+  })
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateCourrierDepartDto,
+    @UploadedFiles() files: { document?: Express.Multer.File[]; piecesJointes?: Express.Multer.File[] },
+  ) {
+    const document = files?.document?.[0];
+    const piecesJointes = files?.piecesJointes || [];
+    return this.courrierDepartService.update(id, dto as CreateCourrierDepartDto, document, piecesJointes);
+  }
+
+  // 🔍 Détails d'un courrier départ
+  @Get(':id')
+  @ApiOperation({ summary: 'Détails d\'un courrier départ' })
+  @ApiResponse({ status: 200, description: 'Courrier départ récupéré avec succès.' })
+  @ApiResponse({ status: 404, description: 'Courrier départ non trouvé.' })
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.courrierDepartService.findOne(id);
+  }
+
+  // 📦 Détails de plusieurs courriers départ
+  @Post('details')
+  @ApiOperation({ summary: 'Détails de plusieurs courriers départ' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { ids: { type: 'array', items: { type: 'number' }, example: [1, 2, 3] } },
+      required: ['ids'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Courriers départ récupérés avec succès.' })
+  findManyByIds(@Body() dto: CourrierDepartIdsDto) {
+    return this.courrierDepartService.findManyByIds(dto.ids);
+  }
+
+  // 📧🔔 Notifier par mail et SMS
+  @Post(':id/notify')
+  @ApiOperation({ summary: 'Notifier par mail et SMS un courrier départ' })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification envoyée avec succès.',
+    schema: {
+      example: {
+        success: true,
+        statusCode: 200,
+        code: 'success',
+        title: 'Notification courrier départ',
+        message: 'Notification envoyée avec succès.',
+        data: { id: 1, emailSent: true, smsSent: true },
+      },
+    },
+  })
+  notify(@Param('id', ParseIntPipe) id: number) {
+    return this.courrierDepartService.notify(id);
+  }
+
+  // 🗑️ Suppression logique
+  @Delete(':id')
+  @ApiOperation({ summary: 'Supprimer un courrier départ (logique)' })
+  @ApiResponse({ status: 200, description: 'Courrier départ supprimé (logique) avec succès.' })
+  delete(@Param('id', ParseIntPipe) id: number) {
+    return this.courrierDepartService.delete(id);
+  }
+
+  // 🗑️ Suppression permanente
+  @Delete(':id/permanent')
+  @ApiOperation({ summary: 'Supprimer un courrier départ (permanent)' })
+  @ApiResponse({ status: 200, description: 'Courrier départ supprimé définitivement avec succès.' })
+  deletePermanent(@Param('id', ParseIntPipe) id: number) {
+    return this.courrierDepartService.deletePermanent(id);
+  }
+}

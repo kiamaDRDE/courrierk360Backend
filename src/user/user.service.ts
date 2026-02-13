@@ -184,7 +184,7 @@ export class UserService {
           user: {
             select: {
               id: true,
-              nom: true,
+              username: true,
               email: true,
             },
           },

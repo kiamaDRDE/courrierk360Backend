@@ -52,28 +52,41 @@ export class UserQueryDto {
   numero?: string;
 
   @ApiPropertyOptional({
-    description: 'Filtrer par fonction',
-    example: 'Développeur',
+    description: 'Filtrer par ID du rôle',
+    example: 1,
   })
   @IsOptional()
-  @IsString()
-  fonction?: string;
+  @Type(() => Number)
+  @IsInt()
+  idRole?: number;
 
   @ApiPropertyOptional({
-    description: 'Filtrer par rôle',
-    example: 'SUPER_ADMIN',
-    enum: ['SUPER_ADMIN', 'UTILISATEUR'],
+    description: 'Filtrer par ID du rôle',
+    example: 1,
   })
-  @IsOptional()
-  @IsEnum(['SUPER_ADMIN', 'UTILISATEUR'])
-  role?: string;
 
   @ApiPropertyOptional({
-    description: 'Filtrer par statut',
-    example: 'Actif',
-    enum: ['Actif', 'Inactif'],
+    description: 'Filtrer par ID du service',
+    example: 1,
   })
   @IsOptional()
-  @IsEnum(['Actif', 'Inactif'])
-  statut?: string;
+  @Type(() => Number)
+  @IsInt()
+  idService?: number;
+
+  @ApiPropertyOptional({
+    description: 'Filtrer les utilisateurs signataires',
+    example: true,
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  isSignataire?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Filtrer par statut actif/inactif',
+    example: true,
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  isActive?: boolean;
 }

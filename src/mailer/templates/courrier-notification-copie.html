@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transmission en copie - KIAMA S.A</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .email-container {
+            max-width: 650px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            gap: 10px;
+        }
+        .header-left {
+            text-align: left;
+            flex: 1;
+            font-size: 11px;
+            line-height: 1.5;
+            font-weight: 500;
+            text-transform: uppercase;
+            padding-right: 5px;
+        }
+        .header-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 15px;
+            flex-shrink: 0;
+        }
+        .header-center img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            padding: 5px;
+        }
+        .header-right {
+            text-align: right !important;
+            flex: 1;
+            font-size: 11px;
+            line-height: 1.5;
+            font-weight: 500;
+            text-transform: uppercase;
+            padding-left: 5px;
+            direction: rtl;
+        }
+        .header-right br {
+            content: "";
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px 25px;
+        }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #1f2937;
+        }
+        .section {
+            margin-bottom: 25px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #065f46;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #10b981;
+            display: flex;
+            align-items: center;
+        }
+        .section-title .icon {
+            margin-right: 10px;
+            font-size: 20px;
+        }
+        .info-list {
+            background-color: #f9fafb;
+            border-left: 4px solid #10b981;
+            padding: 15px 20px;
+            border-radius: 4px;
+        }
+        .info-item {
+            margin: 10px 0;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #374151;
+            min-width: 180px;
+            margin-right: 10px;
+        }
+        .info-value {
+            color: #1f2937;
+            flex: 1;
+        }
+        .highlight-box {
+            background-color: #ecfdf5;
+            border: 1px solid #10b981;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .highlight-box strong {
+            color: #065f46;
+            font-size: 16px;
+        }
+        .highlight-box p {
+            margin: 8px 0 0 0;
+            color: #047857;
+        }
+        .footer {
+            background-color: #f9fafb;
+            padding: 20px 25px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+        .footer p {
+            margin: 5px 0;
+            font-size: 13px;
+            color: #6b7280;
+        }
+        .footer strong {
+            color: #065f46;
+            font-size: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="header-top">
+                <div class="header-left">
+                    <img src="cid:logo" alt="Logo KIAMA" style="width: 120px; height: auto; object-fit: contain;">
+                </div>
+                <div class="header-center">
+                    <!-- <img src="https://cdeno.org/wp-content/uploads/2023/11/LOGO-MINEPIA-1024x1024.jpg" alt="Logo MINEPIA"> -->
+                </div>
+                <div class="header-right">
+                    KIAMA S.A. au capital de 40 000 000 de FCFA.<br>
+                    Mobile Omnisport, Derrière le Stade Annexe N°3 contact@kiama.cm www.kiama.cm<br>
+                    Tel: (237) 697 812 515 / 682 202 675<br>
+                    Fixe: (237) 222 209 04 WhatsApp +237 8220 2675<br>
+                    BP: 15709 Yaoundé Cameroun
+                </div>
+            </div>
+            <h1>Transmission en copie</h1>
+            <p>KIAMA S.A Au coeur de l'innovation</p>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Bonjour <strong>{{userFirstName}} {{userLastName}}</strong>,
+            </div>
+
+            <div class="highlight-box">
+                <strong>📌 Vous êtes en copie</strong>
+                <p>Un courrier a été transmis en copie à votre service <strong>{{serviceNom}}</strong>.</p>
+            </div>
+
+            <div class="section">
+                <div class="section-title">
+                    <span class="icon">📄</span>
+                    Informations du courrier
+                </div>
+                <div class="info-list">
+                    <div class="info-item">
+                        <div class="info-label">Numéro :</div>
+                        <div class="info-value">{{numero}}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Référence :</div>
+                        <div class="info-value">{{reference}}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Objet :</div>
+                        <div class="info-value">{{objet}}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Expéditeur :</div>
+                        <div class="info-value">{{civilite}} {{nom}}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Priorité :</div>
+                        <div class="info-value">{{priorite}}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Catégorie :</div>
+                        <div class="info-value">{{categorie}}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Date d'arrivée :</div>
+                        <div class="info-value">{{dateArrivee}}</div>
+                    </div>
+                    {{#if commentaire}}
+                    <div class="info-item">
+                        <div class="info-label">Commentaire :</div>
+                        <div class="info-value">{{commentaire}}</div>
+                    </div>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>KIAMA S.A</strong> - Gestion du Courrier</p>
+        </div>
+    </div>
+</body>
+</html>

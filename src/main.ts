@@ -11,24 +11,25 @@ import { SignupModule } from './signup/signup.module';
 import { AuthModule } from './auth/auth.module';
 import { ForgotPasswordModule } from './forgot-password/forgot-password.module';
 import { UserModule } from './user/user.module';
-import { OperateurModule } from './operateur/operateur.module';
-import { TypeAppelModule } from './type-appel/type-appel.module';
-import { OptionModule } from './option/option.module';
-import { ConsommationMoyenneModule } from './consommation-moyenne/consommation-moyenne.module';
-import { OffreModule } from './offre/offre.module';
-import { StructureTarifaireModule } from './structure-tarifaire/structure-tarifaire.module';
-import { AvantageModule } from './avantage/avantage.module';
-import { TypeOperateurModule } from './type-operateur/type-operateur.module';
-import { TraficModule } from './trafic/trafic.module';
-import { AbonnementModule } from './abonnement/abonnement.module';
-import { ChiffreAffaireModule } from './chiffre-affaire/chiffre-affaire.module';
-import { IhhModule } from './ihh/ihh.module';
-import { ParametreModule } from './parametre/parametre.module';
-import { CaracteristiqueModule } from './caracteristique/caracteristique.module';
-import { TarifInterconnexionModule } from './tarif-interconnexion/tarif-interconnexion.module';
-import { ServicesModule } from './services-management/services.module';
 import { LogModule } from './log/log.module';
-import { DashboardModule } from './dashboard/dashboard.module';
+import { ClasseCourrierModule } from './classe-courrier/classe-courrier.module';
+import { TypeCourrierModule } from './type-courrier/type-courrier.module';
+import { CorrespondantModule } from './correspondant/correspondant.module';
+import { CategoriesModule } from './categories/categories.module';
+import { PermissionModule } from './permission/permission.module';
+import { RoleModule } from './role/role.module';
+import { ServiceModule } from './service/service.module';
+import { SalleModule } from './salle/salle.module';
+import { CoffreModule } from './coffre/coffre.module';
+import { ArchiveModule } from './archive/archive.module';
+import { BordereauTransmissionModule } from './bordereau-transmission/bordereau-transmission.module';
+import { CourrierModule } from './courrier/courrier.module';
+import { TraitementModule } from './traitement/traitement.module';
+import { PieceJointeModule } from './piece-jointe/piece-jointe.module';
+import { CourrierInterneModule } from './courrier-interne/courrier-interne.module';
+import { NotificationModule } from './notification/notification.module';
+import { CourrierDepartModule } from './courrier-depart/courrier-depart.module';
+import { StatistiqueModule } from './statistique/statistique.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -44,32 +45,20 @@ async function bootstrap() {
 
   // Configuration Swagger pour l'API complète
   const mainConfig = new DocumentBuilder()
-    .setTitle('API Complète - Patnuc Segmentation')
+    .setTitle('API Complète - Courrier KIAMA 360')
     .setDescription(
-      'API permettant de gérer tous les modules du système patnuc_segmentation.',
+      'API permettant de gérer tous les modules du système Courrier KIAMA.',
     )
     .setVersion('1.0.0')
     .addTag('Signup', 'Gestion de la création des utilisateurs')
     .addTag('Auth', 'Authentification et gestion des tokens')
     .addTag('Forgot Password', 'Réinitialisation de mot de passe oublié')
     .addTag('User', 'Gestion du profil et des activités utilisateur')
-    .addTag('Operateur', 'Gestion des opérateurs et tarifs d\'interconnection')
-    .addTag('Type d\'appel', 'Gestion des types d\'appel des opérateurs')
-    .addTag('Structures tarifaires', 'Gestion des structures tarifaires')
-    .addTag('Avantages', 'Gestion des avantages des offres')
-    .addTag('Types d\'opérateur', 'Gestion des types d\'opérateur')
-    .addTag('Options', 'Gestion des options des offres')
-    .addTag('Consommations moyennes', 'Gestion des consommations moyennes')
-    .addTag('Offre', 'Gestion des offres et calcul d\'effet club')
-    .addTag('Trafic', 'Gestion des données de trafic des opérateurs')
-    .addTag('Abonnement', 'Gestion des données d\'abonnement')
-    .addTag('Chiffre d\'affaire', 'Gestion des chiffres d\'affaire')
-    .addTag('Part de marché (IHH)', 'Gestion des parts de marché et indices IHH')
-    .addTag('Paramètres', 'Gestion des paramètres financiers')
-    .addTag('Caractéristique', 'Gestion des caractéristiques des offres')
-    .addTag('Tarif Interconnexion', 'Gestion des tarifs d\'interconnexion')
-    .addTag('Services', 'Gestion des services opérateurs')
     .addTag('Logs', 'Gestion des logs et audit système')
+    .addTag('Classes de Courrier', 'Gestion des classes de courrier')
+    .addTag('Types de Courrier', 'Gestion des types de courrier')
+    .addTag('Correspondants', 'Gestion des correspondants et leurs catégories')
+    .addTag('Catégories', 'Gestion des catégories de correspondants')
     .addBearerAuth(
       {
         type: 'http',
@@ -144,230 +133,6 @@ async function bootstrap() {
     include: [UserModule],
   });
 
-  // Configuration Swagger pour le module Operateur
-  const operateurConfig = new DocumentBuilder()
-    .setTitle('API Operateur - Gestion Opérateurs')
-    .setDescription('API dédiée à la gestion des opérateurs et tarifs d\'interconnection.')
-    .setVersion('1.0.0')
-    .addTag('Operateur', 'Gestion des opérateurs')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const operateurDocument = SwaggerModule.createDocument(app, operateurConfig, {
-    include: [OperateurModule],
-  });
-
-  // Configuration Swagger pour le module TypeAppel
-  const typeAppelConfig = new DocumentBuilder()
-    .setTitle('API Type Appel - Gestion Types d\'Appel')
-    .setDescription('API dédiée à la gestion des types d\'appel.')
-    .setVersion('1.0.0')
-    .addTag('TypeAppel', 'Gestion des types d\'appel')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const typeAppelDocument = SwaggerModule.createDocument(app, typeAppelConfig, {
-    include: [TypeAppelModule],
-  });
-
-  // Configuration Swagger pour le module Option
-  const optionConfig = new DocumentBuilder()
-    .setTitle('API Options - Gestion Options')
-    .setDescription('API dédiée à la gestion des options des offres.')
-    .setVersion('1.0.0')
-    .addTag('Options', 'Gestion des options')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const optionDocument = SwaggerModule.createDocument(app, optionConfig, {
-    include: [OptionModule],
-  });
-
-  // Configuration Swagger pour le module ConsommationMoyenne
-  const consommationMoyenneConfig = new DocumentBuilder()
-    .setTitle('API Consommations moyennes - Gestion Consommations moyennes')
-    .setDescription('API dédiée à la gestion des consommations moyennes.')
-    .setVersion('1.0.0')
-    .addTag('Consommations moyennes', 'Gestion des consommations moyennes')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const consommationMoyenneDocument = SwaggerModule.createDocument(app, consommationMoyenneConfig, {
-    include: [ConsommationMoyenneModule],
-  });
-
-  // Configuration Swagger pour le module Offre
-  const offreConfig = new DocumentBuilder()
-    .setTitle('API Offre - Gestion Offres')
-    .setDescription('API dédiée à la gestion des offres et calcul d\'effet club.')
-    .setVersion('1.0.0')
-    .addTag('Offre', 'Gestion des offres et effet club')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const offreDocument = SwaggerModule.createDocument(app, offreConfig, {
-    include: [OffreModule],
-  });
-
-  // Configuration Swagger pour le module Structure Tarifaire
-  const structureTarifaireConfig = new DocumentBuilder()
-    .setTitle('API Structure Tarifaire - Gestion Structures Tarifaires')
-    .setDescription('API dédiée à la gestion des structures tarifaires.')
-    .setVersion('1.0.0')
-    .addTag('Structures tarifaires', 'Gestion des structures tarifaires')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const structureTarifaireDocument = SwaggerModule.createDocument(app, structureTarifaireConfig, {
-    include: [StructureTarifaireModule],
-  });
-
-  // Configuration Swagger pour le module Avantage
-  const avantageConfig = new DocumentBuilder()
-    .setTitle('API Avantage - Gestion Avantages')
-    .setDescription('API dédiée à la gestion des avantages des offres.')
-    .setVersion('1.0.0')
-    .addTag('Avantages', 'Gestion des avantages')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const avantageDocument = SwaggerModule.createDocument(app, avantageConfig, {
-    include: [AvantageModule],
-  });
-
-  // Configuration Swagger pour le module Type Opérateur
-  const typeOperateurConfig = new DocumentBuilder()
-    .setTitle('API Type Opérateur - Gestion Types d\'Opérateur')
-    .setDescription('API dédiée à la gestion des types d\'opérateur.')
-    .setVersion('1.0.0')
-    .addTag('Types d\'opérateur', 'Gestion des types d\'opérateur')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const typeOperateurDocument = SwaggerModule.createDocument(app, typeOperateurConfig, {
-    include: [TypeOperateurModule],
-  });
-
-  // Configuration Swagger pour le module Trafic
-  const traficConfig = new DocumentBuilder()
-    .setTitle('API Trafic - Gestion du Trafic')
-    .setDescription('API dédiée à la gestion des données de trafic des opérateurs.')
-    .setVersion('1.0.0')
-    .addTag('Trafic', 'Gestion des données de trafic')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const traficDocument = SwaggerModule.createDocument(app, traficConfig, {
-    include: [TraficModule],
-  });
-
-  // Configuration Swagger pour le module Abonnement
-  const abonnementConfig = new DocumentBuilder()
-    .setTitle('API Abonnement - Gestion des Abonnements')
-    .setDescription('API dédiée à la gestion des données d\'abonnement.')
-    .setVersion('1.0.0')
-    .addTag('Abonnement', 'Gestion des abonnements')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const abonnementDocument = SwaggerModule.createDocument(app, abonnementConfig, {
-    include: [AbonnementModule],
-  });
-
-  // Configuration Swagger pour le module Chiffre d'Affaire
-  const chiffreAffaireConfig = new DocumentBuilder()
-    .setTitle('API Chiffre d\'Affaire - Gestion CA')
-    .setDescription('API dédiée à la gestion des chiffres d\'affaire.')
-    .setVersion('1.0.0')
-    .addTag('Chiffre d\'affaire', 'Gestion des chiffres d\'affaire')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const chiffreAffaireDocument = SwaggerModule.createDocument(app, chiffreAffaireConfig, {
-    include: [ChiffreAffaireModule],
-  });
-
-  // Configuration Swagger pour le module IHH
-  const ihhConfig = new DocumentBuilder()
-    .setTitle('API Part de Marché (IHH) - Indices Herfindahl-Hirschman')
-    .setDescription('API dédiée à la gestion des parts de marché et calculs d\'indices IHH.')
-    .setVersion('1.0.0')
-    .addTag('Part de marché (IHH)', 'Gestion des parts de marché')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const ihhDocument = SwaggerModule.createDocument(app, ihhConfig, {
-    include: [IhhModule],
-  });
-
-  // Configuration Swagger pour le module Parametre
-  const parametreConfig = new DocumentBuilder()
-    .setTitle('API Paramètres - Gestion des Paramètres Financiers')
-    .setDescription('API dédiée à la gestion des paramètres financiers (redevances, coûts).')
-    .setVersion('1.0.0')
-    .addTag('Paramètres', 'Gestion des paramètres financiers')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const parametreDocument = SwaggerModule.createDocument(app, parametreConfig, {
-    include: [ParametreModule],
-  });
-
-  // Configuration Swagger pour le module Caracteristique
-  const caracteristiqueConfig = new DocumentBuilder()
-    .setTitle('API Caractéristiques - Gestion des Caractéristiques')
-    .setDescription('API dédiée à la gestion des caractéristiques des offres.')
-    .setVersion('1.0.0')
-    .addTag('Caractéristique', 'Gestion des caractéristiques')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const caracteristiqueDocument = SwaggerModule.createDocument(app, caracteristiqueConfig, {
-    include: [CaracteristiqueModule],
-  });
-
-  // Configuration Swagger pour le module Tarif Interconnexion
-  const tarifInterconnexionConfig = new DocumentBuilder()
-    .setTitle('API Tarifs d\'Interconnexion - Gestion Tarifs')
-    .setDescription('API dédiée à la gestion des tarifs d\'interconnexion.')
-    .setVersion('1.0.0')
-    .addTag('Tarif Interconnexion', 'Gestion des tarifs d\'interconnexion')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const tarifInterconnexionDocument = SwaggerModule.createDocument(app, tarifInterconnexionConfig, {
-    include: [TarifInterconnexionModule],
-  });
-
-  // Configuration Swagger pour le module Services
-  const servicesConfig = new DocumentBuilder()
-    .setTitle('API Services - Gestion des Services')
-    .setDescription('API dédiée à la gestion des services opérateurs.')
-    .setVersion('1.0.0')
-    .addTag('Services', 'Gestion des services')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addServer('/')
-    .build();
-
-  const servicesDocument = SwaggerModule.createDocument(app, servicesConfig, {
-    include: [ServicesModule],
-  });
-
   // Configuration Swagger pour le module Logs
   const logConfig = new DocumentBuilder()
     .setTitle('API Logs - Gestion des Logs et Audit')
@@ -382,18 +147,256 @@ async function bootstrap() {
     include: [LogModule],
   });
 
-  // Configuration Swagger pour le module Dashboard
-  const dashboardConfig = new DocumentBuilder()
-    .setTitle('API Dashboard - Statistiques et KPI')
-    .setDescription('API dédiée aux statistiques générales et KPI du dashboard.')
+  // Configuration Swagger pour le module ClasseCourrier
+  const classeCourrierConfig = new DocumentBuilder()
+    .setTitle('API ClasseCourrier - Gestion des Classes de Courrier')
+    .setDescription('API dédiée à la gestion des classes de courrier.')
     .setVersion('1.0.0')
-    .addTag('Dashboard', 'Statistiques dashboard et KPI')
+    .addTag('Classes de Courrier', 'Gestion des classes de courrier')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
     .addServer('/')
     .build();
 
-  const dashboardDocument = SwaggerModule.createDocument(app, dashboardConfig, {
-    include: [DashboardModule],
+  const classeCourrierDocument = SwaggerModule.createDocument(app, classeCourrierConfig, {
+    include: [ClasseCourrierModule],
+  });
+
+  // Configuration Swagger pour le module TypeCourrier
+  const typeCourrierConfig = new DocumentBuilder()
+    .setTitle('API TypeCourrier - Gestion des Types de Courrier')
+    .setDescription('API dédiée à la gestion des types de courrier avec suppression logique et définitive.')
+    .setVersion('1.0.0')
+    .addTag('Types de Courrier', 'Gestion des types de courrier')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const typeCourrierDocument = SwaggerModule.createDocument(app, typeCourrierConfig, {
+    include: [TypeCourrierModule],
+  });
+
+  // Configuration Swagger pour le module Correspondant
+  const correspondantConfig = new DocumentBuilder()
+    .setTitle('API Correspondant - Gestion des Correspondants')
+    .setDescription('API dédiée à la gestion des correspondants avec leurs catégories.')
+    .setVersion('1.0.0')
+    .addTag('Correspondants', 'Gestion des correspondants et leurs catégories')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const correspondantDocument = SwaggerModule.createDocument(app, correspondantConfig, {
+    include: [CorrespondantModule],
+  });
+
+  // Configuration Swagger pour le module Categories
+  const categoriesConfig = new DocumentBuilder()
+    .setTitle('API Catégories - Gestion des Catégories')
+    .setDescription('API dédiée à la gestion des catégories de correspondants.')
+    .setVersion('1.0.0')
+    .addTag('Catégories', 'Gestion des catégories de correspondants')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const categoriesDocument = SwaggerModule.createDocument(app, categoriesConfig, {
+    include: [CategoriesModule],
+  });
+
+  // Configuration Swagger pour le module Permission
+  const permissionConfig = new DocumentBuilder()
+    .setTitle('API Permission - Gestion des Permissions')
+    .setDescription('API dédiée à la gestion des permissions du système.')
+    .setVersion('1.0.0')
+    .addTag('Permissions', 'Gestion des permissions système')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const permissionDocument = SwaggerModule.createDocument(app, permissionConfig, {
+    include: [PermissionModule],
+  });
+
+  // Configuration Swagger pour le module Role
+  const roleConfig = new DocumentBuilder()
+    .setTitle('API Role - Gestion des Rôles')
+    .setDescription('API dédiée à la gestion des rôles et leurs permissions.')
+    .setVersion('1.0.0')
+    .addTag('Roles', 'Gestion des rôles et attribution de permissions')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const roleDocument = SwaggerModule.createDocument(app, roleConfig, {
+    include: [RoleModule],
+  });
+
+  // Configuration Swagger pour le module Service
+  const serviceConfig = new DocumentBuilder()
+    .setTitle('API Service - Gestion des Services')
+    .setDescription('API dédiée à la gestion des services.')
+    .setVersion('1.0.0')
+    .addTag('Service', 'Gestion des services')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const serviceDocument = SwaggerModule.createDocument(app, serviceConfig, {
+    include: [ServiceModule],
+  });
+
+  // Configuration Swagger pour le module Salle
+  const salleConfig = new DocumentBuilder()
+    .setTitle('API Salle - Gestion des Salles')
+    .setDescription('API dédiée à la gestion des salles.')
+    .setVersion('1.0.0')
+    .addTag('Salle', 'Gestion des salles')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const salleDocument = SwaggerModule.createDocument(app, salleConfig, {
+    include: [SalleModule],
+  });
+
+  // Configuration Swagger pour le module Coffre
+  const coffreConfig = new DocumentBuilder()
+    .setTitle('API Coffre - Gestion des Coffres')
+    .setDescription('API dédiée à la gestion des coffres.')
+    .setVersion('1.0.0')
+    .addTag('Coffre', 'Gestion des coffres')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const coffreDocument = SwaggerModule.createDocument(app, coffreConfig, {
+    include: [CoffreModule],
+  });
+
+  // Configuration Swagger pour le module Archive
+  const archiveConfig = new DocumentBuilder()
+    .setTitle('API Archive - Gestion des Archives')
+    .setDescription('API dédiée à la gestion des archives.')
+    .setVersion('1.0.0')
+    .addTag('Archive', 'Gestion des archives')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const archiveDocument = SwaggerModule.createDocument(app, archiveConfig, {
+    include: [ArchiveModule],
+  });
+
+  // Configuration Swagger pour le module Bordereau Transmission
+  const bordereauConfig = new DocumentBuilder()
+    .setTitle('API Bordereau Transmission')
+    .setDescription('API dédiée à la gestion des bordereaux de transmission.')
+    .setVersion('1.0.0')
+    .addTag('Bordereau Transmission', 'Gestion des bordereaux')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const bordereauDocument = SwaggerModule.createDocument(app, bordereauConfig, {
+    include: [BordereauTransmissionModule],
+  });
+
+  // Configuration Swagger pour le module Courrier Arrivée
+  const courrierConfig = new DocumentBuilder()
+    .setTitle('API Courrier Arrivée')
+    .setDescription('API dédiée à la gestion des courriers arrivés.')
+    .setVersion('1.0.0')
+    .addTag('Courrier Arrivée', 'Gestion des courriers arrivés')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const courrierDocument = SwaggerModule.createDocument(app, courrierConfig, {
+    include: [CourrierModule],
+  });
+
+  // Configuration Swagger pour le module Traitement
+  const traitementConfig = new DocumentBuilder()
+    .setTitle('API Traitement')
+    .setDescription('API dédiée au traitement des courriers et transmissions.')
+    .setVersion('1.0.0')
+    .addTag('Traitement', 'Gestion des traitements')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const traitementDocument = SwaggerModule.createDocument(app, traitementConfig, {
+    include: [TraitementModule],
+  });
+
+  // Configuration Swagger pour le module Pièce Jointe
+  const pieceJointeConfig = new DocumentBuilder()
+    .setTitle('API Pièce Jointe')
+    .setDescription('API dédiée à la gestion des pièces jointes.')
+    .setVersion('1.0.0')
+    .addTag('PieceJointe', 'Gestion des pièces jointes')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const pieceJointeDocument = SwaggerModule.createDocument(app, pieceJointeConfig, {
+    include: [PieceJointeModule],
+  });
+
+  // Configuration Swagger pour le module Courrier Interne
+  const courrierInterneConfig = new DocumentBuilder()
+    .setTitle('API Courrier Interne')
+    .setDescription('API dédiée aux courriers internes (réponses).')
+    .setVersion('1.0.0')
+    .addTag('Courrier Interne', 'Gestion des courriers internes')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const courrierInterneDocument = SwaggerModule.createDocument(app, courrierInterneConfig, {
+    include: [CourrierInterneModule],
+  });
+
+  // Configuration Swagger pour le module Notification
+  const notificationConfig = new DocumentBuilder()
+    .setTitle('API Notification')
+    .setDescription('API dédiée à la gestion des notifications.')
+    .setVersion('1.0.0')
+    .addTag('Notification', 'Gestion des notifications')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const notificationDocument = SwaggerModule.createDocument(app, notificationConfig, {
+    include: [NotificationModule],
+  });
+
+  // Configuration Swagger pour le module Courrier Départ
+  const courrierDepartConfig = new DocumentBuilder()
+    .setTitle('API Courrier Départ')
+    .setDescription('API dédiée à la gestion des courriers départ.')
+    .setVersion('1.0.0')
+    .addTag('Courrier Départ', 'Gestion des courriers départ')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const courrierDepartDocument = SwaggerModule.createDocument(app, courrierDepartConfig, {
+    include: [CourrierDepartModule],
+  });
+
+  // Configuration Swagger pour le module Statistique
+  const statistiqueConfig = new DocumentBuilder()
+    .setTitle('API Statistique')
+    .setDescription('API dédiée aux statistiques globales.')
+    .setVersion('1.0.0')
+    .addTag('Statistique', 'Statistiques globales')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const statistiqueDocument = SwaggerModule.createDocument(app, statistiqueConfig, {
+    include: [StatistiqueModule],
   });
 
   // Setup Swagger avec dropdown pour filtrer par module
@@ -422,82 +425,85 @@ async function bootstrap() {
           url: '/user-swagger.json' 
         },
         { 
-          name: '📡 Module Operateur', 
-          url: '/operateur-swagger.json' 
-        },
-        { 
-          name: '📞 Module Type Appel', 
-          url: '/type-appel-swagger.json' 
-        },
-        { 
-          name: '⚙️ Module Options', 
-          url: '/option-swagger.json' 
-        },
-        { 
-          name: '📊 Module Consommations moyennes', 
-          url: '/consommation-moyenne-swagger.json' 
-        },
-        { 
-          name: '💼 Module Offre', 
-          url: '/offre-swagger.json' 
-        },
-        { 
-          name: '🏗️ Module Structure Tarifaire', 
-          url: '/structure-tarifaire-swagger.json' 
-        },
-        { 
-          name: '🎁 Module Avantage', 
-          url: '/avantage-swagger.json' 
-        },
-        { 
-          name: '⚙️ Module Type Opérateur', 
-          url: '/type-operateur-swagger.json' 
-        },
-        { 
-          name: '📊 Module Trafic', 
-          url: '/trafic-swagger.json' 
-        },
-        { 
-          name: '📱 Module Abonnement', 
-          url: '/abonnement-swagger.json' 
-        },
-        { 
-          name: '💰 Module Chiffre d\'Affaire', 
-          url: '/chiffre-affaire-swagger.json' 
-        },
-        { 
-          name: '📈 Module Part de Marché (IHH)', 
-          url: '/ihh-swagger.json' 
-        },
-        { 
-          name: '🔧 Module Paramètres', 
-          url: '/parametre-swagger.json' 
-        },
-        { 
-          name: '📋 Module Caractéristiques', 
-          url: '/caracteristique-swagger.json' 
-        },
-        { 
-          name: '💲 Module Tarif Interconnexion', 
-          url: '/tarif-interconnexion-swagger.json' 
-        },
-        { 
-          name: '🛠️ Module Services', 
-          url: '/services-swagger.json' 
-        },
-        { 
-          name: '📋 Module Logs', 
+          name: '� Module Logs', 
           url: '/log-swagger.json' 
+        },        { 
+          name: '📁 Module ClasseCourrier', 
+          url: '/classe-courrier-swagger.json' 
         },
         { 
-          name: '📊 Module Dashboard', 
-          url: '/dashboard-swagger.json' 
+          name: '📋 Module TypeCourrier', 
+          url: '/type-courrier-swagger.json' 
+        },
+        { 
+          name: '👥 Module Correspondant', 
+          url: '/correspondant-swagger.json' 
+        },
+        { 
+          name: '🏷️ Module Catégories', 
+          url: '/categories-swagger.json' 
+        },
+        { 
+          name: '🔐 Module Permission', 
+          url: '/permission-swagger.json' 
+        },
+        { 
+          name: '👔 Module Role', 
+          url: '/role-swagger.json' 
+        },
+        { 
+          name: '🏢 Module Service', 
+          url: '/service-swagger.json' 
+        },
+        { 
+          name: '🏛️ Module Salle', 
+          url: '/salle-swagger.json' 
+        },
+        { 
+          name: '🔒 Module Coffre', 
+          url: '/coffre-swagger.json' 
+        },
+        { 
+          name: '🗄️ Module Archive', 
+          url: '/archive-swagger.json' 
+        },
+        { 
+          name: '📄 Module Bordereau Transmission', 
+          url: '/bordereau-transmission-swagger.json' 
+        },
+        { 
+          name: '📨 Module Courrier Arrivée', 
+          url: '/courrier-swagger.json' 
+        },
+        { 
+          name: '🧭 Module Traitement', 
+          url: '/traitement-swagger.json' 
+        },
+        { 
+          name: '📎 Module PieceJointe', 
+          url: '/piece-jointe-swagger.json' 
+        },
+        { 
+          name: '🏷️ Module Courrier Interne', 
+          url: '/courrier-interne-swagger.json' 
+        },
+        { 
+          name: '🔔 Module Notification', 
+          url: '/notification-swagger.json' 
+        },
+        { 
+          name: '📤 Module Courrier Départ', 
+          url: '/courrier-depart-swagger.json' 
+        },
+        { 
+          name: '📊 Module Statistique', 
+          url: '/statistique-swagger.json' 
         },
       ],
     },
     jsonDocumentUrl: '/swagger.json',
-    customSiteTitle: 'API Documentation - Patnuc Segmentation',
-    customfavIcon: '/patnuc.png',
+    customSiteTitle: 'API Documentation - Courrier KIAMA 360',
+    customfavIcon: '/public/logo.png',
     customCss: `
       .swagger-ui .topbar { background-color: #5c5959ff; }
       .swagger-ui .topbar .wrapper .topbar-wrapper form label span { color: #f1f1f1; }
@@ -539,117 +545,117 @@ async function bootstrap() {
     customfavIcon: '',
   });
 
-  SwaggerModule.setup('operateur-doc', app, operateurDocument, {
-    jsonDocumentUrl: '/operateur-swagger.json',
-    customSiteTitle: 'API Operateur - Gestion Opérateurs',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('type-appel-doc', app, typeAppelDocument, {
-    jsonDocumentUrl: '/type-appel-swagger.json',
-    customSiteTitle: 'API Type Appel - Gestion Types d\'Appel',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('option-doc', app, optionDocument, {
-    jsonDocumentUrl: '/option-swagger.json',
-    customSiteTitle: 'API Options - Gestion Options',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('consommation-moyenne-doc', app, consommationMoyenneDocument, {
-    jsonDocumentUrl: '/consommation-moyenne-swagger.json',
-    customSiteTitle: 'API Consommations moyennes - Gestion Consommations moyennes',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('offre-doc', app, offreDocument, {
-    jsonDocumentUrl: '/offre-swagger.json',
-    customSiteTitle: 'API Offre - Gestion Offres',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('structure-tarifaire-doc', app, structureTarifaireDocument, {
-    jsonDocumentUrl: '/structure-tarifaire-swagger.json',
-    customSiteTitle: 'API Structure Tarifaire - Gestion Structures Tarifaires',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('avantage-doc', app, avantageDocument, {
-    jsonDocumentUrl: '/avantage-swagger.json',
-    customSiteTitle: 'API Avantage - Gestion Avantages',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('type-operateur-doc', app, typeOperateurDocument, {
-    jsonDocumentUrl: '/type-operateur-swagger.json',
-    customSiteTitle: 'API Type Opérateur - Gestion Types d\'Opérateur',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('trafic-doc', app, traficDocument, {
-    jsonDocumentUrl: '/trafic-swagger.json',
-    customSiteTitle: 'API Trafic - Gestion du Trafic',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('abonnement-doc', app, abonnementDocument, {
-    jsonDocumentUrl: '/abonnement-swagger.json',
-    customSiteTitle: 'API Abonnement - Gestion des Abonnements',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('chiffre-affaire-doc', app, chiffreAffaireDocument, {
-    jsonDocumentUrl: '/chiffre-affaire-swagger.json',
-    customSiteTitle: 'API Chiffre d\'Affaire - Gestion CA',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('ihh-doc', app, ihhDocument, {
-    jsonDocumentUrl: '/ihh-swagger.json',
-    customSiteTitle: 'API Part de Marché (IHH) - Indices Herfindahl-Hirschman',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('parametre-doc', app, parametreDocument, {
-    jsonDocumentUrl: '/parametre-swagger.json',
-    customSiteTitle: 'API Paramètres - Gestion des Paramètres Financiers',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('caracteristique-doc', app, caracteristiqueDocument, {
-    jsonDocumentUrl: '/caracteristique-swagger.json',
-    customSiteTitle: 'API Caractéristiques - Gestion des Caractéristiques',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('tarif-interconnexion-doc', app, tarifInterconnexionDocument, {
-    jsonDocumentUrl: '/tarif-interconnexion-swagger.json',
-    customSiteTitle: 'API Tarifs d\'Interconnexion - Gestion Tarifs',
-    customfavIcon: '',
-  });
-
-  SwaggerModule.setup('services-doc', app, servicesDocument, {
-    jsonDocumentUrl: '/services-swagger.json',
-    customSiteTitle: 'API Services - Gestion des Services',
-    customfavIcon: '',
-  });
-
   SwaggerModule.setup('log-doc', app, logDocument, {
     jsonDocumentUrl: '/log-swagger.json',
     customSiteTitle: 'API Logs - Gestion des Logs et Audit',
     customfavIcon: '',
   });
 
-  SwaggerModule.setup('dashboard-doc', app, dashboardDocument, {
-    jsonDocumentUrl: '/dashboard-swagger.json',
-    customSiteTitle: 'API Dashboard - Statistiques et KPI',
+  SwaggerModule.setup('classe-courrier-doc', app, classeCourrierDocument, {
+    jsonDocumentUrl: '/classe-courrier-swagger.json',
+    customSiteTitle: 'API ClasseCourrier - Gestion des Classes de Courrier',
     customfavIcon: '',
   });
 
-  SwaggerModule.setup('dashboard-doc', app, dashboardDocument, {
-    jsonDocumentUrl: '/dashboard-swagger.json',
-    customSiteTitle: 'API Dashboard - Statistiques et KPI',
+  SwaggerModule.setup('type-courrier-doc', app, typeCourrierDocument, {
+    jsonDocumentUrl: '/type-courrier-swagger.json',
+    customSiteTitle: 'API TypeCourrier - Gestion des Types de Courrier',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('correspondant-doc', app, correspondantDocument, {
+    jsonDocumentUrl: '/correspondant-swagger.json',
+    customSiteTitle: 'API Correspondant - Gestion des Correspondants',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('categories-doc', app, categoriesDocument, {
+    jsonDocumentUrl: '/categories-swagger.json',
+    customSiteTitle: 'API Catégories - Gestion des Catégories',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('permission-doc', app, permissionDocument, {
+    jsonDocumentUrl: '/permission-swagger.json',
+    customSiteTitle: 'API Permission - Gestion des Permissions',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('role-doc', app, roleDocument, {
+    jsonDocumentUrl: '/role-swagger.json',
+    customSiteTitle: 'API Role - Gestion des Rôles',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('service-doc', app, serviceDocument, {
+    jsonDocumentUrl: '/service-swagger.json',
+    customSiteTitle: 'API Service - Gestion des Services',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('salle-doc', app, salleDocument, {
+    jsonDocumentUrl: '/salle-swagger.json',
+    customSiteTitle: 'API Salle - Gestion des Salles',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('coffre-doc', app, coffreDocument, {
+    jsonDocumentUrl: '/coffre-swagger.json',
+    customSiteTitle: 'API Coffre - Gestion des Coffres',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('archive-doc', app, archiveDocument, {
+    jsonDocumentUrl: '/archive-swagger.json',
+    customSiteTitle: 'API Archive - Gestion des Archives',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('bordereau-transmission-doc', app, bordereauDocument, {
+    jsonDocumentUrl: '/bordereau-transmission-swagger.json',
+    customSiteTitle: 'API Bordereau Transmission',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('courrier-doc', app, courrierDocument, {
+    jsonDocumentUrl: '/courrier-swagger.json',
+    customSiteTitle: 'API Courrier Arrivée',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('traitement-doc', app, traitementDocument, {
+    jsonDocumentUrl: '/traitement-swagger.json',
+    customSiteTitle: 'API Traitement',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('piece-jointe-doc', app, pieceJointeDocument, {
+    jsonDocumentUrl: '/piece-jointe-swagger.json',
+    customSiteTitle: 'API Pièce Jointe',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('courrier-interne-doc', app, courrierInterneDocument, {
+    jsonDocumentUrl: '/courrier-interne-swagger.json',
+    customSiteTitle: 'API Courrier Interne',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('notification-doc', app, notificationDocument, {
+    jsonDocumentUrl: '/notification-swagger.json',
+    customSiteTitle: 'API Notification',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('courrier-depart-doc', app, courrierDepartDocument, {
+    jsonDocumentUrl: '/courrier-depart-swagger.json',
+    customSiteTitle: 'API Courrier Départ',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('statistique-doc', app, statistiqueDocument, {
+    jsonDocumentUrl: '/statistique-swagger.json',
+    customSiteTitle: 'API Statistique',
     customfavIcon: '',
   });
 
@@ -675,24 +681,8 @@ async function bootstrap() {
   console.log(`   • Module Auth: http://localhost:${port}/auth-doc`);
   console.log(`   • Module Forgot Password: http://localhost:${port}/forgot-password-doc`);
   console.log(`   • Module User: http://localhost:${port}/user-doc`);
-  console.log(`   • Module Operateur: http://localhost:${port}/operateur-doc`);
-  console.log(`   • Module Type Appel: http://localhost:${port}/type-appel-doc`);
-  console.log(`   • Module Options: http://localhost:${port}/option-doc`);
-  console.log(`   • Module Consommations moyennes: http://localhost:${port}/consommation-moyenne-doc`);
-  console.log(`   • Module Offre: http://localhost:${port}/offre-doc`);
-  console.log(`   • Module Structure Tarifaire: http://localhost:${port}/structure-tarifaire-doc`);
-  console.log(`   • Module Avantages: http://localhost:${port}/avantage-doc`);
-  console.log(`   • Module Type Opérateur: http://localhost:${port}/type-operateur-doc`);
-  console.log(`   • Module Trafic: http://localhost:${port}/trafic-doc`);
-  console.log(`   • Module Abonnement: http://localhost:${port}/abonnement-doc`);
-  console.log(`   • Module Chiffre d'Affaire: http://localhost:${port}/chiffre-affaire-doc`);
-  console.log(`   • Module Part de Marché (IHH): http://localhost:${port}/ihh-doc`);
-  console.log(`   • Module Paramètres: http://localhost:${port}/parametre-doc`);
-  console.log(`   • Module Caractéristiques: http://localhost:${port}/caracteristique-doc`);
-  console.log(`   • Module Tarif Interconnexion: http://localhost:${port}/tarif-interconnexion-doc`);
-  console.log(`   • Module Services: http://localhost:${port}/services-doc`);
   console.log(`   • Module Logs: http://localhost:${port}/log-doc`);
-  console.log(`   • Module Dashboard: http://localhost:${port}/dashboard-doc`);
+  console.log(`   • Module ClasseCourrier: http://localhost:${port}/classe-courrier-doc`);
   console.log(`\n✅ Utilisez le dropdown "Select a definition" pour filtrer par module\n`);
 }
 

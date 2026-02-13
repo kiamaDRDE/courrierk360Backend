@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class MailerService {
@@ -225,6 +227,328 @@ export class MailerService {
       return true;
     } catch (error) {
       this.logger.error(`Erreur lors de l'envoi de l'email à ${to}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Envoie un email d'accusé de réception au correspondant
+   */
+  async sendCourrierAccuseReception(
+    email: string,
+    civilite: string,
+    nom: string,
+    numero: string,
+    reference: string,
+    objet: string,
+    dateEnregistrement: string,
+    serviceNom: string,
+  ): Promise<boolean> {
+    try {
+      // Lire le template HTML
+      const templatePath = path.join(__dirname, 'templates', 'courrier-accuse-reception.html');
+      let htmlContent = fs.readFileSync(templatePath, 'utf8');
+
+      // Remplacer les placeholders
+      htmlContent = htmlContent
+        .replace(/{{civilite}}/g, civilite || '')
+        .replace(/{{nom}}/g, nom || 'Monsieur/Madame')
+        .replace(/{{numero}}/g, numero)
+        .replace(/{{reference}}/g, reference)
+        .replace(/{{objet}}/g, objet || 'N/A')
+        .replace(/{{dateEnregistrement}}/g, dateEnregistrement)
+        .replace(/{{serviceNom}}/g, serviceNom || 'Service compétent');
+
+      const mailOptions = {
+        from: {
+          name: 'KIAMA S.A. - Gestion du Courrier',
+          address: 'ppatnuc@gmail.com',
+        },
+        to: email,
+        subject: '✅ Accusé de Réception - Votre courrier a été enregistré',
+        html: htmlContent,
+        attachments: [
+          {
+            filename: 'logo.png',
+            path: path.join(process.cwd(), 'public', 'logo.png'),
+            cid: 'logo', // Content-ID pour référencer dans le HTML avec src="cid:logo"
+          },
+        ],
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Email accusé de réception envoyé à ${email} pour le courrier ${numero}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Erreur lors de l'envoi de l'accusé de réception à ${email}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Envoie un email de notification au service destinataire
+   */
+  async sendCourrierNotificationService(
+    userEmail: string,
+    userFirstName: string,
+    userLastName: string,
+    serviceNom: string,
+    courrier: {
+      numero: string;
+      reference: string;
+      objet: string;
+      civilite: string;
+      nom: string;
+      priorite: string;
+      categorie: string;
+      dateArrivee: string;
+      commentaire?: string;
+    },
+  ): Promise<boolean> {
+    try {
+      // Lire le template HTML
+      const templatePath = path.join(__dirname, 'templates', 'courrier-notification-service.html');
+      let htmlContent = fs.readFileSync(templatePath, 'utf8');
+
+      // Déterminer l'icône de priorité
+      let prioriteIcon = '🟡';
+      const prioriteLower = (courrier.priorite || 'Normal').toLowerCase();
+      if (prioriteLower.includes('urgent') || prioriteLower.includes('haute')) {
+        prioriteIcon = '🔴';
+      } else if (prioriteLower.includes('basse')) {
+        prioriteIcon = '🟢';
+      }
+
+      // Remplacer les placeholders
+      htmlContent = htmlContent
+        .replace(/{{userFirstName}}/g, userFirstName || '')
+        .replace(/{{userLastName}}/g, userLastName || '')
+        .replace(/{{serviceNom}}/g, serviceNom)
+        .replace(/{{numero}}/g, courrier.numero)
+        .replace(/{{reference}}/g, courrier.reference)
+        .replace(/{{objet}}/g, courrier.objet || 'N/A')
+        .replace(/{{civilite}}/g, courrier.civilite || '')
+        .replace(/{{nom}}/g, courrier.nom || 'Inconnu')
+        .replace(/{{priorite}}/g, courrier.priorite)
+        .replace(/{{prioriteLower}}/g, prioriteLower)
+        .replace(/{{prioriteIcon}}/g, prioriteIcon)
+        .replace(/{{categorie}}/g, courrier.categorie || 'N/A')
+        .replace(/{{dateArrivee}}/g, courrier.dateArrivee)
+        .replace(/{{commentaire}}/g, courrier.commentaire || '');
+
+      // Gérer les blocs conditionnels simples
+      if (!courrier.commentaire) {
+        htmlContent = htmlContent.replace(/{{#if commentaire}}[\s\S]*?{{\/if}}/g, '');
+      } else {
+        htmlContent = htmlContent.replace(/{{#if commentaire}}/g, '').replace(/{{\/if}}/g, '');
+      }
+
+      const mailOptions = {
+        from: {
+          name: 'KIAMA S.A. - Gestion du Courrier',
+          address: 'ppatnuc@gmail.com',
+        },
+        to: userEmail,
+        subject: `📥 Nouveau Courrier - ${courrier.numero} - ${serviceNom}`,
+        html: htmlContent,
+        attachments: [
+          {
+            filename: 'logo.png',
+            path: path.join(process.cwd(), 'public', 'logo.png'),
+            cid: 'logo', // Content-ID pour référencer dans le HTML avec src="cid:logo"
+          },
+        ],
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Email notification service envoyé à ${userEmail} pour le courrier ${courrier.numero}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Erreur lors de l'envoi de la notification au service ${userEmail}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Envoie un email de notification pour une transmission en copie
+   */
+  async sendCourrierNotificationCopieService(
+    userEmail: string,
+    userFirstName: string,
+    userLastName: string,
+    serviceNom: string,
+    courrier: {
+      numero: string;
+      reference: string;
+      objet: string;
+      civilite: string;
+      nom: string;
+      priorite: string;
+      categorie: string;
+      dateArrivee: string;
+      commentaire?: string;
+    },
+  ): Promise<boolean> {
+    try {
+      const templatePath = path.join(__dirname, 'templates', 'courrier-notification-copie.html');
+      let htmlContent = fs.readFileSync(templatePath, 'utf8');
+
+      htmlContent = htmlContent
+        .replace(/{{userFirstName}}/g, userFirstName || '')
+        .replace(/{{userLastName}}/g, userLastName || '')
+        .replace(/{{serviceNom}}/g, serviceNom)
+        .replace(/{{numero}}/g, courrier.numero)
+        .replace(/{{reference}}/g, courrier.reference)
+        .replace(/{{objet}}/g, courrier.objet || 'N/A')
+        .replace(/{{civilite}}/g, courrier.civilite || '')
+        .replace(/{{nom}}/g, courrier.nom || 'Inconnu')
+        .replace(/{{priorite}}/g, courrier.priorite)
+        .replace(/{{categorie}}/g, courrier.categorie || 'N/A')
+        .replace(/{{dateArrivee}}/g, courrier.dateArrivee)
+        .replace(/{{commentaire}}/g, courrier.commentaire || '');
+
+      if (!courrier.commentaire) {
+        htmlContent = htmlContent.replace(/{{#if commentaire}}[\s\S]*?{{\/if}}/g, '');
+      } else {
+        htmlContent = htmlContent.replace(/{{#if commentaire}}/g, '').replace(/{{\/if}}/g, '');
+      }
+
+      const mailOptions = {
+        from: {
+          name: 'KIAMA S.A. - Gestion du Courrier',
+          address: 'ppatnuc@gmail.com',
+        },
+        to: userEmail,
+        subject: `📎 Transmission en copie - ${courrier.numero} - ${serviceNom}`,
+        html: htmlContent,
+        attachments: [
+          {
+            filename: 'logo.png',
+            path: path.join(process.cwd(), 'public', 'logo.png'),
+            cid: 'logo',
+          },
+        ],
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Email notification copie envoyé à ${userEmail} pour le courrier ${courrier.numero}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Erreur lors de l'envoi de la notification copie à ${userEmail}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Envoie un email de notification pour un courrier départ
+   */
+  async sendCourrierDepartNotification(
+    email: string,
+    subject: string,
+    message: string,
+    details?: {
+      numeroReference?: string;
+      categorie?: string;
+      classeCourrier?: string;
+      typeCourrier?: string;
+      dateSignature?: Date | null;
+    },
+  ): Promise<boolean> {
+    try {
+      const dateSignature = details?.dateSignature
+        ? new Date(details.dateSignature).toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          })
+        : '';
+
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+          <h2 style="color:#1a73e8;">${subject}</h2>
+          <p>${message}</p>
+          <ul>
+            ${details?.numeroReference ? `<li><strong>Référence:</strong> ${details.numeroReference}</li>` : ''}
+            ${details?.categorie ? `<li><strong>Catégorie:</strong> ${details.categorie}</li>` : ''}
+            ${details?.classeCourrier ? `<li><strong>Classe:</strong> ${details.classeCourrier}</li>` : ''}
+            ${details?.typeCourrier ? `<li><strong>Type:</strong> ${details.typeCourrier}</li>` : ''}
+            ${dateSignature ? `<li><strong>Date de signature:</strong> ${dateSignature}</li>` : ''}
+          </ul>
+          <p>Merci.</p>
+        </div>
+      `;
+
+      const mailOptions = {
+        from: {
+          name: 'KIAMA S.A. - Gestion du Courrier',
+          address: 'ppatnuc@gmail.com',
+        },
+        to: email,
+        subject,
+        html: htmlContent,
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Email courrier départ envoyé à ${email}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Erreur lors de l'envoi email courrier départ à ${email}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Envoie un email de notification pour un courrier interne
+   */
+  async sendCourrierInterneNotification(
+    userEmail: string,
+    userFirstName: string,
+    userLastName: string,
+    serviceNom: string,
+    courrier: {
+      objet?: string | null;
+      classeCourrier?: string | null;
+      typeTransmission?: string | null;
+      commentaire?: string | null;
+      dateCreation?: string;
+    },
+  ): Promise<boolean> {
+    try {
+      const templatePath = path.join(__dirname, 'templates', 'courrier-interne-notification.html');
+      let htmlContent = fs.readFileSync(templatePath, 'utf8');
+
+      htmlContent = htmlContent
+        .replace(/{{userFirstName}}/g, userFirstName || '')
+        .replace(/{{userLastName}}/g, userLastName || '')
+        .replace(/{{serviceNom}}/g, serviceNom || 'Service')
+        .replace(/{{objet}}/g, courrier.objet || 'N/A')
+        .replace(/{{classeCourrier}}/g, courrier.classeCourrier || 'N/A')
+        .replace(/{{typeTransmission}}/g, courrier.typeTransmission || 'N/A')
+        .replace(/{{commentaire}}/g, courrier.commentaire || '')
+        .replace(/{{dateCreation}}/g, courrier.dateCreation || '');
+
+      const mailOptions = {
+        from: {
+          name: 'KIAMA S.A. - Gestion du Courrier',
+          address: 'ppatnuc@gmail.com',
+        },
+        to: userEmail,
+        subject: `📄 Courrier interne - ${serviceNom}`,
+        html: htmlContent,
+        attachments: [
+          {
+            filename: 'logo.png',
+            path: path.join(process.cwd(), 'public', 'logo.png'),
+            cid: 'logo',
+          },
+        ],
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Email courrier interne envoyé à ${userEmail}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Erreur lors de l'envoi email courrier interne à ${userEmail}:`, error);
       return false;
     }
   }

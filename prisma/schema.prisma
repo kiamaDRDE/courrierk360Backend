@@ -8,30 +8,65 @@ datasource db {
 }
 
 model User {
-  id             Int           @id @default(autoincrement()) @map("id")
-  nom            String        @map("nom") @db.VarChar(255)
-  email          String        @unique @map("email") @db.VarChar(191)
-  numero         String        @map("numero")
-  fonction       String?       @map("fonction") @db.VarChar(255)
-  password       String        @map("password") @db.VarChar(255)
-  role           UserRole      @default(SUPER_ADMIN) @map("role")
-  resetOtp       String?       @map("reset_otp") @db.VarChar(255)
-  resetExpires   DateTime?     @map("reset_expires")
-  token          String?       @map("token") @db.VarChar(500)
-  expiresToken   DateTime?     @map("expires_token")
-  refreshToken   String?       @map("refresh_token") @db.VarChar(500)
-  refreshExpires DateTime?     @map("refresh_expires")
-  verifyOtp      String?       @map("verify_otp") @db.VarChar(255)
-  verifyExpires  DateTime?     @map("verify_expires")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at")
-  activityLogs   ActivityLog[]
+  id               Int       @id @default(autoincrement()) @map("id")
 
-  @@index([id])
+  username         String    @unique @map("username") @db.VarChar(255)
+  firstName        String?   @map("first_name") @db.VarChar(255)
+  lastName         String?   @map("last_name") @db.VarChar(255)
+  email            String    @unique @map("email") @db.VarChar(191)
+  phone            String?   @map("phone") @db.VarChar(50)
+  numero           String    @map("numero") @db.VarChar(100)
+
+  civilite         String?   @map("civilite") @db.VarChar(50)
+  avatar           String?   @map("avatar") @db.VarChar(500)
+
+  password         String    @map("password") @db.VarChar(255)
+
+  isSignataire     Boolean   @default(false) @map("is_signataire")
+  isActive         Boolean   @default(true) @map("is_active")
+  isDelete         Boolean   @default(false) @map("is_delete")
+  langue           Boolean   @default(true) @map("langue")
+
+  resetOtp         String?   @map("reset_otp") @db.VarChar(255)
+  resetExpires     DateTime? @map("reset_expires")
+  token            String?   @map("token") @db.VarChar(500)
+  expiresToken     DateTime? @map("expires_token")
+  refreshToken     String?   @map("refresh_token") @db.VarChar(500)
+  refreshExpires   DateTime? @map("refresh_expires")
+  verifyOtp        String?   @map("verify_otp") @db.VarChar(255)
+  verifyExpires    DateTime? @map("verify_expires")
+
+  idCorrespondant  Int?      @map("id_correspondant")
+  idService        Int?      @map("id_service")
+  idRole           Int?      @map("id_role")
+
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // relations
+  activityLogs           ActivityLog[]
+  correspondant          Correspondant?            @relation("UserCorrespondant", fields: [idCorrespondant], references: [id], onDelete: SetNull)
+  service                Service?                  @relation("UserService", fields: [idService], references: [id], onDelete: SetNull)
+  role                   Role?                     @relation("UserRole", fields: [idRole], references: [id], onDelete: SetNull)
+  servicesAdditionnels   UserServiceAdditionnel[]
+  notifications          Notification[]            @relation("NotificationUser")
+  courriers              Courrier[]                @relation("CourrierUser")
+  courrierDepartsSignes  CourrierDepart[]          @relation("CourrierDepartSignataire")
+  reponses               Reponse[]                 @relation("ReponseRedacteur")
+  transmissions          Transmission[]            @relation("TransmissionEmetteur")
+
+  @@index([username])
   @@index([email])
+  @@index([phone])
   @@index([numero])
+  @@index([isActive])
+  @@index([isDelete])
+  @@index([idCorrespondant])
+  @@index([idService])
+  @@index([idRole])
   @@map("users")
 }
+
 
 model ActivityLog {
   id          Int      @id @default(autoincrement()) @map("id")
@@ -53,701 +88,560 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
-model Operateur {
-  id              Int      @id @default(autoincrement()) @map("id")
-  nom             String   @unique @map("nom") @db.VarChar(191)
-  code            String   @map("code") @db.VarChar(50)
-  description     String?  @map("description") @db.Text
-  type            String   @map("type") @db.VarChar(100)
-  statut          String   @map("statut") @db.VarChar(50)
-  anneeCreation   Int?     @map("annee_creation")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
 
-  // Relations
-  offres                  Offre[]
-  tarifsInterconnexion    TarifInterconnexion[]
-  services                OperateurService[]
-  // Relations pour le trafic
-  trafics                 Trafic[]
-  traficAutresOperateurs  TraficAutreOperateur[]
-  // Relations pour les abonnements
-  abonnements             Abonnement[]
-  // Relations pour les chiffres d'affaire
-  chiffresAffaire         ChiffreAffaire[]
-  // Relations pour les parts de marché
-  partsMarche             PartMarche[]
+model Categories {
+  id        Int      @id @default(autoincrement()) @map("id")
+  nom       String   @unique @map("nom") @db.VarChar(255)
+  isDelete  Boolean  @default(false) @map("is_delete")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  @@index([id])
+  //relation
+  correspondants CategoriesCorrespondant[]
+
   @@index([nom])
-  @@index([code])
-  @@index([statut])
-  @@map("operateurs")
+  @@index([isDelete])
+  @@index([createdAt])
+  @@map("categories")
 }
+
+model Correspondant {
+  id        Int      @id @default(autoincrement()) @map("id")
+  nom       String   @map("nom") @db.VarChar(255)
+  adresse   String?  @map("adresse") @db.VarChar(255)
+  telephone String   @map("telephone") @db.VarChar(50)
+  email     String?  @map("email") @db.VarChar(191)
+  type      String   @map("type") @db.VarChar(100)
+  civilite  String?  @map("civilite") @db.VarChar(50)
+  matricule String?  @map("matricule") @db.VarChar(100)
+  isDelete  Boolean  @default(false) @map("is_delete")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  //relation
+  categories      CategoriesCorrespondant[]
+  courriers       Courrier[]               @relation("CourrierProvenance")
+  courrierDeparts CourrierDepart[]         @relation("CourrierDepartDestinataire")
+  users           User[]                   @relation("UserCorrespondant")
+
+  @@index([nom])
+  @@index([telephone])
+  @@index([email])
+  @@index([type])
+  @@index([matricule])
+  @@index([isDelete])
+  @@index([createdAt])
+  @@map("clients")
+}
+
+model TypeCourrier {
+  id             Int            @id @default(autoincrement()) @map("id")
+  nom            String         @unique @map("nom") @db.VarChar(255)
+  type           String         @map("type") @db.VarChar(100)
+  classeCourrier String?        @map("classe_courrier") @db.VarChar(100)
+  isDelete       Boolean        @default(false) @map("is_delete")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  //relation
+  courriers      Courrier[]     @relation("CourrierTypeCourrier")
+
+  @@index([nom])
+  @@index([type])
+  @@index([classeCourrier])
+  @@index([isDelete])
+  @@index([createdAt])
+  @@map("type_courrier")
+}
+
+
+model ClasseCourrier {
+  id        Int      @id @default(autoincrement()) @map("id")
+  nom       String   @unique @map("nom") @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("classe_courrier")
+
+}
+
+
+model Role {
+  id          Int      @id @default(autoincrement()) @map("id")
+  nom         String   @unique @map("nom") @db.VarChar(255)
+  description String?  @map("description") @db.Text
+  isDelete    Boolean  @default(false) @map("is_delete")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  //relation
+  permissions RolePermission[]
+  users       User[]             @relation("UserRole")
+
+  @@index([nom])
+  @@index([isDelete])
+  @@index([createdAt])
+  @@map("role")
+}
+
+
+model Permission {
+  id          Int      @id @default(autoincrement()) @map("id")
+  nom         String   @unique @map("nom") @db.VarChar(255)
+  description String?  @map("description") @db.Text
+  isDelete    Boolean  @default(false) @map("is_delete")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  //relation
+  roles       RolePermission[]
+
+  @@index([nom])
+  @@index([isDelete])
+  @@index([createdAt])
+  @@map("permission")
+}
+
 
 model Service {
-  id          Int      @id @default(autoincrement()) @map("id")
-  nom         String   @unique @map("nom") @db.VarChar(191)
-  description String?  @map("description") @db.Text
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // Relations
-  operateurs  OperateurService[]
-  tarifs      TarifInterconnexionService[]
-  offres      OffreService[]
-  // Relations pour le trafic
-  traficServices TraficService[]
-  // Relations pour les abonnements
-  abonnementServices AbonnementService[]
-  // Relations pour les chiffres d'affaire
-  chiffreAffaireServices ChiffreAffaireService[]
-
-  @@index([id])
-  @@index([nom])
-  @@map("services")
-}
-
-model OperateurService {
-  id          Int       @id @default(autoincrement()) @map("id")
-  operateurId Int       @map("operateur_id")
-  serviceId   Int       @map("service_id")
-  createdAt   DateTime  @default(now()) @map("created_at")
-
-  // Relations
-  operateur   Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
-  service     Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-
-  @@unique([operateurId, serviceId], name: "unique_operateur_service")
-  @@index([operateurId])
-  @@index([serviceId])
-  @@map("operateur_services")
-}
-
-model TypeAppel {
-  id          Int      @id @default(autoincrement()) @map("id")
-  libelle     String   @unique @map("libelle") @db.VarChar(191)
-  description String?  @map("description") @db.Text
-  categorie   String   @map("categorie") @db.VarChar(100)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
-
-  @@index([id])
-  @@index([libelle])
-  @@index([categorie])
-  @@map("type_appels")
-}
-
-model Offre {
-  id                Int       @id @default(autoincrement()) @map("id")
-  operateurId       Int       @map("operateur_id")
-  ciseauTarifaireId Int?      @map("ciseau_tarifaire_id")
-  nom               String    @map("nom") @db.VarChar(191)
-  annee             Int       @default(2025) @map("annee")
-  dateDebutValidite DateTime  @map("date_debut_validite")
-  dateFinValidite   DateTime  @map("date_fin_validite")
-  typeOffre         String    @map("type_offre") @db.VarChar(100)
-  destination       String    @map("destination") @db.VarChar(255)
-  statut            String    @map("statut") @db.VarChar(50)
-  description       String?   @map("description") @db.Text
-
-  // Nouveaux champs tarifaires OnNet et OffNet
-  tp           Decimal?  @default(0) @map("tp") @db.Decimal(10, 2)
-  tnc          Decimal?  @default(0) @map("tnc") @db.Decimal(10, 2)
-  ep           Decimal?  @default(0) @map("ep") @db.Decimal(10, 2)
-  
-  
-  // Champs calculés pour l'effet club
-  taBaseOperateurOffnetHC      Decimal?  @default(0) @map("ta_base_operateur_offnet_hc") @db.Decimal(10, 2)
-  taBaseOperateurOffnetHP      Decimal?  @default(0) @map("ta_base_operateur_offnet_hp") @db.Decimal(10, 2)
-  taBaseOperateurOnnetHC       Decimal?  @default(0) @map("ta_base_operateur_onnet_hc") @db.Decimal(10, 2)
-  taBaseOperateurOnnetHP       Decimal?  @default(0) @map("ta_base_operateur_onnet_hp") @db.Decimal(10, 2)
-  taInterOperateurOffnetHC     Decimal?  @default(0) @map("ta_inter_operateur_offnet_hc") @db.Decimal(10, 2)
-  taInterOperateurOffnetHP     Decimal?  @default(0) @map("ta_inter_operateur_offnet_hp") @db.Decimal(10, 2)
-  taInterOperateurOnnetHC      Decimal?  @default(0) @map("ta_inter_operateur_onnet_hc") @db.Decimal(10, 2)
-  taInterOperateurOnnetHP      Decimal?  @default(0) @map("ta_inter_operateur_onnet_hp") @db.Decimal(10, 2)
-  sommeBaseAutresOperateursOffnetHC    Decimal?  @default(0) @map("somme_base_autres_operateurs_offnet_hc") @db.Decimal(15, 2)
-  sommeBaseAutresOperateursOffnetHP    Decimal?  @default(0) @map("somme_base_autres_operateurs_offnet_hp") @db.Decimal(15, 2)
-  sommeBaseAutresOperateursOnnetHC     Decimal?  @default(0) @map("somme_base_autres_operateurs_onnet_hc") @db.Decimal(15, 2)
-  sommeBaseAutresOperateursOnnetHP     Decimal?  @default(0) @map("somme_base_autres_operateurs_onnet_hp") @db.Decimal(15, 2)
-  sommeInterAutresOperateursOffnetHC   Decimal?  @default(0) @map("somme_inter_autres_operateurs_offnet_hc") @db.Decimal(15, 2)
-  sommeInterAutresOperateursOffnetHP   Decimal?  @default(0) @map("somme_inter_autres_operateurs_offnet_hp") @db.Decimal(15, 2)
-  sommeInterAutresOperateursOnnetHC    Decimal?  @default(0) @map("somme_inter_autres_operateurs_onnet_hc") @db.Decimal(15, 2)
-  sommeInterAutresOperateursOnnetHP    Decimal?  @default(0) @map("somme_inter_autres_operateurs_onnet_hp") @db.Decimal(15, 2)
-  nombreAutresOperateurs       Int?      @map("nombre_autres_operateurs")
-  taMoyenBaseOffnetHC          Decimal?  @default(0) @map("ta_moyen_base_offnet_hc") @db.Decimal(10, 2)
-  taMoyenBaseOffnetHP          Decimal?  @default(0) @map("ta_moyen_base_offnet_hp") @db.Decimal(10, 2)
-  taMoyenBaseOnnetHC           Decimal?  @default(0) @map("ta_moyen_base_onnet_hc") @db.Decimal(10, 2)
-  taMoyenBaseOnnetHP           Decimal?  @default(0) @map("ta_moyen_base_onnet_hp") @db.Decimal(10, 2)
-  taMoyenInterOffnetHC         Decimal?  @default(0) @map("ta_moyen_inter_offnet_hc") @db.Decimal(10, 2)
-  taMoyenInterOffnetHP         Decimal?  @default(0) @map("ta_moyen_inter_offnet_hp") @db.Decimal(10, 2)
-  taMoyenInterOnnetHC          Decimal?  @default(0) @map("ta_moyen_inter_onnet_hc") @db.Decimal(10, 2)
-  taMoyenInterOnnetHP          Decimal?  @default(0) @map("ta_moyen_inter_onnet_hp") @db.Decimal(10, 2)
-  prixOnNet                    Decimal?  @map("prix_on_net") @db.Decimal(10, 2)
-  prixOffNet                   Decimal?  @map("prix_off_net") @db.Decimal(10, 2)
-  
-  // Nouveaux champs pour les revenus moyens
-  revenuMoyenOnNet             Decimal?  @default(0) @map("revenu_moyen_on_net") @db.Decimal(10, 2)
-  revenuMoyenOffNet            Decimal?  @default(0) @map("revenu_moyen_off_net") @db.Decimal(10, 2)
-  
-  // Nouveaux champs pour les calculs de sommes
-  sommeFraisSouscription       Decimal?  @default(0) @map("somme_frais_souscription") @db.Decimal(15, 2)
-  sommeTraficGratuit           Decimal?  @default(0) @map("somme_trafic_gratuit") @db.Decimal(15, 2)
-  sommeTraficOption            Decimal?  @default(0) @map("somme_trafic_option") @db.Decimal(15, 2)
-  
-  effetClub                    Decimal?  @map("effet_club") @db.Decimal(10, 2)
-  
-  // 8 effets club spécifiques pour chaque combinaison de tarifs (MÉTHODE CLASSIQUE - prix)
-  effetClubBaseOffnetHC        Decimal?  @map("effet_club_base_offnet_hc") @db.Decimal(10, 2)
-  effetClubBaseOffnetHP        Decimal?  @map("effet_club_base_offnet_hp") @db.Decimal(10, 2)
-  effetClubBaseOnnetHC         Decimal?  @map("effet_club_base_onnet_hc") @db.Decimal(10, 2)
-  effetClubBaseOnnetHP         Decimal?  @map("effet_club_base_onnet_hp") @db.Decimal(10, 2)
-  effetClubInterOffnetHC       Decimal?  @map("effet_club_inter_offnet_hc") @db.Decimal(10, 2)
-  effetClubInterOffnetHP       Decimal?  @map("effet_club_inter_offnet_hp") @db.Decimal(10, 2)
-  effetClubInterOnnetHC        Decimal?  @map("effet_club_inter_onnet_hc") @db.Decimal(10, 2)
-  effetClubInterOnnetHP        Decimal?  @map("effet_club_inter_onnet_hp") @db.Decimal(10, 2)
-  
-  // 8 effets club spécifiques SELON REVENUS MOYENS (NOUVELLE MÉTHODE)
-  effetClubRevenuBaseOffnetHC    Decimal?  @map("effet_club_revenu_base_offnet_hc") @db.Decimal(10, 2)
-  effetClubRevenuBaseOffnetHP    Decimal?  @map("effet_club_revenu_base_offnet_hp") @db.Decimal(10, 2)
-  effetClubRevenuBaseOnnetHC     Decimal?  @map("effet_club_revenu_base_onnet_hc") @db.Decimal(10, 2)
-  effetClubRevenuBaseOnnetHP     Decimal?  @map("effet_club_revenu_base_onnet_hp") @db.Decimal(10, 2)
-  effetClubRevenuInterOffnetHC   Decimal?  @map("effet_club_revenu_inter_offnet_hc") @db.Decimal(10, 2)
-  effetClubRevenuInterOffnetHP   Decimal?  @map("effet_club_revenu_inter_offnet_hp") @db.Decimal(10, 2)
-  effetClubRevenuInterOnnetHC    Decimal?  @map("effet_club_revenu_inter_onnet_hc") @db.Decimal(10, 2)
-  effetClubRevenuInterOnnetHP    Decimal?  @map("effet_club_revenu_inter_onnet_hp") @db.Decimal(10, 2)
-  
-  // Effet club général selon revenus moyens
-  effetClubRevenus             Decimal?  @map("effet_club_revenus") @db.Decimal(10, 2)
-  
-  // 8 résultats spécifiques (MÉTHODE CLASSIQUE)
-  resultatBaseOffnetHC         String?   @map("resultat_base_offnet_hc") @db.VarChar(100)
-  resultatBaseOffnetHP         String?   @map("resultat_base_offnet_hp") @db.VarChar(100)
-  resultatBaseOnnetHC          String?   @map("resultat_base_onnet_hc") @db.VarChar(100)
-  resultatBaseOnnetHP          String?   @map("resultat_base_onnet_hp") @db.VarChar(100)
-  resultatInterOffnetHC        String?   @map("resultat_inter_offnet_hc") @db.VarChar(100)
-  resultatInterOffnetHP        String?   @map("resultat_inter_offnet_hp") @db.VarChar(100)
-  resultatInterOnnetHC         String?   @map("resultat_inter_onnet_hc") @db.VarChar(100)
-  resultatInterOnnetHP         String?   @map("resultat_inter_onnet_hp") @db.VarChar(100)
-  
-  // 8 résultats spécifiques SELON REVENUS MOYENS (NOUVELLE MÉTHODE)
-  resultatRevenuBaseOffnetHC   String?   @map("resultat_revenu_base_offnet_hc") @db.VarChar(100)
-  resultatRevenuBaseOffnetHP   String?   @map("resultat_revenu_base_offnet_hp") @db.VarChar(100)
-  resultatRevenuBaseOnnetHC    String?   @map("resultat_revenu_base_onnet_hc") @db.VarChar(100)
-  resultatRevenuBaseOnnetHP    String?   @map("resultat_revenu_base_onnet_hp") @db.VarChar(100)
-  resultatRevenuInterOffnetHC  String?   @map("resultat_revenu_inter_offnet_hc") @db.VarChar(100)
-  resultatRevenuInterOffnetHP  String?   @map("resultat_revenu_inter_offnet_hp") @db.VarChar(100)
-  resultatRevenuInterOnnetHC   String?   @map("resultat_revenu_inter_onnet_hc") @db.VarChar(100)
-  resultatRevenuInterOnnetHP   String?   @map("resultat_revenu_inter_onnet_hp") @db.VarChar(100)
-  
-  // Résultat général selon revenus moyens
-  resultatRevenus              String?   @map("resultat_revenus") @db.VarChar(100)
-  
-  // 8 booléens pour indiquer si c'est un effet club (MÉTHODE CLASSIQUE)
-  isEffetClubBaseOffnetHC      Boolean   @default(false) @map("is_effet_club_base_offnet_hc")
-  isEffetClubBaseOffnetHP      Boolean   @default(false) @map("is_effet_club_base_offnet_hp")
-  isEffetClubBaseOnnetHC       Boolean   @default(false) @map("is_effet_club_base_onnet_hc")
-  isEffetClubBaseOnnetHP       Boolean   @default(false) @map("is_effet_club_base_onnet_hp")
-  isEffetClubInterOffnetHC     Boolean   @default(false) @map("is_effet_club_inter_offnet_hc")
-  isEffetClubInterOffnetHP     Boolean   @default(false) @map("is_effet_club_inter_offnet_hp")
-  isEffetClubInterOnnetHC      Boolean   @default(false) @map("is_effet_club_inter_onnet_hc")
-  isEffetClubInterOnnetHP      Boolean   @default(false) @map("is_effet_club_inter_onnet_hp")
-  
-  // 8 booléens pour indiquer si c'est un effet club SELON REVENUS MOYENS (NOUVELLE MÉTHODE)
-  isEffetClubRevenuBaseOffnetHC    Boolean   @default(false) @map("is_effet_club_revenu_base_offnet_hc")
-  isEffetClubRevenuBaseOffnetHP    Boolean   @default(false) @map("is_effet_club_revenu_base_offnet_hp")
-  isEffetClubRevenuBaseOnnetHC     Boolean   @default(false) @map("is_effet_club_revenu_base_onnet_hc")
-  isEffetClubRevenuBaseOnnetHP     Boolean   @default(false) @map("is_effet_club_revenu_base_onnet_hp")
-  isEffetClubRevenuInterOffnetHC   Boolean   @default(false) @map("is_effet_club_revenu_inter_offnet_hc")
-  isEffetClubRevenuInterOffnetHP   Boolean   @default(false) @map("is_effet_club_revenu_inter_offnet_hp")
-  isEffetClubRevenuInterOnnetHC    Boolean   @default(false) @map("is_effet_club_revenu_inter_onnet_hc")
-  isEffetClubRevenuInterOnnetHP    Boolean   @default(false) @map("is_effet_club_revenu_inter_onnet_hp")
-  
-  isEffetClub                  Boolean   @default(false) @map("is_effet_club")
-  // Booléen général selon revenus moyens
-  isEffetClubRevenus           Boolean   @default(false) @map("is_effet_club_revenus")
-  resultat                     String?   @map("resultat") @db.VarChar(100)
-  
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
-
-  // Relations
-  operateur         Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
-  ciseauTarifaire   CiseauTarifaire? @relation(fields: [ciseauTarifaireId], references: [id], onDelete: SetNull)
-  services          OffreService[]
-  caracteristiques  Caracteristique[]
-  consommationsMoyennes OffreConsommationMoyenne[]
-  options           Option[]
-
-  @@unique([operateurId, nom], name: "unique_offre_par_operateur")
-  @@index([id])
-  @@index([operateurId])
-  @@index([ciseauTarifaireId])
-  @@index([nom])
-  @@index([typeOffre])
-  @@index([statut])
-  @@index([dateDebutValidite])
-  @@index([dateFinValidite])
-  @@map("offres")
-}
-
-model TarifInterconnexion {
-  id          Int       @id @default(autoincrement()) @map("id")
-  operateurId Int       @map("operateur_id")
-  annee       Int       @map("annee")
-  tarifOffNetHeureCreuse    Decimal   @default(0) @map("tarif_off_net_heure_creuse") @db.Decimal(10, 2)
-  tarifOffNetHeurePleine    Decimal   @default(0) @map("tarif_off_net_heure_pleine") @db.Decimal(10, 2)
-  tarifOnNetHeureCreuse     Decimal   @default(0) @map("tarif_on_net_heure_creuse") @db.Decimal(10, 2)
-  tarifOnNetHeurePleine     Decimal   @default(0) @map("tarif_on_net_heure_pleine") @db.Decimal(10, 2)
-  typeTarif   String    @default("Standard") @map("type_tarif") @db.VarChar(100)
-  description String?   @map("description") @db.Text
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
-
-  // Relations
-  operateur   Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
-  services    TarifInterconnexionService[]
-
-  // Contrainte unique : un opérateur ne peut avoir que deux tarifs par année (avec types différents)
-  @@unique([operateurId, annee, typeTarif], name: "unique_tarif_operateur_annee_type")
-  @@index([id])
-  @@index([operateurId])
-  @@index([annee])
-  @@index([typeTarif])
-  @@map("tarifs_interconnexion")
-}
-
-model TarifInterconnexionService {
-  id                    Int                 @id @default(autoincrement()) @map("id")
-  tarifInterconnexionId Int                 @map("tarif_interconnexion_id")
-  serviceId             Int                 @map("service_id")
-  createdAt             DateTime            @default(now()) @map("created_at")
-
-  // Relations
-  tarifInterconnexion   TarifInterconnexion @relation(fields: [tarifInterconnexionId], references: [id], onDelete: Cascade)
-  service               Service             @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-
-  @@unique([tarifInterconnexionId, serviceId], name: "unique_tarif_service")
-  @@index([tarifInterconnexionId])
-  @@index([serviceId])
-  @@map("tarif_interconnexion_services")
-}
-
-enum UserRole {
-  UTILISATEUR
-  SUPER_ADMIN
-}
-
-model Avantage {
   id        Int      @id @default(autoincrement()) @map("id")
-  nom       String   @map("nom") @db.VarChar(255)
-  isGratuit Boolean  @default(false) @map("is_gratuit")
+
+  nom       String   @unique @map("nom") @db.VarChar(255)
+  sigle     String?  @map("sigle") @db.VarChar(50)
+
+  parentId  Int?     @map("id_service_parent")
+  parent    Service?  @relation("ServiceParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Service[] @relation("ServiceParent")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  isDelete  Boolean  @default(false) @map("is_delete")
+  isVisible Boolean  @default(true) @map("is_visible_in_transmission")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  // Relations Many-to-Many avec les options
-  options   OptionAvantage[]
+  //relation
+  users                  User[]                   @relation("UserService")
+  servicesAdditionnels   UserServiceAdditionnel[]
+  courriers              Courrier[]               @relation("CourrierService")
+  transmissions          Transmission[]           @relation("TransmissionService")
+  reponses               Reponse[]                @relation("ReponseService")
+  reponsesDestinataire   Reponse[]                @relation("ReponseServiceDestinataire")
+  notifications          Notification[]           @relation("NotificationService")
 
-  @@index([nom])
-  @@map("avantages")
+  @@index([sigle])
+  @@index([parentId])
+  @@index([isActive])
+  @@index([isDelete])
+  @@index([isVisible])
+  @@index([createdAt])
+  @@map("service")
 }
 
-model OffreService {
+
+model Salle {
   id        Int      @id @default(autoincrement()) @map("id")
-  offreId   Int      @map("offre_id")
-  serviceId Int      @map("service_id")
-  createdAt DateTime @default(now()) @map("created_at")
 
-  // Relations
-  offre     Offre   @relation(fields: [offreId], references: [id], onDelete: Cascade)
-  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  nom       String   @unique @map("nom") @db.VarChar(255)
 
-  @@unique([offreId, serviceId], name: "unique_offre_service")
-  @@index([offreId])
-  @@index([serviceId])
-  @@map("offre_services")
-}
+  isActive  Boolean  @default(true) @map("is_active")
+  isDelete  Boolean  @default(false) @map("is_delete")
 
-model TypeOperateur {
-  id          Int      @id @default(autoincrement()) @map("id")
-  nom         String   @unique @map("nom") @db.VarChar(191)
-  description String?  @map("description") @db.Text
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
-
-  @@index([nom])
-  @@map("types_operateur")
-}
-
-model Trafic {
-  id             Int      @id @default(autoincrement()) @map("id")
-  operateurId    Int      @map("operateur_id")
-  annee          Int      @map("annee")
-  typeTrafic     String   @map("type_trafic") @db.VarChar(100)
-  volume         Decimal  @map("volume") @db.Decimal(18, 4)
-  autreOperateur Json?    @map("autre_operateur") @db.Json
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // Relations
-  operateur      Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
-  services       TraficService[]
-  autresOperateurs TraficAutreOperateur[]
-
-  @@index([id])
-  @@index([operateurId])
-  @@index([annee])
-  @@map("trafics")
-}
-
-model TraficService {
-  id        Int     @id @default(autoincrement()) @map("id")
-  traficId  Int     @map("trafic_id")
-  serviceId Int     @map("service_id")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  // Relations
-  trafic    Trafic  @relation(fields: [traficId], references: [id], onDelete: Cascade)
-  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-
-  @@unique([traficId, serviceId], name: "unique_trafic_service")
-  @@index([traficId])
-  @@index([serviceId])
-  @@map("trafic_services")
-}
-
-model TraficAutreOperateur {
-  id               Int       @id @default(autoincrement()) @map("id")
-  traficId         Int       @map("trafic_id")
-  autreOperateurId Int       @map("autre_operateur_id")
-  createdAt        DateTime  @default(now()) @map("created_at")
-
-  // Relations
-  trafic            Trafic    @relation(fields: [traficId], references: [id], onDelete: Cascade)
-  autreOperateurRef Operateur @relation(fields: [autreOperateurId], references: [id], onDelete: Cascade)
-
-  @@unique([traficId, autreOperateurId], name: "unique_trafic_autre_operateur")
-  @@index([traficId])
-  @@index([autreOperateurId])
-  @@map("trafic_autres_operateurs")
-}
-
-model Abonnement {
-  id              Int      @id @default(autoincrement()) @map("id")
-  operateurId     Int      @map("operateur_id")
-  annee           Int      @map("annee")
-  typeAbonnement  String   @map("type_abonnement") @db.VarChar(100)
-  nombreAbonnes   Int      @map("nombre_abonnes")
-  description     String?  @map("description") @db.Text
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // Relations
-  operateur Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
-  services  AbonnementService[]
-
-  @@index([id])
-  @@index([operateurId])
-  @@index([annee])
-  @@index([typeAbonnement])
-  @@map("abonnements")
-}
-
-model AbonnementService {
-  id           Int      @id @default(autoincrement()) @map("id")
-  abonnementId Int      @map("abonnement_id")
-  serviceId    Int      @map("service_id")
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  // Relations
-  abonnement Abonnement @relation(fields: [abonnementId], references: [id], onDelete: Cascade)
-  service    Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-
-  @@unique([abonnementId, serviceId], name: "unique_abonnement_service")
-  @@index([abonnementId])
-  @@index([serviceId])
-  @@map("abonnement_services")
-}
-
-model ChiffreAffaire {
-  id            Int      @id @default(autoincrement()) @map("id")
-  operateurId   Int      @map("operateur_id")
-  annee         Int      @map("annee")
-  chiffreAffaire Decimal  @map("chiffre_affaire") @db.Decimal(18, 2)
-  description   String?  @map("description") @db.Text
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // Relations
-  operateur Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
-  services  ChiffreAffaireService[]
-
-  // Un opérateur ne peut avoir qu'un chiffre d'affaire par année
-  @@unique([operateurId, annee], name: "unique_operateur_annee")
-  @@index([id])
-  @@index([operateurId])
-  @@index([annee])
-  @@map("chiffres_affaire")
-}
-
-model ChiffreAffaireService {
-  id               Int      @id @default(autoincrement()) @map("id")
-  chiffreAffaireId Int      @map("chiffre_affaire_id")
-  serviceId        Int      @map("service_id")
-  montant          Decimal? @map("montant") @db.Decimal(18, 2)
-  createdAt        DateTime @default(now()) @map("created_at")
-
-  // Relations
-  chiffreAffaire ChiffreAffaire @relation(fields: [chiffreAffaireId], references: [id], onDelete: Cascade)
-  service        Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-
-  @@unique([chiffreAffaireId, serviceId], name: "unique_chiffre_affaire_service")
-  @@index([chiffreAffaireId])
-  @@index([serviceId])
-  @@map("chiffre_affaire_services")
-}
-
-model PartMarche {
-  id                       Int      @id @default(autoincrement()) @map("id")
-  operateurId              Int      @map("operateur_id")
-  annee                    Int      @map("annee")
-  partMarcheTrafic         Decimal? @map("part_marche_trafic") @db.Decimal(5, 2)
-  partMarcheChiffreAffaire Decimal? @map("part_marche_chiffre_affaire") @db.Decimal(5, 2)
-  partMarcheAbonnes        Decimal? @map("part_marche_abonnes") @db.Decimal(5, 2)
-  
-  // Nouveaux champs pour les sommes
-  sommeTrafic              Decimal? @map("somme_trafic") @db.Decimal(15, 2)
-  sommeAbonnement          Decimal? @map("somme_abonnement") @db.Decimal(15, 2)
-  sommeChiffreAffaire      Decimal? @map("somme_chiffre_affaire") @db.Decimal(18, 2)
-  
-  // Nouveaux champs pour les volumes/données spécifiques
-  volumeTrafic             Decimal? @map("volume_trafic") @db.Decimal(15, 2)
-  nombreAbonne             Int?     @map("nombre_abonne")
-  chiffreAffaire           Decimal? @map("chiffre_affaire") @db.Decimal(18, 2)
-  
-  // Champs IHH calculés pour chaque métrique
-  ihhTrafic                Decimal? @map("ihh_trafic") @db.Decimal(10, 4)
-  ihhAbonne                Decimal? @map("ihh_abonne") @db.Decimal(10, 4)
-  ihhChiffreAffaire        Decimal? @map("ihh_chiffre_affaire") @db.Decimal(10, 4)
-  
-  // Champs booléens pour indiquer si le marché est concentré
-  isConcentreTrafic        Boolean  @default(false) @map("is_concentre_trafic")
-  isConcentreAbonne        Boolean  @default(false) @map("is_concentre_abonne")
-  isConcentreChiffreAffaire Boolean  @default(false) @map("is_concentre_chiffre_affaire")
-  
-  createdAt                DateTime @default(now()) @map("created_at")
-  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // Relations
-  operateur Operateur @relation(fields: [operateurId], references: [id], onDelete: Cascade)
-
-  // Un opérateur ne peut avoir qu'une part de marché par année
-  @@unique([operateurId, annee], name: "unique_operateur_annee_part_marche")
-  @@index([operateurId])
-  @@index([annee])
-  @@map("parts_marche")
-}
-
-model Caracteristique {
-  id           Int      @id @default(autoincrement()) @map("id")
-  offreId      Int      @map("offre_id")
-  type         String   @map("type") @db.VarChar(100)
-  onNet        Decimal  @map("on_net") @db.Decimal(10, 2)
-  offNet       Decimal  @map("off_net") @db.Decimal(10, 2)
-  international Decimal @map("international") @db.Decimal(10, 2)
-  roaming      Decimal  @map("roaming") @db.Decimal(10, 2)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // Relations
-  offre        Offre    @relation(fields: [offreId], references: [id], onDelete: Cascade)
-
-  @@unique([offreId, type], name: "unique_caracteristique_offre_type")
-  @@index([offreId])
-  @@index([type])
-  @@map("caracteristiques")
-}
-
-model Parametre {
-  id           Int      @id @default(autoincrement()) @map("id")
-  type         String   @map("type") @db.VarChar(100)
-  annee        Int      @unique @map("annee")
-  redevanceFst Decimal? @map("redevance_fst") @db.Decimal(10, 2)
-  redevanceRegulation Decimal? @map("redevance_regulation") @db.Decimal(10, 2)
-  droitEntree  Decimal? @map("droit_entree") @db.Decimal(10, 2)
-  coutsCommerciaux Decimal? @map("couts_commerciaux") @db.Decimal(10, 2)
-  coutInterconnexion  Decimal  @default(0) @map("cout_interconnexion") @db.Decimal(18, 2)
-  tva          Decimal? @map("tva") @db.Decimal(5, 2)
-  coutReseau   Decimal  @default(0) @map("cout_reseau") @db.Decimal(18, 2)
-  taxe         Decimal  @default(0) @map("taxe") @db.Decimal(18, 2)
-  cout         Decimal  @default(0) @map("cout") @db.Decimal(18, 2)
-  wacc         Decimal  @default(0) @map("wacc") @db.Decimal(18, 2)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
-
-  @@index([type])
-  @@index([annee])
-  @@map("parametres")
-}
-
-// Modèles pour les consommations moyennes
-model ConsommationMoyenne {
-  id        Int      @id @default(autoincrement()) @map("id")
-  nom       String   @map("nom") @db.VarChar(255)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  // Relations Many-to-Many avec les offres et options
-  offres    OffreConsommationMoyenne[]
-  options   OptionConsommationMoyenne[]
+  //relation
+  coffres   Coffre[]
 
-  @@index([nom])
-  @@map("consommations_moyennes")
+  @@index([isActive])
+  @@index([isDelete])
+  @@index([createdAt])
+  @@map("salle")
 }
 
-model OffreConsommationMoyenne {
-  id                     Int                  @id @default(autoincrement()) @map("id")
-  offreId                Int                  @map("offre_id")
-  consommationMoyenneId  Int                  @map("consommation_moyenne_id")
-  createdAt              DateTime             @default(now()) @map("created_at")
 
-  // Relations
-  offre                  Offre                @relation(fields: [offreId], references: [id], onDelete: Cascade)
-  consommationMoyenne    ConsommationMoyenne  @relation(fields: [consommationMoyenneId], references: [id], onDelete: Cascade)
+model Coffre {
+  id                 Int      @id @default(autoincrement()) @map("id")
+  nom                String   @unique @map("nom") @db.VarChar(255)
+  nombrePlaceActuelle Int     @default(0) @map("nombre_place_actuelle")
+  tailleMaximale     Int      @default(20)@map("taille_maximale")
+  idSalle            Int      @map("id_salle")
 
-  @@unique([offreId, consommationMoyenneId], name: "unique_offre_consommation_moyenne")
-  @@index([offreId])
-  @@index([consommationMoyenneId])
-  @@map("offre_consommations_moyennes")
+  isActive           Boolean  @default(true) @map("is_active")
+  isDelete           Boolean  @default(false) @map("is_delete")
+
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
+
+  //relation
+  salle              Salle    @relation(fields: [idSalle], references: [id], onDelete: Cascade)
+
+  @@index([idSalle])
+  @@index([isActive])
+  @@index([isDelete])
+  @@index([createdAt])
+  @@map("coffre")
 }
 
-// Modèles pour les options
-model Option {
-  id                     Int      @id @default(autoincrement()) @map("id")
-  offreId                Int      @map("offre_id")
-  nom                    String   @map("nom") @db.VarChar(255)
-  tva                    Decimal  @map("tva") @db.Decimal(5, 2)
-  nombreSouscriptions    Int      @map("nombre_souscriptions")
-  traficOption Decimal?  @map("trafic_option") @db.Decimal(10, 2)
-  fraisSouscription      Decimal  @map("frais_souscription") @db.Decimal(10, 2)
-  tarifMinuteOnNet       Decimal  @map("tarif_minute_on_net") @db.Decimal(10, 2)
-  tarifMinuteOffNet      Decimal  @map("tarif_minute_off_net") @db.Decimal(10, 2)
-  annee                  Int      @map("annee")
-  trafic                 Decimal  @default(0) @map("trafic") @db.Decimal(15, 2)
-  createdAt              DateTime @default(now()) @map("created_at")
-  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at")
+model Notification {
+  id        Int       @id @default(autoincrement()) @map("id")
+  titre     String    @map("titre") @db.VarChar(255)
+  message   String?   @map("message") @db.Text
+  type      String    @map("type") @db.VarChar(100)
+  idUser    Int?      @map("id_user")
+  idService Int?      @map("id_service")
 
-  // Relations
-  offre                  Offre    @relation(fields: [offreId], references: [id], onDelete: Cascade)
-  structuresTarifaires   OptionStructureTarifaire[]
-  avantages              OptionAvantage[]
-  consommationsMoyennes  OptionConsommationMoyenne[]
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at")
+  isDelete  Boolean   @default(false) @map("is_delete")
 
-  @@index([id])
-  @@index([offreId])
-  @@index([nom])
-  @@index([annee])
-  @@map("options")
+  data      Json?     @map("data") // métadonnées ou payload JSON
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  //relation
+  user      User?     @relation("NotificationUser", fields: [idUser], references: [id], onDelete: Cascade)
+  service   Service?  @relation("NotificationService", fields: [idService], references: [id], onDelete: Cascade)
+
+  @@index([type])
+  @@index([idUser])
+  @@index([idService])
+  @@index([isRead])
+  @@index([readAt])
+  @@index([isDelete])
+  @@index([createdAt])
+  @@map("notifications")
 }
 
-model StructureTarifaire {
-  id             Int      @id @default(autoincrement()) @map("id")
-  nom            String   @map("nom") @db.VarChar(255)
-  estObligatoire Boolean  @default(false) @map("est_obligatoire")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
-
-  // Relations avec les options
-  options   OptionStructureTarifaire[]
-
-  @@index([nom])
-  @@map("structures_tarifaires")
-}
-
-model OptionStructureTarifaire {
-  id                    Int                @id @default(autoincrement()) @map("id")
-  optionId              Int                @map("option_id")
-  structureTarifaireId  Int                @map("structure_tarifaire_id")
-  valeur         Decimal?  @map("valeur") @db.Decimal(10, 2)
-  createdAt             DateTime           @default(now()) @map("created_at")
-
-  // Relations
-  option                Option             @relation(fields: [optionId], references: [id], onDelete: Cascade)
-  structureTarifaire    StructureTarifaire @relation(fields: [structureTarifaireId], references: [id], onDelete: Cascade)
-
-  @@unique([optionId, structureTarifaireId], name: "unique_option_structure_tarifaire")
-  @@index([optionId])
-  @@index([structureTarifaireId])
-  @@map("option_structures_tarifaires")
-}
-
-model OptionAvantage {
-  id          Int      @id @default(autoincrement()) @map("id")
-  optionId    Int      @map("option_id")
-  avantageId  Int      @map("avantage_id")
-  valeur         Decimal?  @map("valeur") @db.Decimal(10, 2)
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  // Relations
-  option      Option   @relation(fields: [optionId], references: [id], onDelete: Cascade)
-  avantage    Avantage @relation(fields: [avantageId], references: [id], onDelete: Cascade)
-
-  @@unique([optionId, avantageId], name: "unique_option_avantage")
-  @@index([optionId])
-  @@index([avantageId])
-  @@map("option_avantages")
-}
-
-model OptionConsommationMoyenne {
-  id                     Int                  @id @default(autoincrement()) @map("id")
-  optionId               Int                  @map("option_id")
-  consommationMoyenneId  Int                  @map("consommation_moyenne_id")
-  valeur         Decimal?  @map("valeur") @db.Decimal(10, 2)
-  createdAt              DateTime             @default(now()) @map("created_at")
-
-  // Relations
-  option                 Option               @relation(fields: [optionId], references: [id], onDelete: Cascade)
-  consommationMoyenne    ConsommationMoyenne  @relation(fields: [consommationMoyenneId], references: [id], onDelete: Cascade)
-
-  @@unique([optionId, consommationMoyenneId], name: "unique_option_consommation_moyenne")
-  @@index([optionId])
-  @@index([consommationMoyenneId])
-  @@map("option_consommations_moyennes")
-}
-
-model CiseauTarifaire {
+model Archive {
   id                  Int      @id @default(autoincrement()) @map("id")
-  annee               Int      @map("annee")
-  cout                Decimal  @default(0) @map("cout") @db.Decimal(18, 2)
-  differenceOffnetHC  Decimal  @default(0) @map("difference_offnet_hc") @db.Decimal(18, 2)
-  differenceOffnetHP  Decimal  @default(0) @map("difference_offnet_hp") @db.Decimal(18, 2)
-  differenceOnnetHC   Decimal  @default(0) @map("difference_onnet_hc") @db.Decimal(18, 2)
-  differenceOnnetHP   Decimal  @default(0) @map("difference_onnet_hp") @db.Decimal(18, 2)
+  idCourrier          Json     @map("id_courrier")
+  idTransmission      Json     @map("id_transmission")
+  idCourrierDepart    Json     @map("id_courrier_depart")
+  fichier             String    @map("fichier") @db.VarChar(100)
 
-  tariffacialOffnet Decimal  @default(0) @map("tariffacial_offnet") @db.Decimal(18, 2)
-  DiffTariffacialOffnetHC Decimal  @default(0) @map("diff_tariffacial_offnet_hc") @db.Decimal(18, 2)
-  DiffTariffacialOffnetHP Decimal  @default(0) @map("diff_tariffacial_offnet_hp") @db.Decimal(18, 2)
+  idSalle             Int      @map("id_salle")
+  idCoffre            Int      @map("id_coffre")
 
-  RevenusMoyen  Decimal  @default(0) @map("revenu_moyen") @db.Decimal(18, 2)
-  DiffRevenuOffHC Decimal  @default(0) @map("diff_revenu_off_hc") @db.Decimal(18, 2)
-  DiffRevenuOffHP Decimal  @default(0) @map("diff_revenu_off_hp") @db.Decimal(18, 2)
-
-  isRevenuOffHC Boolean  @default(false) @map("is_revenu_off_hc")
-  isRevenuOffHP Boolean  @default(false) @map("is_revenu_off_hp")
-
-  isCiseauOffHC            Boolean  @default(false) @map("is_ciseau_off_hc")
-  isCiseauOffHP            Boolean  @default(false) @map("is_ciseau_off_hp")
-
-  isCiseauOffTarifHC            Boolean  @default(false) @map("is_ciseau_off_tarif_hc")
-  isCiseauOffTarifHP           Boolean  @default(false) @map("is_ciseau_off_tarif_hp")
+  isDelete            Boolean  @default(false) @map("is_delete")
 
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
 
-  // Relations
-  offres              Offre[]
-
-  @@index([id])
-  @@index([annee])
-  @@map("ciseaux_tarifaires")
+  @@index([idSalle])
+  @@index([idCoffre])
+  @@index([isDelete])
+  @@index([createdAt])
+  @@map("archive")
 }
+
+
+model BordereauTransmission {
+  id                Int       @id @default(autoincrement()) @map("id")
+  courrierIds       Json      @map("courrier_ids")
+  correspondantId   Int       @map("correspondant_id")
+  numeroReference   String?   @map("numero_reference") @db.VarChar(255)
+  nombrePieceJointe Int?      @map("nombre_piece_jointe")
+
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@index([correspondantId])
+  @@index([numeroReference])
+  @@index([createdAt])
+  @@map("bordereau_transmission")
+}
+
+
+model Courrier {
+  id                  Int       @id @default(autoincrement()) @map("id")
+  numero              String    @unique @map("numero") @db.VarChar(255)
+  reference           String?   @map("reference") @db.VarChar(255)
+  objet               String?   @map("objet") @db.VarChar(255)
+  idProvenance        Int?      @map("id_provenance")
+  idTypeCourrier      Int?      @map("id_type_courrier")
+  idService           Int?      @map("id_service")
+  idUser              Int?      @map("id_user")
+  commentaire         String?   @map("commentaire") @db.Text
+  commentairePublic   String?   @map("commentaire_public") @db.Text
+  commentaireInterne  String?   @map("commentaire_interne") @db.Text
+  priorite            String?   @map("priorite") @db.VarChar(50)
+  isConfidentiel      Boolean   @default(false) @map("is_confidentiel")
+  dateArrivee         DateTime? @default(now()) @map("date_arrivee")
+  dateEnregistrement  DateTime? @default(now()) @map("date_enregistrement")
+  statut              String?   @map("statut") @db.VarChar(100)
+  isGeled             Boolean   @default(false) @map("is_geled")
+  document            String?   @map("document") @db.VarChar(100)
+  bordereauRemise     Json?     @map("bordereau_remise")
+  dateRemiseEffective DateTime? @default(now()) @map("date_remise_effective")
+  dateCloture         DateTime? @map("date_cloture")
+  telephone           String?   @map("telephone") @db.VarChar(50)
+  email               String?   @map("email") @db.VarChar(191)
+  adresse             String?   @map("adresse") @db.VarChar(255)
+  civilite            String?   @map("civilite") @db.VarChar(50)
+  nom                 String?   @map("nom") @db.VarChar(255)
+  matricule           String?   @map("matricule") @db.VarChar(100)
+  typeTransfert       String?   @map("type_transfert") @db.VarChar(100)
+  classeCourrier      String?   @map("classe_courrier") @db.VarChar(100)
+  categorie           String?   @map("categorie") @db.VarChar(100)
+  isDelete            Boolean   @default(false) @map("is_delete")
+  isArchive           Boolean   @default(false) @map("is_archive")
+  statutArchive       String?   @map("statut_archive") @db.VarChar(100)
+  viderPar            Json?     @map("vider_par")
+  nombrePieceJointe   Int?      @map("nombre_piece_jointe")
+
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  //relation
+  provenance          Correspondant? @relation("CourrierProvenance", fields: [idProvenance], references: [id], onDelete: SetNull)
+  typeCourrier        TypeCourrier?  @relation("CourrierTypeCourrier", fields: [idTypeCourrier], references: [id], onDelete: SetNull)
+  service             Service?       @relation("CourrierService", fields: [idService], references: [id], onDelete: SetNull)
+  user                User?          @relation("CourrierUser", fields: [idUser], references: [id], onDelete: SetNull)
+  transmissions       Transmission[] @relation("CourrierTransmission")
+  courrierDeparts     CourrierDepart[] @relation("CourrierDepartCourrier")
+  reponses            CourrierReponse[]
+  piecesJointes       PieceJointe[] @relation("CourrierPieceJointe")
+
+  @@index([reference])
+  @@index([idProvenance])
+  @@index([idTypeCourrier])
+  @@index([idService])
+  @@index([idUser])
+  @@index([priorite])
+  @@index([statut])
+  @@index([dateArrivee])
+  @@index([dateEnregistrement])
+  @@index([isDelete])
+  @@index([isArchive])
+  @@map("courrier")
+}
+
+
+model CourrierDepart {
+  id                Int       @id @default(autoincrement()) @map("id")
+  dateSignature     DateTime? @default(now()) @map("date_signature")
+  typeCourrier      String?   @map("type_courrier") @db.VarChar(100)
+  commentaire       String?   @map("commentaire") @db.Text
+  numeroReference   String?   @map("numero_reference") @db.VarChar(255)
+  idDestinataire    Int?      @map("id_destinataire")
+  idCourrier        Int?      @map("id_courrier")
+  idSignataire      Int?      @map("id_signataire")
+  classeCourrier    String?   @map("classe_courrier") @db.VarChar(100)
+  categorie         String?   @map("categorie") @db.VarChar(100)
+  document          String?   @map("document") @db.Text
+  email             String?   @map("email") @db.VarChar(191)
+  numeroTelephone   String?   @map("numero_telephone") @db.VarChar(50)
+  numeroActe        String?   @map("numero_acte") @db.VarChar(100)
+  provenancesCopie  Json?     @map("provenances_copie")
+  isDelete          Boolean   @default(false) @map("is_delete")
+  isArchive         Boolean   @default(false) @map("is_archive")
+  statutArchive     String?   @map("statut_archive") @db.VarChar(100)
+  viderPar          Json?     @map("vider_par")
+  nombrePieceJointe Int?      @map("nombre_piece_jointe")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  //relation
+  destinataire      Correspondant? @relation("CourrierDepartDestinataire", fields: [idDestinataire], references: [id], onDelete: SetNull)
+  courrier          Courrier?      @relation("CourrierDepartCourrier", fields: [idCourrier], references: [id], onDelete: SetNull)
+  signataire        User?          @relation("CourrierDepartSignataire", fields: [idSignataire], references: [id], onDelete: SetNull)
+  piecesJointes     PieceJointe[]  @relation("CourrierDepartPieceJointe")
+
+  @@index([typeCourrier])
+  @@index([idDestinataire])
+  @@index([idCourrier])
+  @@index([idSignataire])
+  @@index([numeroReference])
+  @@index([classeCourrier])
+  @@index([categorie])
+  @@index([isDelete])
+  @@index([isArchive])
+  @@index([createdAt])
+  @@map("courrier_depart")
+}
+
+
+model PieceJointe {
+  id         Int       @id @default(autoincrement()) @map("id")
+  nom        String?   @map("nom") @db.VarChar(255)
+  intitule   String?   @map("intitule") @db.VarChar(255)
+  chemin     String    @map("chemin") @db.VarChar(500)
+  type           String?   @map("type") @db.VarChar(100)
+  idParent       Int?      @map("id_parent")
+  typeParent     String?   @map("type_parent") @db.VarChar(100)
+  idTransmission Int?      @map("id_transmission")
+  idCourrier     Int?      @map("id_courrier")
+  idCourrierDepart Int?    @map("id_courrier_depart")
+  idReponse      Int?      @map("id_reponse")
+  isDelete       Boolean   @default(false) @map("is_delete")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  //relation
+  transmission   Transmission? @relation("TransmissionPieceJointe", fields: [idTransmission], references: [id], onDelete: Cascade)
+  courrier       Courrier? @relation("CourrierPieceJointe", fields: [idCourrier], references: [id], onDelete: Cascade)
+  courrierDepart CourrierDepart? @relation("CourrierDepartPieceJointe", fields: [idCourrierDepart], references: [id], onDelete: Cascade)
+  reponse        Reponse?  @relation("ReponsePieceJointe", fields: [idReponse], references: [id], onDelete: Cascade)
+
+  @@index([idParent])
+  @@index([idTransmission])
+  @@index([idCourrier])
+  @@index([idCourrierDepart])
+  @@index([idReponse])
+  @@index([typeParent])
+  @@index([type])
+  @@index([isDelete])
+  @@index([createdAt])
+  @@map("piece_jointe")
+}
+
+
+model Reponse {
+  id                Int       @id @default(autoincrement()) @map("id")
+  typesCourrierIds  Json      @map("types_courrier_ids")
+  idTransmission    Json      @map("id_transmission")
+  objet             String?   @map("objet") @db.VarChar(255)
+  idService         Int?      @map("id_service")
+  idServiceDestinataire Int?  @map("id_service_destinataire")
+  idRedacteur       Int?      @map("id_redacteur")
+  commentairePublic String?   @map("commentaire_public") @db.Text
+  commentaireInterne String?  @map("commentaire_interne") @db.Text
+  dateReponse       DateTime? @default(now()) @map("date_reponse")
+  classeCourrier    String?   @map("classe_courrier") @db.VarChar(100)
+  typeTransmission  String?   @map("type_transmission") @db.VarChar(100)
+  isDelete          Boolean   @default(false) @map("is_delete")
+  nombrePieceJointe Int?      @map("nombre_piece_jointe")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  //relation
+  service                Service?  @relation("ReponseService", fields: [idService], references: [id], onDelete: SetNull)
+  serviceDestinataire    Service?  @relation("ReponseServiceDestinataire", fields: [idServiceDestinataire], references: [id], onDelete: SetNull)
+  redacteur              User?     @relation("ReponseRedacteur", fields: [idRedacteur], references: [id], onDelete: SetNull)
+  courriers              CourrierReponse[]
+  piecesJointes          PieceJointe[] @relation("ReponsePieceJointe")
+
+  @@index([dateReponse])
+  @@index([idService])
+  @@index([idServiceDestinataire])
+  @@index([idRedacteur])
+  @@index([classeCourrier])
+  @@index([typeTransmission])
+  @@index([isDelete])
+  @@index([createdAt])
+  @@map("reponse")
+}
+
+
+model Transmission {
+  id                Int       @id @default(autoincrement()) @map("id")
+  structuresCopie   Json?     @map("structures_copie")
+  dateInstruction   DateTime? @default(now()) @map("date_instruction")
+  dateReception     DateTime? @default(now()) @map("date_reception")
+  instruction       String?   @map("instruction") @db.Text
+  delaiTraitement   Int?      @map("delai_traitement")
+  typeTransfert     String?   @map("type_transfert") @db.VarChar(100)
+  idService         Int?      @map("id_service")
+  idCourrier        Int?      @map("id_courrier")
+  idEmetteur        Int?      @map("id_emetteur")
+  accuseReception   Boolean?  @map("accuse_reception")
+  traitePar         Json?     @map("traite_par")
+  statut            String?   @map("statut") @db.VarChar(100)
+  document          String?   @map("document") @db.VarChar(255)
+  pieceJointe       Json?     @map("piece_jointe")
+  isDelete          Boolean   @default(false) @map("is_delete")
+  isArchive         Boolean   @default(false) @map("is_archive")
+  isGeled             Boolean   @default(false) @map("is_geled")
+  isinstance        Boolean   @default(false) @map("isinstance")
+  statutArchive     String?   @map("statut_archive") @db.VarChar(100)
+  viderPar          Json?     @map("vider_par")
+  nombrePieceJointe Int?      @map("nombre_piece_jointe")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  //relation
+  service           Service?  @relation("TransmissionService", fields: [idService], references: [id], onDelete: SetNull)
+  courrier          Courrier? @relation("CourrierTransmission", fields: [idCourrier], references: [id], onDelete: SetNull)
+  emetteur          User?     @relation("TransmissionEmetteur", fields: [idEmetteur], references: [id], onDelete: SetNull)
+  piecesJointes     PieceJointe[] @relation("TransmissionPieceJointe")
+
+  @@index([dateInstruction])
+  @@index([dateReception])
+  @@index([typeTransfert])
+  @@index([idService])
+  @@index([idCourrier])
+  @@index([idEmetteur])
+  @@index([statut])
+  @@index([isDelete])
+  @@index([isArchive])
+  @@index([createdAt])
+  @@map("transmission")
+}
+
+// Table de jonction pour la relation many-to-many entre Categories et Correspondant
+model CategoriesCorrespondant {
+  id              Int           @id @default(autoincrement()) @map("id")
+  categorieId     Int           @map("categorie_id")
+  correspondantId Int           @map("correspondant_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  categorie       Categories    @relation(fields: [categorieId], references: [id], onDelete: Cascade)
+  correspondant   Correspondant @relation(fields: [correspondantId], references: [id], onDelete: Cascade)
+
+  @@unique([categorieId, correspondantId])
+  @@index([categorieId])
+  @@index([correspondantId])
+  @@map("categories_correspondant")
+}
+
+// Table de jonction pour les services additionnels des utilisateurs
+model UserServiceAdditionnel {
+  id        Int      @id @default(autoincrement()) @map("id")
+  userId    Int      @map("user_id")
+  serviceId Int      @map("service_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, serviceId])
+  @@index([userId])
+  @@index([serviceId])
+  @@map("user_service_additionnel")
+}
+
+// Table de jonction pour la relation many-to-many entre Courrier et Reponse
+model CourrierReponse {
+  id        Int      @id @default(autoincrement()) @map("id")
+  courrierId Int     @map("courrier_id")
+  reponseId Int      @map("reponse_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  courrier  Courrier @relation(fields: [courrierId], references: [id], onDelete: Cascade)
+  reponse   Reponse  @relation(fields: [reponseId], references: [id], onDelete: Cascade)
+
+  @@unique([courrierId, reponseId])
+  @@index([courrierId])
+  @@index([reponseId])
+  @@map("courrier_reponse")
+}
+
+// Table de jonction pour la relation many-to-many entre Role et Permission
+model RolePermission {
+  id           Int        @id @default(autoincrement()) @map("id")
+  roleId       Int        @map("role_id")
+  permissionId Int        @map("permission_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permission")
+}
+
+

@@ -212,7 +212,7 @@ export interface LogEntry {
   createdAt: Date;
   user?: {
     id: number;
-    nom: string;
+    username: string;
     email: string;
   } | null;
 }

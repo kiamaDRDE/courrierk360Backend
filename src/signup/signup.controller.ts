@@ -56,24 +56,35 @@ export class SignupController {
     type: SignupDto,
     examples: {
       example1: {
-        summary: 'Utilisateur avec fonction',
+        summary: 'Utilisateur complet avec services additionnels',
         value: {
-          nom: 'Jean Dupont',
+          username: 'jdupont',
           email: 'jean.dupont@example.com',
-          numero: '+237699999999',
-          fonction: 'Développeur',
           password: 'motDePasseSecurise123',
-          role: 'UTILISATEUR',
+          civilite: 'M.',
+          firstName: 'Jean',
+          lastName: 'Dupont',
+          phone: '+237699999999',
+          numero: '+237699999999',
+          idService: 1,
+          idRole: 2,
+          idCorrespondant: 1,
+          servicesAdditionel: [
+            { serviceId: 2 },
+            { serviceId: 3 }
+          ],
+          isActive: true,
+          isSignataire: false,
         },
       },
       example2: {
-        summary: 'Super Admin sans fonction',
+        summary: 'Utilisateur minimal',
         value: {
-          nom: 'Admin Principal',
+          username: 'admin',
           email: 'admin@example.com',
-          numero: '+237655005647',
           password: 'adminPass123',
-          role: 'SUPER_ADMIN',
+          numero: '+237655005647',
+          idRole: 1,
         },
       },
     },
@@ -91,11 +102,33 @@ export class SignupController {
           message: 'Utilisateur créé avec succès.',
           data: {
             id: 1,
-            nom: 'Jean Dupont',
+            username: 'jdupont',
+            firstName: 'Jean',
+            lastName: 'Dupont',
             email: 'jean.dupont@example.com',
+            phone: '+237699999999',
             numero: '+237699999999',
-            fonction: 'Développeur',
-            role: 'UTILISATEUR',
+            civilite: 'M.',
+            isActive: true,
+            isSignataire: false,
+            role: {
+              id: 2,
+              nom: 'Utilisateur',
+              description: 'Rôle utilisateur standard',
+            },
+            service: {
+              id: 1,
+              nom: 'Service Informatique',
+              sigle: 'SI',
+            },
+            servicesAdditionel: [
+              {
+                serviceId: 2,
+                serviceName: 'Service RH',
+                userId: 1,
+                userName: 'jdupont',
+              },
+            ],
             createdAt: '2025-12-12T10:41:24.000Z',
             updatedAt: '2025-12-12T10:41:24.000Z',
           },
@@ -120,8 +153,10 @@ export class SignupController {
   @ApiQuery({ name: 'email', required: false, description: 'Filtrer par email (recherche partielle)', example: 'jean@example.com' })
   @ApiQuery({ name: 'numero', required: false, description: 'Filtrer par numéro', example: '+237' })
   @ApiQuery({ name: 'fonction', required: false, description: 'Filtrer par fonction', example: 'Développeur' })
-  @ApiQuery({ name: 'role', required: false, description: 'Filtrer par rôle', enum: ['SUPER_ADMIN', 'UTILISATEUR'] })
-  @ApiQuery({ name: 'statut', required: false, description: 'Filtrer par statut', enum: ['Actif', 'Inactif'] })
+  @ApiQuery({ name: 'idRole', required: false, description: 'Filtrer par ID du rôle', type: Number, example: 1 })
+  @ApiQuery({ name: 'idService', required: false, description: 'Filtrer par ID du service', type: Number, example: 1 })
+  @ApiQuery({ name: 'isSignataire', required: false, description: 'Filtrer les utilisateurs signataires', type: Boolean, example: true })
+  @ApiQuery({ name: 'isActive', required: false, description: 'Filtrer par statut actif/inactif', type: Boolean, example: true })
   @ApiResponse({
     status: 200,
     description: 'Liste des utilisateurs récupérée avec succès.',
@@ -140,12 +175,31 @@ export class SignupController {
                 users: [
                   {
                     id: 1,
-                    nom: 'Jean Dupont',
+                    username: 'jdupont',
+                    firstName: 'Jean',
+                    lastName: 'Dupont',
                     email: 'jean.dupont@example.com',
                     numero: '+237699999999',
-                    fonction: 'Développeur',
-                    role: 'UTILISATEUR',
-                    statut: 'Actif',
+                    isActive: true,
+                    isSignataire: false,
+                    role: {
+                      id: 1,
+                      nom: 'Administrateur',
+                      description: 'Rôle administrateur',
+                    },
+                    service: {
+                      id: 1,
+                      nom: 'Service Informatique',
+                      sigle: 'SI',
+                    },
+                    servicesAdditionel: [
+                      {
+                        serviceId: 2,
+                        serviceName: 'Service RH',
+                        userId: 1,
+                        userName: 'jdupont',
+                      },
+                    ],
                     createdAt: '2025-12-12T10:41:24.000Z',
                     updatedAt: '2025-12-12T10:41:24.000Z',
                   },
@@ -173,12 +227,24 @@ export class SignupController {
                 users: [
                   {
                     id: 1,
-                    nom: 'Jean Dupont',
+                    username: 'admin',
+                    firstName: 'Jean',
+                    lastName: 'Dupont',
                     email: 'jean.dupont@example.com',
                     numero: '+237699999999',
-                    fonction: 'Développeur',
-                    role: 'SUPER_ADMIN',
-                    statut: 'Actif',
+                    isActive: true,
+                    isSignataire: true,
+                    role: {
+                      id: 1,
+                      nom: 'Super Admin',
+                      description: 'Rôle super administrateur',
+                    },
+                    service: {
+                      id: 1,
+                      nom: 'Direction Générale',
+                      sigle: 'DG',
+                    },
+                    servicesAdditionel: [],
                     createdAt: '2025-12-12T10:41:24.000Z',
                     updatedAt: '2025-12-12T10:41:24.000Z',
                   },
@@ -228,11 +294,33 @@ export class SignupController {
           message: 'Utilisateur récupéré avec succès.',
           data: {
             id: 1,
-            nom: 'Jean Dupont',
+            username: 'jdupont',
+            firstName: 'Jean',
+            lastName: 'Dupont',
             email: 'jean.dupont@example.com',
+            phone: '+237699999999',
             numero: '+237699999999',
-            fonction: 'Développeur',
-            role: 'UTILISATEUR',
+            civilite: 'M.',
+            isActive: true,
+            isSignataire: false,
+            role: {
+              id: 2,
+              nom: 'Utilisateur',
+              description: 'Rôle utilisateur standard',
+            },
+            service: {
+              id: 1,
+              nom: 'Service Informatique',
+              sigle: 'SI',
+            },
+            servicesAdditionel: [
+              {
+                serviceId: 2,
+                serviceName: 'Service RH',
+                userId: 1,
+                userName: 'jdupont',
+              },
+            ],
             resetOtp: null,
             resetExpires: null,
             refreshToken: null,
@@ -285,12 +373,22 @@ export class SignupController {
       example1: {
         summary: 'Exemple complet (tous les champs sont optionnels)',
         value: {
-          nom: 'Jean Dupont Modifié',
+          username: 'jdupont_modifie',
+          firstName: 'Jean',
+          lastName: 'Dupont Modifié',
           email: 'jean.dupont.modifie@example.com',
+          phone: '+237655005647',
           numero: '+237655005647',
-          fonction: 'Développeur Senior',
+          civilite: 'M.',
           password: 'nouveauMotDePasseSecurise123',
-          role: 'SUPER_ADMIN',
+          idRole: 1,
+          idService: 2,
+          servicesAdditionel: [
+            { serviceId: 3 },
+            { serviceId: 4 },
+          ],
+          isActive: true,
+          isSignataire: true,
         },
       },
     },
@@ -308,11 +406,39 @@ export class SignupController {
           message: 'Utilisateur mis à jour avec succès.',
           data: {
             id: 1,
-            nom: 'Jean Dupont Modifié',
-            email: 'jean.dupont@example.com',
-            numero: '+237699999999',
-            fonction: 'Développeur Senior',
-            role: 'UTILISATEUR',
+            username: 'jdupont_modifie',
+            firstName: 'Jean',
+            lastName: 'Dupont Modifié',
+            email: 'jean.dupont.modifie@example.com',
+            numero: '+237655005647',
+            phone: '+237655005647',
+            civilite: 'M.',
+            isActive: true,
+            isSignataire: true,
+            role: {
+              id: 1,
+              nom: 'Super Admin',
+              description: 'Rôle super administrateur',
+            },
+            service: {
+              id: 2,
+              nom: 'Service Commercial',
+              sigle: 'SC',
+            },
+            servicesAdditionel: [
+              {
+                serviceId: 3,
+                serviceName: 'Service Marketing',
+                userId: 1,
+                userName: 'jdupont_modifie',
+              },
+              {
+                serviceId: 4,
+                serviceName: 'Service Support',
+                userId: 1,
+                userName: 'jdupont_modifie',
+              },
+            ],
             createdAt: '2025-12-12T10:41:24.000Z',
             updatedAt: '2025-12-12T12:00:00.000Z',
           },

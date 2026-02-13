@@ -31,7 +31,23 @@ export class SignupService {
 
   // 👤 Création d'un utilisateur
   async signup(signupDto: SignupDto) {
-    const { nom, email, numero, fonction, password, role } = signupDto;
+    const {
+      username,
+      email,
+      password,
+      civilite,
+      firstName,
+      lastName,
+      phone,
+      numero,
+      fonction,
+      idService,
+      idRole,
+      idCorrespondant,
+      servicesAdditionel,
+      isActive,
+      isSignataire,
+    } = signupDto;
 
     // 1️⃣ Vérifier si l'email existe déjà
     const existingUser = await this.prismaService.user.findUnique({
@@ -42,26 +58,187 @@ export class SignupService {
       throw new BadRequestException('Cet email est déjà utilisé.');
     }
 
-    // 2️⃣ Hacher le mot de passe
+    // 2️⃣ Vérifier si le username existe déjà
+    const existingUsername = await this.prismaService.user.findFirst({
+      where: { username },
+    });
+
+    if (existingUsername) {
+      throw new BadRequestException("Ce nom d'utilisateur est déjà utilisé.");
+    }
+
+    // 3️⃣ Vérifier que le rôle existe s'il est fourni
+    if (idRole) {
+      const role = await this.prismaService.role.findFirst({
+        where: { id: idRole, isDelete: false },
+      });
+
+      if (!role) {
+        throw new BadRequestException(`Le rôle avec l'ID ${idRole} n'existe pas.`);
+      }
+    }
+
+    // 4️⃣ Vérifier que le service existe s'il est fourni
+    if (idService) {
+      const service = await this.prismaService.service.findFirst({
+        where: { id: idService, isDelete: false },
+      });
+
+      if (!service) {
+        throw new BadRequestException(`Le service avec l'ID ${idService} n'existe pas.`);
+      }
+    }
+
+    // 5️⃣ Vérifier que le correspondant existe s'il est fourni
+    if (idCorrespondant) {
+      const correspondant = await this.prismaService.correspondant.findFirst({
+        where: { id: idCorrespondant, isDelete: false },
+      });
+
+      if (!correspondant) {
+        throw new BadRequestException(`Le correspondant avec l'ID ${idCorrespondant} n'existe pas.`);
+      }
+    }
+
+    // 6️⃣ Hacher le mot de passe
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 3️⃣ Créer l'utilisateur
+    // 7️⃣ Créer l'utilisateur
     const user = await this.prismaService.user.create({
       data: {
-        nom,
+        username,
         email,
-        numero,
-        fonction: fonction || null,
         password: hashedPassword,
-        role: (role || 'SUPER_ADMIN') as any,
+        civilite,
+        firstName,
+        lastName,
+        phone,
+        numero: numero || '',
+        idService,
+        idRole,
+        idCorrespondant,
+        isActive: isActive !== undefined ? isActive : true,
+        isSignataire: isSignataire !== undefined ? isSignataire : false,
+      },
+      include: {
+        role: {
+          select: {
+            id: true,
+            nom: true,
+            description: true,
+          },
+        },
+        service: {
+          select: {
+            id: true,
+            nom: true,
+            sigle: true,
+          },
+        },
+        correspondant: {
+          select: {
+            id: true,
+            nom: true,
+            email: true,
+            telephone: true,
+          },
+        },
       },
     });
 
-    // 4️⃣ Envoyer l'email de bienvenue de manière asynchrone (sans bloquer la réponse)
-    setTimeout(() => this.sendWelcomeEmailAsync(user.email, user.nom), 0);
+    // 8️⃣ Gérer les services additionnels si fournis
+    if (servicesAdditionel && servicesAdditionel.length > 0) {
+      // Vérifier que tous les services existent
+      const serviceIds = servicesAdditionel.map((s) => s.serviceId);
+      const services = await this.prismaService.service.findMany({
+        where: {
+          id: { in: serviceIds },
+          isDelete: false,
+        },
+      });
 
-    // 5️⃣ Retourner l'utilisateur créé (sans le mot de passe)
-    const { password: _, ...userWithoutPassword } = user;
+      if (services.length !== serviceIds.length) {
+        throw new BadRequestException("Un ou plusieurs services additionnels n'existent pas.");
+      }
+
+      // Créer les relations UserServiceAdditionnel
+      await this.prismaService.userServiceAdditionnel.createMany({
+        data: servicesAdditionel.map((s) => ({
+          userId: user.id,
+          serviceId: s.serviceId,
+        })),
+      });
+    }
+
+    // 9️⃣ Récupérer l'utilisateur complet avec les services additionnels
+    const userWithServices = await this.prismaService.user.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        numero: true,
+        civilite: true,
+        avatar: true,
+        password: true,
+        isSignataire: true,
+        isActive: true,
+        isDelete: true,
+        langue: true,
+        idCorrespondant: true,
+        idService: true,
+        idRole: true,
+        createdAt: true,
+        updatedAt: true,
+        role: {
+          select: {
+            id: true,
+            nom: true,
+            description: true,
+          },
+        },
+        service: {
+          select: {
+            id: true,
+            nom: true,
+            sigle: true,
+          },
+        },
+        correspondant: {
+          select: {
+            id: true,
+            nom: true,
+            email: true,
+            telephone: true,
+          },
+        },
+        servicesAdditionnels: {
+          include: {
+            service: {
+              select: {
+                id: true,
+                nom: true,
+                sigle: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // 🔟 Envoyer l'email de bienvenue de manière asynchrone
+    setTimeout(() => this.sendWelcomeEmailAsync(user.email, user.username), 0);
+
+    // 1️⃣1️⃣ Vérifier que l'utilisateur a été créé
+    if (!userWithServices) {
+      throw new BadRequestException("Erreur lors de la création de l'utilisateur.");
+    }
+
+    // 1️⃣1️⃣ Retourner l'utilisateur créé (sans le mot de passe)
+    const { password: _, ...userWithoutPassword } = userWithServices;
 
     return this.formatResponse(
       userWithoutPassword,
@@ -71,9 +248,9 @@ export class SignupService {
   }
 
   // Méthode privée pour envoyer l'email de bienvenue de manière asynchrone
-  private async sendWelcomeEmailAsync(email: string, nom: string): Promise<void> {
+  private async sendWelcomeEmailAsync(email: string, userName: string): Promise<void> {
     try {
-      await this.mailerService.sendWelcomeEmail(email, nom);
+      await this.mailerService.sendWelcomeEmail(email, userName);
       this.logger.log(`Email de bienvenue envoyé avec succès à ${email}`);
     } catch (error) {
       this.logger.error(`Erreur lors de l'envoi de l'email de bienvenue à ${email}:`, error);
@@ -103,28 +280,173 @@ export class SignupService {
       }
     }
 
-    // 3️⃣ Préparer les données à mettre à jour
+    // 3️⃣ Si le username est modifié, vérifier qu'il n'est pas déjà utilisé
+    if (updateUserDto.username && updateUserDto.username !== existingUser.username) {
+      const usernameExists = await this.prismaService.user.findFirst({
+        where: { username: updateUserDto.username },
+      });
+
+      if (usernameExists) {
+        throw new BadRequestException("Ce nom d'utilisateur est déjà utilisé par un autre utilisateur.");
+      }
+    }
+
+    // 4️⃣ Vérifier que le rôle existe s'il est fourni
+    if (updateUserDto.idRole) {
+      const role = await this.prismaService.role.findFirst({
+        where: { id: updateUserDto.idRole, isDelete: false },
+      });
+
+      if (!role) {
+        throw new BadRequestException(`Le rôle avec l'ID ${updateUserDto.idRole} n'existe pas.`);
+      }
+    }
+
+    // 5️⃣ Vérifier que le service existe s'il est fourni
+    if (updateUserDto.idService) {
+      const service = await this.prismaService.service.findFirst({
+        where: { id: updateUserDto.idService, isDelete: false },
+      });
+
+      if (!service) {
+        throw new BadRequestException(`Le service avec l'ID ${updateUserDto.idService} n'existe pas.`);
+      }
+    }
+
+    // 6️⃣ Vérifier que le correspondant existe s'il est fourni
+    if (updateUserDto.idCorrespondant) {
+      const correspondant = await this.prismaService.correspondant.findFirst({
+        where: { id: updateUserDto.idCorrespondant, isDelete: false },
+      });
+
+      if (!correspondant) {
+        throw new BadRequestException(`Le correspondant avec l'ID ${updateUserDto.idCorrespondant} n'existe pas.`);
+      }
+    }
+
+    // 7️⃣ Préparer les données à mettre à jour
     const dataToUpdate: any = {};
 
-    if (updateUserDto.nom) dataToUpdate.nom = updateUserDto.nom;
+    if (updateUserDto.username) dataToUpdate.username = updateUserDto.username;
     if (updateUserDto.email) dataToUpdate.email = updateUserDto.email;
+    if (updateUserDto.civilite !== undefined) dataToUpdate.civilite = updateUserDto.civilite;
+    if (updateUserDto.firstName !== undefined) dataToUpdate.firstName = updateUserDto.firstName;
+    if (updateUserDto.lastName !== undefined) dataToUpdate.lastName = updateUserDto.lastName;
+    if (updateUserDto.phone !== undefined) dataToUpdate.phone = updateUserDto.phone;
     if (updateUserDto.numero) dataToUpdate.numero = updateUserDto.numero;
     if (updateUserDto.fonction !== undefined) dataToUpdate.fonction = updateUserDto.fonction;
-    if (updateUserDto.role) dataToUpdate.role = updateUserDto.role as any;
+    if (updateUserDto.idService !== undefined) dataToUpdate.idService = updateUserDto.idService;
+    if (updateUserDto.idRole !== undefined) dataToUpdate.idRole = updateUserDto.idRole;
+    if (updateUserDto.idCorrespondant !== undefined) dataToUpdate.idCorrespondant = updateUserDto.idCorrespondant;
+    if (updateUserDto.isActive !== undefined) dataToUpdate.isActive = updateUserDto.isActive;
+    if (updateUserDto.isSignataire !== undefined) dataToUpdate.isSignataire = updateUserDto.isSignataire;
 
-    // 4️⃣ Si le mot de passe est fourni, le hacher
+    // 8️⃣ Si le mot de passe est fourni, le hacher
     if (updateUserDto.password) {
       dataToUpdate.password = await bcrypt.hash(updateUserDto.password, 10);
     }
 
-    // 5️⃣ Mettre à jour l'utilisateur
+    // 9️⃣ Mettre à jour l'utilisateur
     const updatedUser = await this.prismaService.user.update({
       where: { id },
       data: dataToUpdate,
     });
 
-    // 6️⃣ Retourner l'utilisateur mis à jour (sans le mot de passe)
-    const { password: _, ...userWithoutPassword } = updatedUser;
+    // 🔟 Gérer les services additionnels si fournis (uniquement si présent dans le DTO)
+    if (updateUserDto.servicesAdditionel !== undefined) {
+      // Supprimer les anciennes relations
+      await this.prismaService.userServiceAdditionnel.deleteMany({
+        where: { userId: id },
+      });
+
+      // Créer les nouvelles relations si le tableau n'est pas vide
+      if (updateUserDto.servicesAdditionel.length > 0) {
+        // Vérifier que tous les services existent
+        const serviceIds = updateUserDto.servicesAdditionel.map((s) => s.serviceId);
+        const services = await this.prismaService.service.findMany({
+          where: {
+            id: { in: serviceIds },
+            isDelete: false,
+          },
+        });
+
+        if (services.length !== serviceIds.length) {
+          throw new BadRequestException("Un ou plusieurs services additionnels n'existent pas.");
+        }
+
+        await this.prismaService.userServiceAdditionnel.createMany({
+          data: updateUserDto.servicesAdditionel.map((s) => ({
+            userId: id,
+            serviceId: s.serviceId,
+          })),
+        });
+      }
+    }
+
+    // 1️⃣1️⃣ Récupérer l'utilisateur complet avec toutes les relations
+    const userWithRelations = await this.prismaService.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        numero: true,
+        civilite: true,
+        avatar: true,
+        password: true,
+        isSignataire: true,
+        isActive: true,
+        isDelete: true,
+        langue: true,
+        idCorrespondant: true,
+        idService: true,
+        idRole: true,
+        createdAt: true,
+        updatedAt: true,
+        role: {
+          select: {
+            id: true,
+            nom: true,
+            description: true,
+          },
+        },
+        service: {
+          select: {
+            id: true,
+            nom: true,
+            sigle: true,
+          },
+        },
+        correspondant: {
+          select: {
+            id: true,
+            nom: true,
+            email: true,
+            telephone: true,
+          },
+        },
+        servicesAdditionnels: {
+          include: {
+            service: {
+              select: {
+                id: true,
+                nom: true,
+                sigle: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    // 1️⃣1️⃣ Vérifier que l'utilisateur existe
+    if (!userWithRelations) {
+      throw new NotFoundException('Utilisateur non trouvé.');
+    }
+    // 1️⃣2️⃣ Retourner l'utilisateur mis à jour (sans le mot de passe)
+    const { password: _, ...userWithoutPassword } = userWithRelations;
 
     return this.formatResponse(
       userWithoutPassword,
@@ -187,16 +509,21 @@ export class SignupService {
       nom,
       email,
       numero,
-      fonction,
-      role,
-      statut,
+      idRole,
+      idService,
+      isSignataire,
+      isActive,
     } = query;
 
     // Construction des filtres
     const where: any = {};
 
     if (nom) {
-      where.nom = { contains: nom };
+      where.OR = [
+        { username: { contains: nom } },
+        { firstName: { contains: nom } },
+        { lastName: { contains: nom } },
+      ];
     }
 
     if (email) {
@@ -207,16 +534,20 @@ export class SignupService {
       where.numero = { contains: numero };
     }
 
-    if (fonction) {
-      where.fonction = { contains: fonction };
+    if (idRole !== undefined) {
+      where.idRole = idRole;
     }
 
-    if (role) {
-      where.role = role;
+    if (idService !== undefined) {
+      where.idService = idService;
     }
 
-    if (statut) {
-      where.statut = statut;
+    if (isSignataire !== undefined) {
+      where.isSignataire = isSignataire;
+    }
+
+    if (isActive !== undefined) {
+      where.isActive = isActive;
     }
 
     // Compter le total
@@ -227,11 +558,54 @@ export class SignupService {
       const users = await this.prismaService.user.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        include: {
+          role: {
+            select: {
+              id: true,
+              nom: true,
+              description: true,
+            },
+          },
+          service: {
+            select: {
+              id: true,
+              nom: true,
+              sigle: true,
+            },
+          },
+          correspondant: {
+            select: {
+              id: true,
+              nom: true,
+              email: true,
+              telephone: true,
+            },
+          },
+          servicesAdditionnels: {
+            include: {
+              service: {
+                select: {
+                  id: true,
+                  nom: true,
+                  sigle: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       const usersWithoutPassword = users.map((user) => {
-        const { password: _, ...userWithoutPassword } = user;
-        return userWithoutPassword;
+        const { password: _, servicesAdditionnels, ...userWithoutPassword } = user;
+        return {
+          ...userWithoutPassword,
+          servicesAdditionel: servicesAdditionnels.map((sa) => ({
+            serviceId: sa.service.id,
+            serviceName: sa.service.nom,
+            userId: user.id,
+            userName: user.username,
+          })),
+        };
       });
 
       return this.formatResponse(
@@ -258,11 +632,54 @@ export class SignupService {
       skip,
       take: limit,
       orderBy: { createdAt: 'desc' },
+      include: {
+        role: {
+          select: {
+            id: true,
+            nom: true,
+            description: true,
+          },
+        },
+        service: {
+          select: {
+            id: true,
+            nom: true,
+            sigle: true,
+          },
+        },
+        correspondant: {
+          select: {
+            id: true,
+            nom: true,
+            email: true,
+            telephone: true,
+          },
+        },
+        servicesAdditionnels: {
+          include: {
+            service: {
+              select: {
+                id: true,
+                nom: true,
+                sigle: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     const usersWithoutPassword = users.map((user) => {
-      const { password: _, ...userWithoutPassword } = user;
-      return userWithoutPassword;
+      const { password: _, servicesAdditionnels, ...userWithoutPassword } = user;
+      return {
+        ...userWithoutPassword,
+        servicesAdditionel: servicesAdditionnels.map((sa) => ({
+          serviceId: sa.service.id,
+          serviceName: sa.service.nom,
+          userId: user.id,
+          userName: user.username,
+        })),
+      };
     });
 
     const totalPages = Math.ceil(total / limit);
@@ -291,6 +708,41 @@ export class SignupService {
     // 1️⃣ Vérifier si l'utilisateur existe
     const user = await this.prismaService.user.findUnique({
       where: { id },
+      include: {
+        role: {
+          select: {
+            id: true,
+            nom: true,
+            description: true,
+          },
+        },
+        service: {
+          select: {
+            id: true,
+            nom: true,
+            sigle: true,
+          },
+        },
+        correspondant: {
+          select: {
+            id: true,
+            nom: true,
+            email: true,
+            telephone: true,
+          },
+        },
+        servicesAdditionnels: {
+          include: {
+            service: {
+              select: {
+                id: true,
+                nom: true,
+                sigle: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!user) {

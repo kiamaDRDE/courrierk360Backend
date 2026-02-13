@@ -4,7 +4,6 @@ import { Body, Controller, Post, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiResponse, ApiOperation, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @ApiTags('Auth')
@@ -60,12 +59,12 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  // 🔐 Connexion et génération d'OTP
+  // 🔐 Connexion et génération des tokens
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Connexion et génération d\'OTP',
-    description: 'Vérifie les identifiants de l\'utilisateur (email + mot de passe), génère un code OTP et l\'envoie par email.',
+    summary: 'Connexion et génération des tokens',
+    description: 'Vérifie les identifiants de l\'utilisateur (email + mot de passe) et retourne directement les tokens.',
   })
   @ApiBody({
     type: LoginDto,
@@ -81,50 +80,7 @@ export class AuthController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Code OTP généré et envoyé avec succès.',
-    content: {
-      'application/json': {
-        example: {
-          success: true,
-          statusCode: 201,
-          code: 'success',
-          title: 'Connexion réussie',
-          message: 'Un code OTP a été généré et envoyé à votre adresse email.',
-          data: {
-            email: 'jean.dupont@example.com',
-            otp: '123456',
-            expiresIn: '5 minutes',
-          },
-        },
-      },
-    },
-  })
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
-  }
-
-  // 🔐 Vérification de l'OTP et génération des tokens
-  @Post('verify-otp')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Vérification de l\'OTP',
-    description: 'Vérifie le code OTP, génère un token d\'accès et un refresh token, et retourne les informations de l\'utilisateur.',
-  })
-  @ApiBody({
-    type: VerifyOtpDto,
-    examples: {
-      example1: {
-        summary: 'Exemple de vérification OTP',
-        value: {
-          email: 'jean.dupont@example.com',
-          otp: '123456',
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'OTP vérifié avec succès, tokens générés.',
+    description: 'Authentification réussie, tokens générés.',
     content: {
       'application/json': {
         example: {
@@ -136,11 +92,17 @@ export class AuthController {
           data: {
             user: {
               id: 1,
-              nom: 'Jean Dupont',
+              username: 'jdupont',
+              firstName: 'Jean',
+              lastName: 'Dupont',
               email: 'jean.dupont@example.com',
               numero: '+237699999999',
-              fonction: 'Développeur',
-              role: 'UTILISATEUR',
+              phone: '+237699999999',
+              civilite: 'M.',
+              isActive: true,
+              isSignataire: false,
+              idRole: 2,
+              idService: 1,
               token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
               expiresToken: '2025-12-12T13:00:00.000Z',
               refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
@@ -156,8 +118,8 @@ export class AuthController {
       },
     },
   })
-  async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
-    return this.authService.verifyOtp(verifyOtpDto);
+  async login(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto);
   }
 
   // 🔐 Rafraîchir le token

@@ -103,7 +103,7 @@ export class ForgotPasswordService {
     });
 
     // 4️⃣ Envoyer l'OTP par email de manière asynchrone
-    this.sendResetOtpEmail(email, otp, user.nom).catch(err => 
+    this.sendResetOtpEmail(email, otp, user.username).catch(err => 
       console.error('Erreur envoi email:', err)
     );
 
@@ -208,8 +208,8 @@ export class ForgotPasswordService {
       const payload = {
         id: user.id,
         email: user.email,
-        nom: user.nom,
-        role: user.role,
+        username: user.username,
+        idRole: user.idRole,
       };
 
       const accessToken = this.jwtService.sign(payload, {

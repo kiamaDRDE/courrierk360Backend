@@ -166,7 +166,6 @@ export class LoggingInterceptor implements NestInterceptor {
       '/auth/login': { POST: LogAction.LOGIN },
       '/auth/logout': { POST: LogAction.LOGOUT },
       '/auth/refresh': { POST: LogAction.TOKEN_REFRESH },
-      '/auth/verify-otp': { POST: LogAction.OTP_VERIFICATION },
       
       '/signup': { 
         POST: LogAction.SIGNUP,
@@ -359,7 +358,6 @@ export class LoggingInterceptor implements NestInterceptor {
               if (url.includes('login')) return 'Connexion utilisateur';
               if (url.includes('logout')) return 'Déconnexion utilisateur';
               if (url.includes('refresh')) return 'Renouvellement du token';
-              if (url.includes('verify-otp')) return 'Vérification OTP';
               return 'Authentification';
             case 'signup':
               return 'Inscription d\'un nouvel utilisateur';

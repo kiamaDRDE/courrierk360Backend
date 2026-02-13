@@ -1,0 +1,1725 @@
+// src/courrier/courrier.service.ts
+
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateCourrierDto } from './dto/create-courrier.dto';
+import { UpdateCourrierDto } from './dto/update-courrier.dto';
+import { ListCourrierQueryDto } from './dto/list-courrier-query.dto';
+import { CloseCourrierDto } from './dto/close-courrier.dto';
+import { PaginationService } from '../common/pagination.service';
+import { ResponseFormatterService } from '../common/response-formatter.service';
+import { MailerService } from '../mailer/mailer.service';
+import { SmsService } from '../sms/sms.service';
+import { TraitementService } from '../traitement/traitement.service';
+import * as fs from 'fs';
+import * as path from 'path';
+
+@Injectable()
+export class CourrierService {
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly responseFormatter: ResponseFormatterService,
+    private readonly mailerService: MailerService,
+    private readonly smsService: SmsService,
+    private readonly traitementService: TraitementService,
+    private readonly paginationService: PaginationService,
+  ) {}
+
+  // 🔓 Parcours public d'un courrier par référence
+  async getPublicParcours(reference: string) {
+    const ref = String(reference || '').trim();
+    if (!ref) {
+      throw new BadRequestException('La référence du courrier est obligatoire.');
+    }
+
+    const courrier = await this.prismaService.courrier.findFirst({
+      where: {
+        isDelete: false,
+        OR: [{ reference: ref }, { numero: ref }],
+      },
+      select: {
+        id: true,
+        reference: true,
+        numero: true,
+      },
+    });
+
+    if (!courrier) {
+      throw new NotFoundException(`Aucun courrier trouvé pour la référence ${ref}.`);
+    }
+
+    const transmissions = await this.prismaService.transmission.findMany({
+      where: {
+        idCourrier: courrier.id,
+        isDelete: false,
+      },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        dateInstruction: true,
+        dateReception: true,
+        instruction: true,
+        typeTransfert: true,
+        statut: true,
+        traitePar: true,
+        service: {
+          select: { id: true, nom: true },
+        },
+        emetteur: {
+          select: {
+            id: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+            service: { select: { id: true, nom: true } },
+          },
+        },
+      },
+    });
+
+    const formatFullName = (user?: { firstName?: string | null; lastName?: string | null; username?: string | null } | null) => {
+      if (!user) return null;
+      const full = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+      return full || user.username || null;
+    };
+
+    const extractResponsableDestination = (traitePar: any): string | null => {
+      if (!traitePar) return null;
+      const list = Array.isArray(traitePar) ? traitePar : [traitePar];
+      const last = list[list.length - 1];
+      if (!last || typeof last !== 'object') return null;
+
+      const firstName = (last.firstName ?? last.prenom ?? last.first_name ?? last.firstname) as string | undefined;
+      const lastName = (last.lastName ?? last.nom ?? last.last_name ?? last.lastname) as string | undefined;
+      const username = (last.username ?? last.user ?? last.name) as string | undefined;
+
+      const full = `${firstName || ''} ${lastName || ''}`.trim();
+      return full || username || null;
+    };
+
+    const parcours = transmissions.map((t) => ({
+      type: 'transmission',
+      service_source: t.emetteur?.service?.nom || null,
+      responsable_source: formatFullName(t.emetteur) || null,
+      service_destination: t.service?.nom || null,
+      responsable_destination: extractResponsableDestination(t.traitePar),
+      date_envoi: t.dateInstruction || null,
+      date_reception: t.dateReception || null,
+      commentaire: t.instruction || null,
+      but: t.typeTransfert || null,
+      statut: t.statut || null,
+    }));
+
+    return this.responseFormatter.success(
+      {
+        reference: courrier.reference || courrier.numero,
+        numero: courrier.numero,
+        parcours,
+      },
+      'Parcours courrier public',
+      'Parcours public récupéré avec succès.',
+    );
+  }
+
+  // 🔓 Recherche publique exacte (sans sécurité)
+  async searchPublicExact(term: string) {
+    const value = String(term || '').trim();
+    if (!value) {
+      throw new BadRequestException('Le terme de recherche est obligatoire.');
+    }
+
+    const courriers = await this.prismaService.courrier.findMany({
+      where: {
+        isDelete: false,
+        OR: [
+          { numero: value },
+          { reference: value },
+          { objet: value },
+          { nom: value },
+          { matricule: value },
+          { email: value },
+          { telephone: value },
+          {
+            provenance: {
+              is: {
+                OR: [
+                  { nom: value },
+                  { matricule: value },
+                  { email: value },
+                  { telephone: value },
+                ],
+              },
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        numero: true,
+        reference: true,
+        objet: true,
+        commentaire: true,
+        commentairePublic: true,
+        dateArrivee: true,
+        nom: true,
+        matricule: true,
+        email: true,
+        telephone: true,
+        provenance: {
+          select: { id: true, nom: true, matricule: true, email: true, telephone: true },
+        },
+        transmissions: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: {
+            typeTransfert: true,
+            statut: true,
+            dateInstruction: true,
+            dateReception: true,
+            instruction: true,
+            traitePar: true,
+            service: { select: { id: true, nom: true } },
+            emetteur: {
+              select: {
+                id: true,
+                username: true,
+                firstName: true,
+                lastName: true,
+                service: { select: { id: true, nom: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const results = await Promise.all(
+      courriers.map(async (courrier) => {
+        const lastTransmission = courrier.transmissions?.[0] || null;
+
+        const lastDepart = await this.prismaService.courrierDepart.findFirst({
+          where: { idCourrier: courrier.id, isDelete: false },
+          orderBy: { dateSignature: 'desc' },
+          select: {
+            numeroActe: true,
+            dateSignature: true,
+            signataire: {
+              select: { id: true, firstName: true, lastName: true, service: { select: { nom: true } } },
+            },
+          },
+        });
+
+        const lastReponse = await this.prismaService.courrierReponse.findFirst({
+          where: { courrierId: courrier.id },
+          orderBy: { reponse: { dateReponse: 'desc' } },
+          select: {
+            reponse: { select: { commentairePublic: true, commentaireInterne: true } },
+          },
+        });
+
+        const signataireNom = lastDepart?.signataire
+          ? `${lastDepart.signataire.firstName || ''} ${lastDepart.signataire.lastName || ''}`.trim()
+          : null;
+
+        return {
+          registre: courrier.reference || courrier.numero,
+          datearrivee: courrier.dateArrivee || null,
+          date_signature: lastDepart?.dateSignature || null,
+          emetteur_nom_prenom: courrier.provenance?.nom || courrier.nom || null,
+          objetcourrier: courrier.objet || null,
+          dernier_service_emetteur_libelle: lastTransmission?.emetteur?.service?.nom || null,
+          dernier_service_recu_libelle: lastTransmission?.service?.nom || null,
+          type_diffusion_libelle: lastTransmission?.typeTransfert || null,
+          commentaire: courrier.commentairePublic || courrier.commentaire || null,
+          commentaire_reponse:
+            lastReponse?.reponse?.commentairePublic || lastReponse?.reponse?.commentaireInterne || null,
+          numeroActe: lastDepart?.numeroActe || null,
+          dateSignature: lastDepart?.dateSignature || null,
+          signataire: lastDepart?.signataire
+            ? {
+                id: lastDepart.signataire.id,
+                nom: signataireNom || null,
+                service: lastDepart.signataire.service?.nom || null,
+              }
+            : null,
+        };
+      }),
+    );
+
+    return this.responseFormatter.success(
+      results,
+      'Recherche publique courriers',
+      'Résultats récupérés avec succès.',
+    );
+  }
+
+  // 🔢 Générer automatiquement le numéro de référence au format AAAA-MM-XXX
+  private async genererNumeroReference(baseDate?: Date): Promise<string> {
+    const now = baseDate ?? new Date();
+    const annee = now.getFullYear().toString();
+    const mois = (now.getMonth() + 1).toString().padStart(2, '0');
+
+    // Compter le nombre de courriers créés ce mois
+    const debutMois = new Date(now.getFullYear(), now.getMonth(), 1);
+    const finMois = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    const count = await this.prismaService.courrier.count({
+      where: {
+        createdAt: {
+          gte: debutMois,
+          lte: finMois,
+        },
+      },
+    });
+
+    const sequence = count + 1;
+    const numeroFormate = sequence.toString().padStart(3, '0');
+
+    return `${annee}-${mois}-${numeroFormate}`;
+  }
+
+  // 📝 Créer un courrier
+  async create(
+    userId: number,
+    createCourrierDto: CreateCourrierDto,
+    document?: Express.Multer.File,
+    piecesJointes?: Express.Multer.File[],
+  ) {
+    const {
+      reference,
+      objet,
+      priorite,
+      dateArrivee,
+      categorie,
+      civilite,
+      telephone,
+      email,
+      adresse,
+      idProvenance,
+      classeCourrier,
+      idTypeCourrier,
+      commentaire,
+      idService,
+      typeTransfert,
+      isConfidentiel = false,
+      nombrePieceJointe = 1,
+      piecesJointesData,
+      sendNotification = false,
+    } = createCourrierDto;
+
+    // Convertir sendNotification en boolean (car il peut arriver en string depuis multipart/form-data)
+    const shouldSendNotification = sendNotification === true || (sendNotification as any) === 'true';
+    
+    console.log('📧 Paramètre sendNotification:', {
+      original: sendNotification,
+      type: typeof sendNotification,
+      converted: shouldSendNotification,
+    });
+
+    // Vérifier que le service existe si renseigné
+    if (idService) {
+      const service = await this.prismaService.service.findUnique({
+        where: { id: idService },
+      });
+
+      if (!service) {
+        throw new NotFoundException(`Le service avec l'ID ${idService} n'existe pas.`);
+      }
+
+      // Vérifier que l'utilisateur connecté ne crée pas un courrier pour son propre service
+      const currentUser = await this.prismaService.user.findUnique({
+        where: { id: userId },
+        select: { idService: true },
+      });
+
+      if (currentUser && currentUser.idService === idService) {
+        throw new BadRequestException('Vous ne pouvez pas créer un courrier destiné à votre propre service.');
+      }
+    }
+
+    // Vérifier que la provenance existe si renseignée
+    if (idProvenance) {
+      const provenance = await this.prismaService.correspondant.findUnique({
+        where: { id: idProvenance },
+      });
+
+      if (!provenance) {
+        throw new NotFoundException(`La provenance avec l'ID ${idProvenance} n'existe pas.`);
+      }
+    }
+
+    // Vérifier que le type de courrier existe si renseigné
+    if (idTypeCourrier) {
+      const typeCourrier = await this.prismaService.typeCourrier.findUnique({
+        where: { id: idTypeCourrier },
+      });
+
+      if (!typeCourrier) {
+        throw new NotFoundException(`Le type de courrier avec l'ID ${idTypeCourrier} n'existe pas.`);
+      }
+    }
+
+    // Générer le numéro de référence si non renseigné
+    const numeroReference = reference || await this.genererNumeroReference();
+
+    // Créer le dossier de stockage s'il n'existe pas
+    const uploadDir = path.join(process.cwd(), 'public', 'courrier');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    // Sauvegarder le document principal si fourni
+    let documentPath: string | null = null;
+    if (document) {
+      const timestamp = Date.now();
+      const documentFileName = `${timestamp}-${document.originalname}`;
+      const documentFullPath = path.join(uploadDir, documentFileName);
+      fs.writeFileSync(documentFullPath, document.buffer);
+      documentPath = `courrier/${documentFileName}`;
+    }
+
+    // Parser les données des pièces jointes
+    let piecesJointesInfo: Array<{ intitule: string }> = [];
+    if (piecesJointesData) {
+      try {
+        piecesJointesInfo = JSON.parse(piecesJointesData);
+      } catch (error) {
+        throw new BadRequestException('Le format des données des pièces jointes est invalide.');
+      }
+    }
+
+    // Créer le courrier et les pièces jointes en transaction
+    const result = await this.prismaService.$transaction(async (prisma) => {
+      // Créer le courrier
+      const courrier = await prisma.courrier.create({
+        data: {
+          numero: numeroReference,
+          reference: numeroReference,
+          objet: objet || null,
+          priorite,
+          dateArrivee: new Date(dateArrivee),
+          categorie,
+          civilite,
+          telephone,
+          email,
+          adresse: adresse || null,
+          idProvenance: idProvenance || null,
+          classeCourrier: classeCourrier || null,
+          idTypeCourrier: idTypeCourrier || null,
+          commentaire: commentaire || null,
+          idService: idService || null,
+          idUser: userId,
+          typeTransfert: typeTransfert || null,
+          isConfidentiel,
+          document: documentPath,
+          nombrePieceJointe,
+          statut: 'Transmis',
+        },
+      });
+
+      // Sauvegarder et créer les pièces jointes
+      const piecesJointesCreees: any[] = [];
+      if (piecesJointes && piecesJointes.length > 0) {
+        for (let i = 0; i < piecesJointes.length; i++) {
+          const file = piecesJointes[i];
+          const intituleData = piecesJointesInfo[i];
+
+          if (!intituleData || !intituleData.intitule) {
+            continue; // Ignorer si pas d'intitulé
+          }
+
+          // Sauvegarder le fichier
+          const timestamp = Date.now();
+          const fileName = `${timestamp}-${i}-${file.originalname}`;
+          const filePath = path.join(uploadDir, fileName);
+          fs.writeFileSync(filePath, file.buffer);
+
+          // Créer l'enregistrement dans la table PieceJointe
+          const pieceJointe = await prisma.pieceJointe.create({
+            data: {
+              nom: file.originalname,
+              intitule: intituleData.intitule,
+              chemin: `courrier/${fileName}`,
+              type: file.mimetype,
+              idCourrier: courrier.id,
+              idParent: courrier.id,
+              typeParent: 'courrier',
+            },
+          });
+
+          piecesJointesCreees.push(pieceJointe);
+        }
+      }
+
+      return { courrier, piecesJointes: piecesJointesCreees };
+    });
+
+    // Envoyer l'email d'accusé de réception au correspondant si email fourni ET shouldSendNotification = true
+    // Envoi asynchrone (non-bloquant) pour ne pas ralentir la création du courrier
+    if (shouldSendNotification && email) {
+      this.prismaService.service.findUnique({ 
+        where: { id: idService }, 
+        select: { nom: true } 
+      })
+      .then((serviceInfo) => {
+        return this.mailerService.sendCourrierAccuseReception(
+          email,
+          civilite || '',
+          result.courrier.nom || 'Monsieur/Madame',
+          result.courrier.numero,
+          result.courrier.reference || '',
+          objet || 'N/A',
+          new Date(result.courrier.createdAt).toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          }),
+          serviceInfo?.nom || 'Service compétent',
+        );
+      })
+      .catch((error) => {
+        console.error(`Erreur envoi email accusé réception à ${email}:`, error);
+      });
+    }
+
+    // Envoyer les notifications aux utilisateurs du service destinataire si shouldSendNotification = true
+    // Envoi asynchrone (non-bloquant) pour ne pas ralentir la création du courrier
+    if (shouldSendNotification && idService) {
+      Promise.all([
+        this.prismaService.user.findMany({
+          where: {
+            idService: idService,
+            isActive: true,
+            isDelete: false,
+          },
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        }),
+        this.prismaService.service.findUnique({
+          where: { id: idService },
+          select: { nom: true },
+        }),
+      ])
+      .then(([serviceUsers, serviceInfo]) => {
+        // Envoyer tous les emails en parallèle
+        const emailPromises = serviceUsers
+          .filter(user => user.email)
+          .map(user => 
+            this.mailerService.sendCourrierNotificationService(
+              user.email,
+              user.firstName || '',
+              user.lastName || '',
+              serviceInfo?.nom || 'Service',
+              {
+                numero: result.courrier.numero,
+                reference: result.courrier.reference || '',
+                objet: objet || 'N/A',
+                civilite: civilite || '',
+                nom: result.courrier.nom || 'Inconnu',
+                priorite: priorite,
+                categorie: categorie,
+                dateArrivee: new Date(dateArrivee).toLocaleDateString('fr-FR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                }),
+                commentaire: commentaire || '',
+              },
+            ).catch(error => {
+              console.error(`Erreur envoi email à ${user.email}:`, error);
+            })
+          );
+        return Promise.all(emailPromises);
+      })
+      .catch((error) => {
+        console.error(`Erreur lors de l'envoi des emails au service:`, error);
+      });
+    }
+
+    // 📱 Envoyer les SMS de notification si shouldSendNotification = true
+    // Envoi asynchrone (non-bloquant) pour ne pas ralentir la création du courrier
+    if (shouldSendNotification) {
+      // Récupérer les informations du service et envoyer les SMS de manière asynchrone
+      const smsPromise = this.prismaService.service.findUnique({ 
+        where: { id: idService }, 
+        select: { nom: true } 
+      })
+      .then((serviceInfoForSms) => {
+        const smsPromises: Promise<any>[] = [];
+
+        // 1. Envoyer SMS au téléphone du courrier (correspondant) si fourni
+        if (telephone) {
+          const messageSMS = `KIAMA S.A: Votre courrier ${result.courrier.numero} a ete enregistre et transmis au service ${serviceInfoForSms?.nom || 'competent'}. Merci.`;
+          
+          smsPromises.push(
+            this.smsService.sendSms(telephone, messageSMS, true).catch((error) => {
+              console.error(`Erreur envoi SMS au correspondant ${telephone}:`, error);
+            })
+          );
+        }
+
+        // 2. Envoyer SMS aux utilisateurs du service destinataire
+        if (idService) {
+          const serviceUsersPromise = this.prismaService.user.findMany({
+            where: {
+              idService: idService,
+              isActive: true,
+              isDelete: false,
+            },
+            select: {
+              phone: true,
+              firstName: true,
+            },
+          })
+          .then((serviceUsersWithPhones) => {
+            const prioriteLabel = priorite === 'urgent' || priorite === 'haute' ? 'URGENT' : 
+                                 priorite === 'normal' ? 'Normal' : 'Basse';
+
+            const messageSMS = `KIAMA S.A: Nouveau courrier ${result.courrier.numero} transmis a votre service ${serviceInfoForSms?.nom || ''}. Priorite: ${prioriteLabel}. Veuillez consulter.`;
+
+            // Envoyer SMS à chaque utilisateur du service
+            const phoneNumbers = serviceUsersWithPhones
+              .filter((user) => user.phone)
+              .map((user) => user.phone) as string[];
+
+            if (phoneNumbers.length > 0) {
+              return this.smsService.sendSameSmsToMultiple(phoneNumbers, messageSMS, false, true);
+            }
+          })
+          .catch((error) => {
+            console.error(`Erreur envoi SMS aux utilisateurs du service:`, error);
+          });
+
+          smsPromises.push(serviceUsersPromise);
+        }
+
+        return Promise.all(smsPromises);
+      })
+      .catch((error) => {
+        console.error(`Erreur lors de l'envoi des SMS:`, error);
+      });
+    }
+
+    // 📨 Créer automatiquement la première transmission pour ce courrier
+    if (idService) {
+      const transmissionDto = {
+        idCourrier: result.courrier.id,
+        idService: idService,
+        dateInstruction: dateArrivee,
+        typeTransfert: typeTransfert || 'Pour traitement',
+        instruction: commentaire || 'Transmission initiale du courrier',
+        idEmetteur: userId,
+        nombrePieceJointe: 0,
+        sendNotification: shouldSendNotification,
+      };
+
+      // Créer la transmission de manière asynchrone pour ne pas bloquer
+      this.traitementService.create(
+        userId,
+        transmissionDto as any,
+        undefined, // Pas de document pour la transmission initiale
+        undefined, // Pas de pièces jointes
+      )
+      .then(() => {
+        console.log(`✅ Transmission initiale créée pour le courrier ${result.courrier.numero}`);
+      })
+      .catch((error) => {
+        console.error(`❌ Erreur création transmission initiale:`, error);
+      });
+    }
+
+    return this.responseFormatter.success(
+      {
+        ...result.courrier,
+        piecesJointes: result.piecesJointes,
+      },
+      'Création courrier',
+      `Courrier créé avec succès. Référence: ${numeroReference}. ${result.piecesJointes.length} pièce(s) jointe(s) ajoutée(s).`,
+    );
+  }
+
+  // 📁 Classer un courrier
+  async classerCourrier(id: number) {
+    // Vérifier que le courrier existe
+    const courrier = await this.prismaService.courrier.findUnique({
+      where: { id },
+    });
+
+    if (!courrier) {
+      throw new NotFoundException(`Le courrier avec l'ID ${id} n'existe pas.`);
+    }
+
+    // Vérifier que le courrier n'est pas déjà classé
+    if (courrier.isGeled) {
+      throw new BadRequestException('Ce courrier est déjà classé (gelé).');
+    }
+
+    // Mettre à jour le courrier
+    const courrierClasse = await this.prismaService.courrier.update({
+      where: { id },
+      data: {
+        statut: 'Classé',
+        isGeled: true,
+      },
+    });
+
+    return this.responseFormatter.success(
+      courrierClasse,
+      'Classement courrier',
+      `Courrier ${courrierClasse.numero} classé avec succès.`,
+    );
+  }
+
+  // 📂 Déclasser un courrier
+  async declasserCourrier(id: number) {
+    // Vérifier que le courrier existe
+    const courrier = await this.prismaService.courrier.findUnique({
+      where: { id },
+    });
+
+    if (!courrier) {
+      throw new NotFoundException(`Le courrier avec l'ID ${id} n'existe pas.`);
+    }
+
+    // Vérifier que le courrier est bien classé (gelé)
+    if (!courrier.isGeled) {
+      throw new BadRequestException('Ce courrier n\'est pas classé (gelé). Impossible de le déclasser.');
+    }
+
+    // Récupérer la dernière transmission du courrier
+    const derniereTransmission = await this.prismaService.transmission.findFirst({
+      where: { idCourrier: id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Déterminer le nouveau statut basé sur la dernière transmission
+    let nouveauStatut = 'Transmis'; // Statut par défaut
+
+    if (derniereTransmission) {
+      if (derniereTransmission.isArchive) {
+        nouveauStatut = 'Archivé';
+      } else if (derniereTransmission.isinstance) {
+        nouveauStatut = 'Instancié';
+      } else if (derniereTransmission.accuseReception) {
+        nouveauStatut = 'Reçu';
+      }
+    }
+
+    // Mettre à jour le courrier
+    const courrierDeclasse = await this.prismaService.courrier.update({
+      where: { id },
+      data: {
+        statut: nouveauStatut,
+        isGeled: false,
+      },
+    });
+
+    return this.responseFormatter.success(
+      courrierDeclasse,
+      'Déclassement courrier',
+      `Courrier ${courrierDeclasse.numero} déclassé avec succès. Nouveau statut: ${nouveauStatut}.`,
+    );
+  }
+
+  // 📋 Liste des courriers
+  async list(query?: ListCourrierQueryDto) {
+    const filters = query || {};
+    const { page, limit } = this.paginationService.validatePaginationParams(
+      filters.page,
+      filters.limit,
+    );
+    const skip = this.paginationService.getSkip(page, limit);
+
+    const where: any = { isDelete: false };
+
+    const dateArriveeRange = this.parseDateRange(
+      filters.dateArriveeDebut,
+      filters.dateArriveeFin,
+      'dateArrivee',
+    );
+    if (dateArriveeRange) {
+      where.dateArrivee = dateArriveeRange;
+    }
+
+    if (filters.dateEnregistrement) {
+      const dateRange = this.parseSingleDate(filters.dateEnregistrement, 'dateEnregistrement');
+      where.dateEnregistrement = dateRange;
+    }
+
+    if (filters.priorite) {
+      where.priorite = filters.priorite;
+    }
+
+    if (filters.categorie) {
+      where.categorie = filters.categorie;
+    } else if (filters.categorieId) {
+      const categorie = await this.prismaService.categories.findUnique({
+        where: { id: filters.categorieId },
+        select: { nom: true },
+      });
+
+      if (!categorie) {
+        throw new NotFoundException(`La catégorie avec l'ID ${filters.categorieId} n'existe pas.`);
+      }
+
+      where.categorie = categorie.nom;
+    }
+
+    if (filters.typeCourrierId) {
+      where.idTypeCourrier = filters.typeCourrierId;
+    }
+
+    if (filters.statut) {
+      where.statut = filters.statut;
+    }
+
+    if (filters.serviceId) {
+      where.idService = filters.serviceId;
+    }
+
+    const search = filters.search?.trim();
+    if (search) {
+      const numericSearch = Number(search);
+      const orFilters: any[] = [
+        { numero: { contains: search } },
+        { reference: { contains: search } },
+        { objet: { contains: search } },
+        { nom: { contains: search } },
+        { email: { contains: search } },
+        { telephone: { contains: search } },
+        { adresse: { contains: search } },
+        { commentaire: { contains: search } },
+        { commentairePublic: { contains: search } },
+        { commentaireInterne: { contains: search } },
+        { priorite: { contains: search } },
+        { statut: { contains: search } },
+        { categorie: { contains: search } },
+        { typeTransfert: { contains: search } },
+        { classeCourrier: { contains: search } },
+        { matricule: { contains: search } },
+        { service: { is: { nom: { contains: search } } } },
+        { service: { is: { sigle: { contains: search } } } },
+        { provenance: { is: { nom: { contains: search } } } },
+        { user: { is: { username: { contains: search } } } },
+        { user: { is: { firstName: { contains: search } } } },
+        { user: { is: { lastName: { contains: search } } } },
+      ];
+
+      if (!Number.isNaN(numericSearch)) {
+        orFilters.push(
+          { id: numericSearch },
+          { idService: numericSearch },
+          { idProvenance: numericSearch },
+          { idTypeCourrier: numericSearch },
+          { idUser: numericSearch },
+        );
+      }
+
+      where.OR = orFilters;
+    }
+
+    const includePayload = {
+      service: { select: { id: true, nom: true, sigle: true } },
+      user: { select: { id: true, firstName: true, lastName: true, username: true } },
+      _count: { select: { courrierDeparts: true } },
+    } as const;
+
+    const requiresLastFilters = Boolean(filters.dernierStatut || filters.dernierServiceId);
+
+    const [courriers, totalBeforeLastFilters] = await Promise.all([
+      this.prismaService.courrier.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: includePayload,
+        ...(requiresLastFilters ? {} : { skip, take: limit }),
+      }),
+      requiresLastFilters
+        ? Promise.resolve(0)
+        : this.prismaService.courrier.count({ where }),
+    ]);
+
+    const courrierIds = courriers.map((c) => c.id);
+
+    const latestByCourrier = new Map<number, { statut: string | null; service: { id: number; nom: string; sigle: string | null } | null }>();
+    if (courrierIds.length > 0) {
+      const latestAll = await this.prismaService.transmission.findMany({
+        where: { idCourrier: { in: courrierIds } },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          idCourrier: true,
+          statut: true,
+          service: { select: { id: true, nom: true, sigle: true } },
+        },
+      });
+
+      for (const t of latestAll) {
+        if (typeof t.idCourrier === 'number' && !latestByCourrier.has(t.idCourrier)) {
+          latestByCourrier.set(t.idCourrier, {
+            statut: t.statut || null,
+            service: t.service
+              ? { id: t.service.id, nom: t.service.nom, sigle: t.service.sigle }
+              : null,
+          });
+        }
+      }
+    }
+
+    let data = courriers.map((courrier) => {
+      const createurFullName = courrier.user
+        ? `${courrier.user.firstName || ''} ${courrier.user.lastName || ''}`.trim() || courrier.user.username
+        : null;
+
+      const lastStatus = latestByCourrier.get(courrier.id);
+
+      return {
+        id: courrier.id,
+        numero: courrier.numero,
+        reference: courrier.reference,
+        objet: courrier.objet,
+        priorite: courrier.priorite,
+        statut: courrier.statut,
+        dernierStatutService: lastStatus
+          ? {
+              statut: lastStatus.statut,
+              service: lastStatus.service,
+            }
+          : null,
+        service_traitement: courrier.service
+          ? { id: courrier.service.id, nom: courrier.service.nom }
+          : null,
+        nom: courrier.nom,
+        civilite: courrier.civilite,
+        matricule: courrier.matricule,
+        telephone: courrier.telephone,
+        email: courrier.email,
+        adresse: courrier.adresse,
+        commentaire: courrier.commentaire,
+        commentairePublic: courrier.commentairePublic,
+        commentaireInterne: courrier.commentaireInterne,
+        nombrePieceJointe: courrier.nombrePieceJointe,
+        createur: courrier.user
+          ? { id: courrier.user.id, nom: createurFullName }
+          : null,
+        isConfidentiel: courrier.isConfidentiel,
+        isArchive: courrier.isArchive,
+        hasCourrierDepart: (courrier as any)._count?.courrierDeparts > 0,
+      };
+    });
+
+    if (filters.dernierStatut || filters.dernierServiceId) {
+      data = data.filter((item) => {
+        const last = item.dernierStatutService;
+        if (!last) return false;
+
+        if (filters.dernierStatut && last.statut !== filters.dernierStatut) {
+          return false;
+        }
+
+        if (filters.dernierServiceId && last.service?.id !== filters.dernierServiceId) {
+          return false;
+        }
+
+        return true;
+      });
+    }
+
+    const totalItems = requiresLastFilters ? data.length : totalBeforeLastFilters;
+    const paginatedItems = requiresLastFilters
+      ? data.slice(skip, skip + limit)
+      : data;
+
+    const paginatedResult = this.paginationService.createPaginatedResult(
+      paginatedItems,
+      page,
+      limit,
+      totalItems,
+    );
+
+    return this.responseFormatter.paginated(
+      paginatedResult,
+      'Liste des courriers',
+      `${totalItems} courrier(s) récupéré(s) avec succès.`,
+    );
+  }
+
+  private parseDateRange(start?: string, end?: string, label?: string) {
+    if (!start && !end) {
+      return undefined;
+    }
+
+    const range: { gte?: Date; lte?: Date } = {};
+
+    if (start) {
+      const startDate = new Date(start);
+      if (Number.isNaN(startDate.getTime())) {
+        throw new BadRequestException(`La date de début pour ${label || 'le filtre'} est invalide.`);
+      }
+      range.gte = startDate;
+    }
+
+    if (end) {
+      const endDate = new Date(end);
+      if (Number.isNaN(endDate.getTime())) {
+        throw new BadRequestException(`La date de fin pour ${label || 'le filtre'} est invalide.`);
+      }
+      range.lte = endDate;
+    }
+
+    return range;
+  }
+
+  private parseSingleDate(dateValue: string, label?: string) {
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException(`La date pour ${label || 'le filtre'} est invalide.`);
+    }
+
+    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0);
+    const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+
+    return { gte: start, lte: end };
+  }
+
+  // 🔍 Récupérer les informations détaillées d'un courrier
+  async findOne(id: number) {
+    const courrier = await this.prismaService.courrier.findUnique({
+      where: { id },
+      include: {
+        provenance: { select: { id: true, nom: true } },
+        service: { select: { id: true, nom: true, sigle: true } },
+        user: { select: { id: true, firstName: true, lastName: true, username: true } },
+        piecesJointes: { select: { id: true, nom: true, intitule: true, chemin: true, type: true } },
+      },
+    });
+
+    if (!courrier) {
+      throw new NotFoundException(`Le courrier avec l'ID ${id} n'existe pas.`);
+    }
+
+    const lastTransmission = await this.prismaService.transmission.findFirst({
+      where: { idCourrier: id },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        service: { select: { id: true, nom: true, sigle: true } },
+        emetteur: { select: { id: true, firstName: true, lastName: true, username: true } },
+      },
+    });
+
+    const createurFullName = courrier.user
+      ? `${courrier.user.firstName || ''} ${courrier.user.lastName || ''}`.trim() || courrier.user.username
+      : null;
+
+    const emetteurFullName = lastTransmission?.emetteur
+      ? `${lastTransmission.emetteur.firstName || ''} ${lastTransmission.emetteur.lastName || ''}`.trim() || lastTransmission.emetteur.username
+      : null;
+
+    const response = {
+      id: courrier.id,
+      reference: courrier.reference,
+      objet: courrier.objet,
+      commentaire: courrier.commentaire,
+      commentairePublic: courrier.commentairePublic,
+      commentaireInterne: courrier.commentaireInterne,
+      priorite: courrier.priorite,
+      statut: courrier.statut,
+      nom: courrier.nom,
+      civilite: courrier.civilite,
+      matricule: courrier.matricule,
+      telephone: courrier.telephone,
+      email: courrier.email,
+      adresse: courrier.adresse,
+      typeTransfert: courrier.typeTransfert,
+      classeCourrier: courrier.classeCourrier,
+      categorie: courrier.categorie,
+      nombrePieceJointe: courrier.nombrePieceJointe,
+      dateArrivee: courrier.dateArrivee,
+      dateEnregistrement: courrier.dateEnregistrement,
+      createdAt: courrier.createdAt,
+      updatedAt: courrier.updatedAt,
+      idProvenance: courrier.provenance ? { id: courrier.provenance.id, nom: courrier.provenance.nom } : null,
+      idServiceTraitant: courrier.service ? { id: courrier.service.id, nom: courrier.service.nom, sigle: courrier.service.sigle } : null,
+      idCreateur: courrier.user ? { id: courrier.user.id, nomComplet: createurFullName } : null,
+      document: courrier.document,
+      piecesJointes: courrier.piecesJointes || [],
+      dernieretransmissions: lastTransmission
+        ? [
+            {
+              id: lastTransmission.id,
+              dateInstruction: lastTransmission.dateInstruction,
+              instruction: lastTransmission.instruction,
+              typeTransfert: lastTransmission.typeTransfert,
+              statut: lastTransmission.statut,
+              accuseReception: lastTransmission.accuseReception,
+              idServiceDestinataire: lastTransmission.service
+                ? { id: lastTransmission.service.id, nom: lastTransmission.service.nom, sigle: lastTransmission.service.sigle }
+                : null,
+              idEmetteur: lastTransmission.emetteur
+                ? { id: lastTransmission.emetteur.id, nomComplet: emetteurFullName }
+                : null,
+            },
+          ]
+        : [],
+    };
+
+    return this.responseFormatter.success(
+      response,
+      'Détails courrier',
+      'Courrier récupéré avec succès.',
+    );
+  }
+
+  // 🧭 Traçabilité complète d'un courrier (timeline)
+  async getTimeline(id: number) {
+    const courrier = await this.prismaService.courrier.findUnique({
+      where: { id },
+      include: {
+        service: { include: { parent: true } },
+        user: { include: { service: { include: { parent: true } } } },
+        provenance: { select: { nom: true, type: true } },
+      },
+    });
+
+    if (!courrier) {
+      throw new NotFoundException(`Le courrier avec l'ID ${id} n'existe pas.`);
+    }
+
+    const transmissions = await this.prismaService.transmission.findMany({
+      where: { idCourrier: id },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        service: { include: { parent: true } },
+        emetteur: { include: { service: { include: { parent: true } } } },
+      },
+    });
+
+    const courrierReponsesCount = await this.prismaService.courrierReponse.count({
+      where: { courrierId: id },
+    });
+
+    const serviceIds = new Set<number>();
+    if (courrier.service?.id) {
+      serviceIds.add(courrier.service.id);
+    }
+    for (const transmission of transmissions) {
+      if (transmission.service?.id) {
+        serviceIds.add(transmission.service.id);
+      }
+    }
+
+    const servicesUsers = serviceIds.size > 0
+      ? await this.prismaService.user.findMany({
+          where: { idService: { in: Array.from(serviceIds) }, isActive: true, isDelete: false },
+          select: { id: true, firstName: true, lastName: true, email: true, idService: true },
+        })
+      : [];
+
+    const usersByService = new Map<number, { id: number; nom_complet: string; email: string | null }[]>();
+    for (const user of servicesUsers) {
+      const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+      const list = usersByService.get(user.idService as number) || [];
+      list.push({ id: user.id, nom_complet: fullName || user.email || '', email: user.email || null });
+      usersByService.set(user.idService as number, list);
+    }
+
+    const formatServiceName = (service: any) => {
+      if (!service) return null;
+      const parentSigle = service.parent?.sigle;
+      return parentSigle ? `${service.nom} - ${parentSigle}` : service.nom;
+    };
+
+    const createurFullName = courrier.user
+      ? `${courrier.user.firstName || ''} ${courrier.user.lastName || ''}`.trim() || courrier.user.username
+      : null;
+
+    const serviceUtilisateur = courrier.user?.service
+      ? formatServiceName(courrier.user.service)
+      : null;
+
+    const serviceTraitant = courrier.service ? formatServiceName(courrier.service) : null;
+
+    const timeline: Array<any> = [];
+
+    timeline.push({
+      date: courrier.createdAt,
+      type: 'creation',
+      details: {
+        dateArrivee: courrier.dateArrivee,
+        dateEnregistrement: courrier.dateEnregistrement,
+        createur: {
+          nom_createur: createurFullName,
+          service_utilisateur: serviceUtilisateur,
+        },
+        service_traitant: serviceTraitant,
+        utilisateurs_service_traitant: courrier.service?.id
+          ? usersByService.get(courrier.service.id) || []
+          : [],
+        provenance: {
+          nom: courrier.provenance?.nom || null,
+          type: courrier.provenance?.type || null,
+        },
+        categorie: courrier.categorie,
+        priorite: courrier.priorite,
+        reference: courrier.reference,
+        isConfidentiel: courrier.isConfidentiel,
+      },
+    });
+
+    for (const transmission of transmissions) {
+      const emetteurFullName = transmission.emetteur
+        ? `${transmission.emetteur.firstName || ''} ${transmission.emetteur.lastName || ''}`.trim() || transmission.emetteur.username
+        : null;
+      const serviceEmetteur = transmission.emetteur?.service
+        ? formatServiceName(transmission.emetteur.service)
+        : null;
+      const serviceDestinataire = transmission.service ? formatServiceName(transmission.service) : null;
+
+      timeline.push({
+        date: transmission.createdAt,
+        type: 'transmission',
+        details: {
+          id: transmission.id,
+          emetteur: {
+            nom_emetteur: emetteurFullName,
+            service_emetteur: serviceEmetteur,
+          },
+          destinataire: {
+            nom_destinataire_chef: null,
+            service_destinataire: serviceDestinataire,
+          },
+          utilisateurs_service_destinataire: transmission.service?.id
+            ? usersByService.get(transmission.service.id) || []
+            : [],
+          instruction: transmission.instruction,
+          typeTransfert: transmission.typeTransfert,
+          delaiTraitement: transmission.delaiTraitement,
+          statut: transmission.statut,
+          accuseReception: transmission.accuseReception,
+          structuresCopie: transmission.structuresCopie || null,
+        },
+      });
+    }
+
+    timeline.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    const response = {
+      courrier: {
+        id: courrier.id,
+        numero: courrier.numero,
+        objet: courrier.objet,
+        reference: courrier.reference,
+        statut: courrier.statut,
+        priorite: courrier.priorite,
+        isConfidentiel: courrier.isConfidentiel,
+        isGeled: courrier.isGeled,
+      },
+      timeline,
+      statistiques: {
+        nombreEvenements: timeline.length,
+        nombreTransmissions: transmissions.length,
+        nombreReponses: courrierReponsesCount,
+        estCloture: courrier.isArchive === true,
+        estClasse: courrier.isGeled === true,
+      },
+    };
+
+    return this.responseFormatter.success(
+      response,
+      'Traçabilité courrier',
+      'Traçabilité récupérée avec succès.',
+    );
+  }
+
+  // ✅ Clôturer un courrier
+  async closeCourrier(id: number, dto: CloseCourrierDto, files: Express.Multer.File[]) {
+    const courrier = await this.prismaService.courrier.findUnique({ where: { id } });
+    if (!courrier) {
+      throw new NotFoundException(`Le courrier avec l'ID ${id} n'existe pas.`);
+    }
+
+    const dateRemise = new Date(dto.dateRemiseEffective);
+    if (Number.isNaN(dateRemise.getTime())) {
+      throw new BadRequestException('La date de remise effective est invalide.');
+    }
+
+    const uploadDir = path.join(process.cwd(), 'public', 'courrier', 'bordereau-remise');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const bordereauFiles: Array<{ nom: string; chemin: string; type: string }> = [];
+    if (files && files.length > 0) {
+      for (const file of files) {
+        const timestamp = Date.now();
+        const fileName = `${timestamp}-${file.originalname}`;
+        const filePath = path.join(uploadDir, fileName);
+        fs.writeFileSync(filePath, file.buffer);
+        bordereauFiles.push({
+          nom: file.originalname,
+          chemin: `courrier/bordereau-remise/${fileName}`,
+          type: file.mimetype,
+        });
+      }
+    }
+
+    const updated = await this.prismaService.courrier.update({
+      where: { id },
+      data: {
+        dateCloture: new Date(),
+        dateRemiseEffective: dateRemise,
+        statut: 'Clôturé',
+        ...(bordereauFiles.length > 0 ? { bordereauRemise: bordereauFiles } : {}),
+      },
+    });
+
+    return this.responseFormatter.success(
+      updated,
+      'Clôture courrier',
+      'Courrier clôturé avec succès.',
+    );
+  }
+
+  // ↩️ Déclôturer un courrier
+  async decloturerCourrier(id: number) {
+    const courrier = await this.prismaService.courrier.findUnique({ where: { id } });
+    if (!courrier) {
+      throw new NotFoundException(`Le courrier avec l'ID ${id} n'existe pas.`);
+    }
+
+    const lastTransmission = await this.prismaService.transmission.findFirst({
+      where: { idCourrier: id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    let statut = 'Transmis';
+
+    if (lastTransmission?.isArchive) {
+      statut = 'Archivé';
+    } else if (lastTransmission?.isinstance) {
+      statut = 'Instancié';
+    } else if (lastTransmission?.accuseReception) {
+      statut = 'Reçu';
+    }
+
+    const updated = await this.prismaService.courrier.update({
+      where: { id },
+      data: {
+        dateCloture: new Date(0),
+        dateRemiseEffective: new Date(0),
+        bordereauRemise: [],
+        statut,
+      },
+    });
+
+    return this.responseFormatter.success(
+      updated,
+      'Déclôture courrier',
+      'Courrier déclôturé avec succès.',
+    );
+  }
+
+  // ✏️ Mettre à jour un courrier et créer une transmission
+  async updateWithTransmission(
+    userId: number,
+    id: number,
+    updateCourrierDto: UpdateCourrierDto,
+    document?: Express.Multer.File,
+    piecesJointes?: Express.Multer.File[],
+  ) {
+    const courrier = await this.prismaService.courrier.findUnique({
+      where: { id },
+    });
+
+    if (!courrier) {
+      throw new NotFoundException(`Le courrier avec l'ID ${id} n'existe pas.`);
+    }
+
+    if (updateCourrierDto.idService) {
+      const service = await this.prismaService.service.findUnique({
+        where: { id: updateCourrierDto.idService },
+      });
+
+      if (!service) {
+        throw new NotFoundException(`Le service avec l'ID ${updateCourrierDto.idService} n'existe pas.`);
+      }
+
+      const currentUser = await this.prismaService.user.findUnique({
+        where: { id: userId },
+        select: { idService: true },
+      });
+
+      if (currentUser && currentUser.idService === updateCourrierDto.idService) {
+        throw new BadRequestException('Vous ne pouvez pas assigner un courrier à votre propre service.');
+      }
+    }
+
+    if (updateCourrierDto.idProvenance) {
+      const provenance = await this.prismaService.correspondant.findUnique({
+        where: { id: updateCourrierDto.idProvenance },
+      });
+
+      if (!provenance) {
+        throw new NotFoundException(`La provenance avec l'ID ${updateCourrierDto.idProvenance} n'existe pas.`);
+      }
+    }
+
+    if (updateCourrierDto.idTypeCourrier) {
+      const typeCourrier = await this.prismaService.typeCourrier.findUnique({
+        where: { id: updateCourrierDto.idTypeCourrier },
+      });
+
+      if (!typeCourrier) {
+        throw new NotFoundException(`Le type de courrier avec l'ID ${updateCourrierDto.idTypeCourrier} n'existe pas.`);
+      }
+    }
+
+    const shouldSendNotification = updateCourrierDto.sendNotification === true;
+
+    let dateArriveeParsed: Date | undefined = undefined;
+    if (updateCourrierDto.dateArrivee) {
+      const parsed = new Date(updateCourrierDto.dateArrivee);
+      if (Number.isNaN(parsed.getTime())) {
+        throw new BadRequestException('La date d\'arrivée est invalide.');
+      }
+      dateArriveeParsed = parsed;
+    }
+
+    const isMonthChanged = dateArriveeParsed
+      ? (courrier.dateArrivee
+          ? (courrier.dateArrivee.getFullYear() !== dateArriveeParsed.getFullYear() ||
+             courrier.dateArrivee.getMonth() !== dateArriveeParsed.getMonth())
+          : true)
+      : false;
+
+    let newReference: string | undefined = undefined;
+    if (isMonthChanged) {
+      newReference = await this.genererNumeroReference(dateArriveeParsed || undefined);
+    }
+
+    const uploadDir = path.join(process.cwd(), 'public', 'courrier');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    let documentPath: string | undefined = undefined;
+    if (document) {
+      const timestamp = Date.now();
+      const documentFileName = `${timestamp}-${document.originalname}`;
+      const documentFullPath = path.join(uploadDir, documentFileName);
+      fs.writeFileSync(documentFullPath, document.buffer);
+      documentPath = `courrier/${documentFileName}`;
+    }
+
+    let piecesJointesInfo: Array<{ intitule?: string }> = [];
+    if (updateCourrierDto.piecesJointesData) {
+      try {
+        piecesJointesInfo = JSON.parse(updateCourrierDto.piecesJointesData);
+      } catch (error) {
+        throw new BadRequestException('Le format des données des pièces jointes est invalide.');
+      }
+    }
+
+    const dataToUpdate: any = {};
+    if (updateCourrierDto.objet !== undefined) dataToUpdate.objet = updateCourrierDto.objet;
+    if (updateCourrierDto.priorite !== undefined) dataToUpdate.priorite = updateCourrierDto.priorite;
+    if (dateArriveeParsed) dataToUpdate.dateArrivee = dateArriveeParsed;
+    if (updateCourrierDto.categorie !== undefined) dataToUpdate.categorie = updateCourrierDto.categorie;
+    if (updateCourrierDto.civilite !== undefined) dataToUpdate.civilite = updateCourrierDto.civilite;
+    if (updateCourrierDto.telephone !== undefined) dataToUpdate.telephone = updateCourrierDto.telephone;
+    if (updateCourrierDto.email !== undefined) dataToUpdate.email = updateCourrierDto.email;
+    if (updateCourrierDto.adresse !== undefined) dataToUpdate.adresse = updateCourrierDto.adresse;
+    if (updateCourrierDto.idProvenance !== undefined) dataToUpdate.idProvenance = updateCourrierDto.idProvenance;
+    if (updateCourrierDto.classeCourrier !== undefined) dataToUpdate.classeCourrier = updateCourrierDto.classeCourrier;
+    if (updateCourrierDto.idTypeCourrier !== undefined) dataToUpdate.idTypeCourrier = updateCourrierDto.idTypeCourrier;
+    if (updateCourrierDto.commentaire !== undefined) dataToUpdate.commentaire = updateCourrierDto.commentaire;
+    if (updateCourrierDto.idService !== undefined) dataToUpdate.idService = updateCourrierDto.idService;
+    if (updateCourrierDto.typeTransfert !== undefined) dataToUpdate.typeTransfert = updateCourrierDto.typeTransfert;
+    if (updateCourrierDto.isConfidentiel !== undefined) dataToUpdate.isConfidentiel = updateCourrierDto.isConfidentiel;
+    if (updateCourrierDto.nombrePieceJointe !== undefined) dataToUpdate.nombrePieceJointe = updateCourrierDto.nombrePieceJointe;
+    if (documentPath) dataToUpdate.document = documentPath;
+    if (newReference) {
+      dataToUpdate.reference = newReference;
+      dataToUpdate.numero = newReference;
+    }
+
+    const result = await this.prismaService.$transaction(async (prisma) => {
+      const updatedCourrier = await prisma.courrier.update({
+        where: { id },
+        data: dataToUpdate,
+      });
+
+      const piecesJointesCreees: any[] = [];
+      if (piecesJointes && piecesJointes.length > 0) {
+        for (let i = 0; i < piecesJointes.length; i++) {
+          const file = piecesJointes[i];
+          const intituleData = piecesJointesInfo[i];
+          const intitule = intituleData?.intitule || file.originalname;
+
+          const timestamp = Date.now();
+          const fileName = `${timestamp}-${i}-${file.originalname}`;
+          const filePath = path.join(uploadDir, fileName);
+          fs.writeFileSync(filePath, file.buffer);
+
+          const pieceJointe = await prisma.pieceJointe.create({
+            data: {
+              nom: file.originalname,
+              intitule,
+              chemin: `courrier/${fileName}`,
+              type: file.mimetype,
+              idCourrier: updatedCourrier.id,
+              idParent: updatedCourrier.id,
+              typeParent: 'courrier',
+            },
+          });
+
+          piecesJointesCreees.push(pieceJointe);
+        }
+      }
+
+      return { courrier: updatedCourrier, piecesJointes: piecesJointesCreees };
+    });
+
+    const idServiceFinal = updateCourrierDto.idService ?? courrier.idService ?? null;
+    const dateArriveeFinal = dateArriveeParsed || courrier.dateArrivee || new Date();
+    const commentaireFinal = updateCourrierDto.commentaire ?? courrier.commentaire ?? '';
+    const typeTransfertFinal = updateCourrierDto.typeTransfert ?? courrier.typeTransfert ?? 'Pour traitement';
+
+    if (shouldSendNotification && updateCourrierDto.email) {
+      this.prismaService.service.findUnique({
+        where: { id: idServiceFinal ?? undefined },
+        select: { nom: true },
+      })
+      .then((serviceInfo) => {
+        return this.mailerService.sendCourrierAccuseReception(
+          updateCourrierDto.email || '',
+          updateCourrierDto.civilite || '',
+          result.courrier.nom || 'Monsieur/Madame',
+          result.courrier.numero,
+          result.courrier.reference || '',
+          updateCourrierDto.objet || 'N/A',
+          new Date(result.courrier.createdAt).toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          }),
+          serviceInfo?.nom || 'Service compétent',
+        );
+      })
+      .catch((error) => {
+        console.error(`Erreur envoi email accusé réception à ${updateCourrierDto.email}:`, error);
+      });
+    }
+
+    if (shouldSendNotification && idServiceFinal) {
+      Promise.all([
+        this.prismaService.user.findMany({
+          where: {
+            idService: idServiceFinal,
+            isActive: true,
+            isDelete: false,
+          },
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        }),
+        this.prismaService.service.findUnique({
+          where: { id: idServiceFinal },
+          select: { nom: true },
+        }),
+      ])
+      .then(([serviceUsers, serviceInfo]) => {
+        const emailPromises = serviceUsers
+          .filter(user => user.email)
+          .map(user =>
+            this.mailerService.sendCourrierNotificationService(
+              user.email,
+              user.firstName || '',
+              user.lastName || '',
+              serviceInfo?.nom || 'Service',
+              {
+                numero: result.courrier.numero,
+                reference: result.courrier.reference || '',
+                objet: updateCourrierDto.objet || result.courrier.objet || 'N/A',
+                civilite: updateCourrierDto.civilite || result.courrier.civilite || '',
+                nom: result.courrier.nom || 'Inconnu',
+                priorite: updateCourrierDto.priorite || result.courrier.priorite || 'Normal',
+                categorie: updateCourrierDto.categorie || result.courrier.categorie || '',
+                dateArrivee: dateArriveeFinal.toLocaleDateString('fr-FR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                }),
+                commentaire: commentaireFinal,
+              },
+            ).catch(error => {
+              console.error(`Erreur envoi email à ${user.email}:`, error);
+            })
+          );
+        return Promise.all(emailPromises);
+      })
+      .catch((error) => {
+        console.error(`Erreur lors de l'envoi des emails au service:`, error);
+      });
+    }
+
+    if (shouldSendNotification) {
+      this.prismaService.service.findUnique({
+        where: { id: idServiceFinal ?? undefined },
+        select: { nom: true },
+      })
+      .then((serviceInfoForSms) => {
+        const smsPromises: Promise<any>[] = [];
+
+        if (updateCourrierDto.telephone) {
+          const messageSMS = `KIAMA S.A: Votre courrier ${result.courrier.numero} a ete mis a jour et transmis au service ${serviceInfoForSms?.nom || 'competent'}. Merci.`;
+
+          smsPromises.push(
+            this.smsService.sendSms(updateCourrierDto.telephone, messageSMS, true).catch((error) => {
+              console.error(`Erreur envoi SMS au correspondant ${updateCourrierDto.telephone}:`, error);
+            })
+          );
+        }
+
+        if (idServiceFinal) {
+          const serviceUsersPromise = this.prismaService.user.findMany({
+            where: {
+              idService: idServiceFinal,
+              isActive: true,
+              isDelete: false,
+            },
+            select: {
+              phone: true,
+              firstName: true,
+            },
+          })
+          .then((serviceUsersWithPhones) => {
+            const prioriteLabel = (updateCourrierDto.priorite || result.courrier.priorite) === 'urgent' || (updateCourrierDto.priorite || result.courrier.priorite) === 'haute'
+              ? 'URGENT'
+              : (updateCourrierDto.priorite || result.courrier.priorite) === 'normal'
+                ? 'Normal'
+                : 'Basse';
+
+            const messageSMS = `KIAMA S.A: Courrier ${result.courrier.numero} mis a jour et transmis a votre service ${serviceInfoForSms?.nom || ''}. Priorite: ${prioriteLabel}. Veuillez consulter.`;
+
+            const phoneNumbers = serviceUsersWithPhones
+              .filter((user) => user.phone)
+              .map((user) => user.phone) as string[];
+
+            if (phoneNumbers.length > 0) {
+              return this.smsService.sendSameSmsToMultiple(phoneNumbers, messageSMS, false, true);
+            }
+          })
+          .catch((error) => {
+            console.error(`Erreur envoi SMS aux utilisateurs du service:`, error);
+          });
+
+          smsPromises.push(serviceUsersPromise);
+        }
+
+        return Promise.all(smsPromises);
+      })
+      .catch((error) => {
+        console.error(`Erreur lors de l'envoi des SMS:`, error);
+      });
+    }
+
+    if (idServiceFinal) {
+      const transmissionDto = {
+        idCourrier: result.courrier.id,
+        idService: idServiceFinal,
+        dateInstruction: dateArriveeFinal,
+        typeTransfert: typeTransfertFinal,
+        instruction: commentaireFinal || 'Mise à jour du courrier',
+        idEmetteur: userId,
+        nombrePieceJointe: 0,
+        sendNotification: shouldSendNotification,
+      };
+
+      this.traitementService.create(
+        userId,
+        transmissionDto as any,
+        undefined,
+        undefined,
+      )
+      .then(() => {
+        console.log(`✅ Transmission créée après mise à jour du courrier ${result.courrier.numero}`);
+      })
+      .catch((error) => {
+        console.error(`❌ Erreur création transmission après mise à jour:`, error);
+      });
+    }
+
+    return this.responseFormatter.success(
+      {
+        ...result.courrier,
+        piecesJointesAjoutees: result.piecesJointes,
+      },
+      'Mise à jour courrier',
+      `Courrier mis à jour avec succès. ${result.piecesJointes.length} pièce(s) jointe(s) ajoutée(s).`,
+    );
+  }
+
+  // ❌ Suppression définitive d'un courrier (avec transmissions liées)
+  async deletePermanent(id: number) {
+    const courrier = await this.prismaService.courrier.findUnique({
+      where: { id },
+    });
+
+    if (!courrier) {
+      throw new NotFoundException(`Le courrier avec l'ID ${id} n'existe pas.`);
+    }
+
+    const transmissions = await this.prismaService.transmission.findMany({
+      where: { idCourrier: id },
+      select: { id: true },
+    });
+
+    for (const transmission of transmissions) {
+      await this.traitementService.deletePermanent(transmission.id);
+    }
+
+    await this.prismaService.courrier.delete({
+      where: { id },
+    });
+
+    return this.responseFormatter.success(
+      { id, transmissionsSupprimees: transmissions.length },
+      'Suppression définitive courrier',
+      'Courrier supprimé définitivement avec succès.',
+    );
+  }
+
+  // 🗑️ Suppression logique d'un courrier (avec transmissions liées)
+  async delete(id: number) {
+    const courrier = await this.prismaService.courrier.findUnique({
+      where: { id },
+    });
+
+    if (!courrier) {
+      throw new NotFoundException(`Le courrier avec l'ID ${id} n'existe pas.`);
+    }
+
+    const transmissions = await this.prismaService.transmission.findMany({
+      where: { idCourrier: id },
+      select: { id: true },
+    });
+
+    for (const transmission of transmissions) {
+      await this.traitementService.delete(transmission.id);
+    }
+
+    const courrierSupprime = await this.prismaService.courrier.update({
+      where: { id },
+      data: { isDelete: true },
+    });
+
+    return this.responseFormatter.success(
+      { ...courrierSupprime, transmissionsSupprimees: transmissions.length },
+      'Suppression logique courrier',
+      'Courrier supprimé logiquement avec succès.',
+    );
+  }
+}

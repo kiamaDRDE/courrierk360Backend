@@ -1,28 +1,33 @@
 // src/signup/dto/update-user.dto.ts
 
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsEmail, IsString, IsOptional, IsInt, IsBoolean, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
-enum UserRole {
-  UTILISATEUR = 'UTILISATEUR',
-  SUPER_ADMIN = 'SUPER_ADMIN',
+class ServiceAdditionelDto {
+  @ApiProperty({
+    description: 'ID du service additionnel',
+    example: 1,
+  })
+  @IsInt()
+  serviceId: number;
 }
 
 export class UpdateUserDto {
   @IsOptional()
   @IsString()
   @ApiProperty({
-    description: "Le nom de l'utilisateur",
-    example: 'Jean Dupont',
+    description: "Le nom d'utilisateur (username)",
+    example: 'jdupont',
     required: false,
   })
-  readonly nom?: string;
+  readonly username?: string;
 
   @IsOptional()
   @IsEmail()
   @ApiProperty({
     description: "L'email de l'utilisateur",
-    example: 'jean.dupont@example.com',
+    example: 'jean.dupont@minepia.cm',
     required: false,
   })
   readonly email?: string;
@@ -30,8 +35,53 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   @ApiProperty({
+    description: "Le mot de passe de l'utilisateur",
+    example: 'SecurePass123!',
+    required: false,
+  })
+  readonly password?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({
+    description: "La civilité de l'utilisateur",
+    example: 'M.',
+    required: false,
+  })
+  readonly civilite?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({
+    description: "Le prénom de l'utilisateur",
+    example: 'Jean',
+    required: false,
+  })
+  readonly firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({
+    description: "Le nom de famille de l'utilisateur",
+    example: 'Dupont',
+    required: false,
+  })
+  readonly lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({
     description: "Le numéro de téléphone de l'utilisateur",
-    example: '+237699999999',
+    example: '+237690123456',
+    required: false,
+  })
+  readonly phone?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({
+    description: "Le numéro de l'utilisateur",
+    example: 'USR001',
     required: false,
   })
   readonly numero?: string;
@@ -46,21 +96,65 @@ export class UpdateUserDto {
   readonly fonction?: string;
 
   @IsOptional()
-  @IsString()
+  @IsInt()
+  @Type(() => Number)
   @ApiProperty({
-    description: "Le nouveau mot de passe de l'utilisateur",
-    example: 'nouveauMotDePasse123',
+    description: "L'ID du service principal",
+    example: 3,
     required: false,
   })
-  readonly password?: string;
+  readonly idService?: number;
 
   @IsOptional()
-  @IsEnum(UserRole)
+  @IsInt()
+  @Type(() => Number)
   @ApiProperty({
-    description: "Le rôle de l'utilisateur",
-    example: 'UTILISATEUR',
-    enum: UserRole,
+    description: "L'ID du rôle",
+    example: 1,
     required: false,
   })
-  readonly role?: UserRole;
+  readonly idRole?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @ApiProperty({
+    description: "L'ID du correspondant",
+    example: 5,
+    required: false,
+  })
+  readonly idCorrespondant?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ServiceAdditionelDto)
+  @ApiProperty({
+    description: 'Liste des services additionnels',
+    example: [
+      { serviceId: 1 },
+      { serviceId: 2 },
+    ],
+    required: false,
+    type: [ServiceAdditionelDto],
+  })
+  readonly servicesAdditionel?: ServiceAdditionelDto[];
+
+  @IsOptional()
+  @IsBoolean()
+  @ApiProperty({
+    description: "Indique si l'utilisateur est actif",
+    example: true,
+    required: false,
+  })
+  readonly isActive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  @ApiProperty({
+    description: "Indique si l'utilisateur est signataire",
+    example: false,
+    required: false,
+  })
+  readonly isSignataire?: boolean;
 }

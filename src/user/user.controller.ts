@@ -12,8 +12,8 @@ import { ResponseApi } from '../../common/responseApi.dto';
 interface UserPayload {
   id: number;
   email: string;
-  nom: string;
-  role: string;
+  username: string;
+  idRole: number | null;
 }
 
 @ApiTags('User')
@@ -107,12 +107,33 @@ export class UserController {
           message: 'Les informations du profil utilisateur ont été récupérées avec succès',
           data: {
             id: 1,
-            nom: 'Jean Baptiste Mvondo',
+            username: 'jmvondo',
+            firstName: 'Jean Baptiste',
+            lastName: 'Mvondo',
             email: 'j.mvondo@artc.cm',
+            phone: '+237699123456',
             numero: '+237699123456',
-            fonction: 'Analyste Réglementaire Senior',
-            role: 'ADMINISTRATEUR',
-            statut: 'actif',
+            civilite: 'M.',
+            isActive: true,
+            isSignataire: true,
+            role: {
+              id: 1,
+              nom: 'Administrateur',
+              description: 'Rôle administrateur complet',
+            },
+            service: {
+              id: 1,
+              nom: 'Direction Réglementaire',
+              sigle: 'DR',
+            },
+            servicesAdditionel: [
+              {
+                serviceId: 2,
+                serviceName: 'Service Technique',
+                userId: 1,
+                userName: 'jmvondo',
+              },
+            ],
             token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiai5tdm9uZG9AQXJ0Yy5jbSIsInJvbGUiOiJBRE1JTklTVFJBVEVVUiIsImlhdCI6MTcwNDQ1NjAwMCwiZXhwIjoxNzA0NDc0MDAwfQ.signature',
             expiresToken: '2025-01-06T08:00:00.000Z',
             refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsInR5cGUiOiJyZWZyZXNoIiwiaWF0IjoxNzA0NDU2MDAwLCJleHAiOjE3MDUwNjA4MDB9.refresh_signature',
@@ -268,11 +289,13 @@ export class UserController {
           data: {
             userId: 5,
             email: 'marie.nkomo@artc.cm',
-            nom: 'Marie Nkomo',
+            username: 'mnkomo',
+            firstName: 'Marie',
+            lastName: 'Nkomo',
             modifiePar: {
               adminId: 1,
               adminEmail: 'j.mvondo@artc.cm',
-              adminNom: 'Jean Baptiste Mvondo'
+              adminUsername: 'jmvondo'
             },
             dateModification: '2025-01-05T16:45:00.000Z',
             securite: {
