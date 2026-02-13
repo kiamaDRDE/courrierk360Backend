@@ -8,13 +8,29 @@ import { AuthService } from './auth.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
+const jwtPrivateKey = process.env.JWT_PRIVATE_KEY?.replace(/\\n/g, '\n');
+const jwtPublicKey = process.env.JWT_PUBLIC_KEY?.replace(/\\n/g, '\n');
+const jwtPassphrase = process.env.JWT_PRIVATE_KEY_PASSPHRASE;
+
 @Module({
   imports: [
     PrismaModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'patnuc-segmentation-secret-key-2025',
-      signOptions: { expiresIn: '24h' },
+      ...(jwtPrivateKey
+        ? {
+            privateKey: jwtPassphrase
+              ? { key: jwtPrivateKey, passphrase: jwtPassphrase }
+              : jwtPrivateKey,
+          }
+        : {
+            secret: process.env.JWT_SECRET || 'patnuc-segmentation-secret-key-2025',
+          }),
+      ...(jwtPublicKey ? { publicKey: jwtPublicKey } : {}),
+      signOptions: {
+        expiresIn: '24h',
+        algorithm: jwtPrivateKey ? 'RS256' : 'HS256',
+      },
     }),
   ],
   controllers: [AuthController],
