@@ -20,7 +20,7 @@ export class ServiceService {
 
   // 📝 Créer un service
   async create(createServiceDto: CreateServiceDto) {
-    const { nom, sigle, parentId, isActive, isVisible } = createServiceDto;
+    const { nom, sigle, type, parentId, isActive, isVisible } = createServiceDto;
 
     // Vérifier si le nom existe déjà
     const existingService = await this.prismaService.service.findFirst({
@@ -46,6 +46,7 @@ export class ServiceService {
       data: {
         nom,
         sigle,
+        type,
         parentId,
         isActive: isActive !== undefined ? isActive : true,
         isVisible: isVisible !== undefined ? isVisible : true,
@@ -70,7 +71,7 @@ export class ServiceService {
 
   // 📋 Liste de tous les services avec filtres et pagination
   async findAll(query: ServiceQueryDto) {
-    const { page = 1, limit = 10, search, isActive, isDelete, parentId } = query;
+    const { page = 1, limit = 10, search, type, isActive, isDelete, parentId } = query;
 
     // Construction des filtres
     const where: any = {};
@@ -80,7 +81,13 @@ export class ServiceService {
       where.OR = [
         { nom: { contains: search } },
         { sigle: { contains: search } },
+        { type: { contains: search } },
       ];
+    }
+
+    // Filtre par type
+    if (type) {
+      where.type = type;
     }
 
     // Filtre par statut actif

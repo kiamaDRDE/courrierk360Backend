@@ -19,6 +19,13 @@ export class CreateServiceDto {
   @IsString()
   sigle?: string;
 
+  @ApiProperty({
+    description: 'Type du service',
+    example: 'ADMINISTRATIF',
+  })
+  @IsString()
+  type: string;
+
   @ApiPropertyOptional({
     description: 'ID du service parent (pour hiérarchie)',
     example: 1,

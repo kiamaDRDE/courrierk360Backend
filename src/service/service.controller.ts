@@ -78,6 +78,7 @@ export class ServiceController {
         value: {
           nom: 'Direction Générale',
           sigle: 'DG',
+          type: 'ADMINISTRATIF',
           isActive: true,
           isVisible: true,
         },
@@ -87,6 +88,7 @@ export class ServiceController {
         value: {
           nom: 'Service Informatique',
           sigle: 'SI',
+          type: 'TECHNIQUE',
           parentId: 1,
           isActive: true,
           isVisible: true,
@@ -135,6 +137,7 @@ export class ServiceController {
   @ApiQuery({ name: 'page', required: false, description: 'Numéro de la page', example: 1 })
   @ApiQuery({ name: 'limit', required: false, description: 'Nombre d\'éléments par page (0 = tous)', example: 10 })
   @ApiQuery({ name: 'search', required: false, description: 'Recherche globale (nom, sigle)', example: 'Direction' })
+  @ApiQuery({ name: 'type', required: false, description: 'Filtrer par type de service', example: 'ADMINISTRATIF' })
   @ApiQuery({ name: 'isActive', required: false, description: 'Filtrer par statut actif/inactif', type: Boolean, example: true })
   @ApiQuery({ name: 'isDelete', required: false, description: 'Filtrer les services supprimés logiquement', type: Boolean, example: false })
   @ApiQuery({ name: 'parentId', required: false, description: 'Filtrer par ID du service parent', type: Number, example: 1 })
@@ -252,6 +255,7 @@ export class ServiceController {
         value: {
           nom: 'Direction Générale Modifiée',
           sigle: 'DGM',
+          type: 'ADMINISTRATIF',
           isActive: false,
         },
       },

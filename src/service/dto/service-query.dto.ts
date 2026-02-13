@@ -36,6 +36,14 @@ export class ServiceQueryDto {
   search?: string;
 
   @ApiPropertyOptional({
+    description: 'Filtrer par type de service',
+    example: 'ADMINISTRATIF',
+  })
+  @IsOptional()
+  @IsString()
+  type?: string;
+
+  @ApiPropertyOptional({
     description: 'Filtrer par statut actif/inactif',
     example: true,
   })

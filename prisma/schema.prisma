@@ -208,6 +208,7 @@ model Service {
 
   nom       String   @unique @map("nom") @db.VarChar(255)
   sigle     String?  @map("sigle") @db.VarChar(50)
+  type      String?  @map("type") @db.VarChar(50)
 
   parentId  Int?     @map("id_service_parent")
   parent    Service?  @relation("ServiceParent", fields: [parentId], references: [id], onDelete: SetNull)

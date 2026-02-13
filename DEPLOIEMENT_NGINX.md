@@ -313,10 +313,11 @@ npm run build
 npx nest build
 
 # Redémarrer l'application
-pm2 restart patnuc_segmentation --update-env
+pm2 start npm --name "courrierk360-backend" -- start
+
 
 # Vérifier les logs
-pm2 logs patnuc_segmentation
+pm2 logs courrierk360-backend
 ```
 
 ---
