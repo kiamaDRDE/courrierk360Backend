@@ -29,22 +29,22 @@ export class AuthService {
 
   // 🔐 API 1: Connexion et génération des tokens
   async login(loginDto: LoginDto) {
-    const { email, password } = loginDto;
+    const { username, password } = loginDto;
 
     // 1️⃣ Vérifier si l'utilisateur existe
     const user = await this.prismaService.user.findUnique({
-      where: { email },
+      where: { username },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Email ou mot de passe incorrect.');
+      throw new UnauthorizedException('Nom d\'utilisateur ou mot de passe incorrect.');
     }
 
     // 2️⃣ Vérifier le mot de passe
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Email ou mot de passe incorrect.');
+      throw new UnauthorizedException('Nom d\'utilisateur ou mot de passe incorrect.');
     }
 
     // 3️⃣ Générer le payload pour les tokens

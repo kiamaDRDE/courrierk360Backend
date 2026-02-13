@@ -10,7 +10,7 @@ Authorization: Bearer <votre_token_jwt>
 ```
 
 Pour obtenir un token JWT :
-1. Utilisez l'API `/auth/login` avec email + mot de passe pour recevoir directement les tokens
+1. Utilisez l'API `/auth/login` avec username + mot de passe pour recevoir directement les tokens
 
 ## 📋 Routes Disponibles
 
@@ -226,7 +226,7 @@ src/user/
 ```bash
 # 1. Login et obtention des tokens
 POST /auth/login
-Body: { "email": "user@example.com", "password": "motDePasse" }
+Body: { "username": "jdupont", "password": "motDePasse" }
 # Réponse: { accessToken: "eyJhbGc...", refreshToken: "..." }
 
 # 2. Changement de mot de passe

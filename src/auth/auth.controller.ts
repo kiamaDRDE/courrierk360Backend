@@ -72,7 +72,7 @@ export class AuthController {
       example1: {
         summary: 'Exemple de connexion',
         value: {
-          email: 'jean.dupont@example.com',
+          username: 'jdupont',
           password: 'motDePasseSecurise123',
         },
       },
