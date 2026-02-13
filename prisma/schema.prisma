@@ -131,7 +131,7 @@ model Correspondant {
   @@index([matricule])
   @@index([isDelete])
   @@index([createdAt])
-  @@map("clients")
+  @@map("correspondant")
 }
 
 model TypeCourrier {

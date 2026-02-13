@@ -315,6 +315,7 @@ npx nest build
 # Redémarrer l'application
 pm2 start npm --name "courrierk360-backend" -- start
 
+pm2 restart courrierk360-backend
 
 # Vérifier les logs
 pm2 logs courrierk360-backend
