@@ -153,6 +153,13 @@ export class CorrespondantController {
     description: 'Terme de recherche',
     example: 'dupont',
   })
+  @ApiQuery({
+    name: 'categoryIds',
+    required: false,
+    type: [Number],
+    description: 'Liste des IDs de catégories pour filtrer les correspondants',
+    example: [1, 2, 3],
+  })
   @ApiResponse({
     status: 200,
     description: 'Liste paginée des correspondants récupérée avec succès.',
@@ -229,6 +236,7 @@ export class CorrespondantController {
       query.search,
       query.page,
       query.limit,
+      query.categoryIds,
     );
   }
 

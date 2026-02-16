@@ -35,26 +35,111 @@ export class CourrierController {
   // 📋 Liste des courriers
   @Get()
   @ApiOperation({
-    summary: 'Lister les courriers',
-    description: 'Retourne la liste des courriers avec le dernier statut de transmission et le service.',
+    summary: 'Lister les courriers arrivés avec informations complètes',
+    description: `Retourne la liste paginée des courriers arrivés avec toutes les informations détaillées et relations.
+    
+    **Champs principaux retournés** :
+    - **categorie** : Catégorie du courrier (Urgent, Normal, Confidentiel)
+    - **classeCourrier** : Classification du courrier
+    - **dateArrivee** : Date de réception du courrier
+    - **dateEnregistrement** : Date d'enregistrement dans le système
+    - **typeCourrier** : Objet complet avec id, libelle et code du type
+    
+    **Informations complètes** :
+    - Données du courrier : reference, objet, priorite, statut, contenu, nombre de pages
+    - Expéditeur : nom, telephone, email, civilite, ville, pays
+    - Classification : categorie, classeCourrier, dateArrivee, dateEnregistrement
+    - Fichiers : cheminDocument, nomDocument, typeMime
+    
+    **Relations détaillées** :
+    - **service_traitement** : Service assigné avec hiérarchie complète (parent, grand_parent, arriere_grand_parent)
+    - **provenance** : Type de courrier avec catégories liées
+    - **createur** : Utilisateur créateur avec son service
+    - **transmissions[]** : Liste des transmissions avec service, emetteur, contenu et dates
+    - **courrierDeparts[]** : Courriers de départ liés avec destinataire et signataire
+    - **piecesJointes[]** : Pièces jointes avec intitulé, chemin, taille
+    - **reponses[]** : Réponses avec services émetteur/destinataire et contenu
+    
+    **Compteurs statistiques** :
+    - totalTransmissions, totalCourrierDeparts, totalPiecesJointes, totalReponses
+    
+    **Dernière transmission** : Dernier statut avec service, émetteur, date et contenu`,
   })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'search', required: false, type: String })
-  @ApiQuery({ name: 'dateArriveeDebut', required: false, type: String })
-  @ApiQuery({ name: 'dateArriveeFin', required: false, type: String })
-  @ApiQuery({ name: 'dateEnregistrement', required: false, type: String })
-  @ApiQuery({ name: 'priorite', required: false, type: String })
-  @ApiQuery({ name: 'categorie', required: false, type: String })
-  @ApiQuery({ name: 'categorieId', required: false, type: Number })
-  @ApiQuery({ name: 'typeCourrierId', required: false, type: Number })
-  @ApiQuery({ name: 'statut', required: false, type: String })
-  @ApiQuery({ name: 'dernierStatut', required: false, type: String })
-  @ApiQuery({ name: 'serviceId', required: false, type: Number })
-  @ApiQuery({ name: 'dernierServiceId', required: false, type: Number })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Numéro de la page (défaut: 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Nombre d\'éléments par page (défaut: 10)' })
+  @ApiQuery({ name: 'search', required: false, type: String, description: 'Recherche dans reference, objet, nom expéditeur' })
+  @ApiQuery({ name: 'dateArriveeDebut', required: false, type: String, description: 'Date de début (format: YYYY-MM-DD)' })
+  @ApiQuery({ name: 'dateArriveeFin', required: false, type: String, description: 'Date de fin (format: YYYY-MM-DD)' })
+  @ApiQuery({ name: 'dateEnregistrement', required: false, type: String, description: 'Date d\'enregistrement (format: YYYY-MM-DD)' })
+  @ApiQuery({ name: 'priorite', required: false, type: String, description: 'Filtrer par priorité' })
+  @ApiQuery({ name: 'categorie', required: false, type: String, description: 'Filtrer par catégorie' })
+  @ApiQuery({ name: 'categorieId', required: false, type: Number, description: 'ID de la catégorie' })
+  @ApiQuery({ name: 'typeCourrierId', required: false, type: Number, description: 'ID du type de courrier' })
+  @ApiQuery({ name: 'statut', required: false, type: String, description: 'Statut du courrier' })
+  @ApiQuery({ name: 'dernierStatut', required: false, type: String, description: 'Dernier statut de transmission' })
+  @ApiQuery({ name: 'serviceId', required: false, type: Number, description: 'ID du service assigné' })
+  @ApiQuery({ name: 'dernierServiceId', required: false, type: Number, description: 'ID du service de la dernière transmission' })
   @ApiResponse({
     status: 200,
-    description: 'Courriers récupérés avec succès.',
+    description: 'Liste des courriers récupérée avec succès avec informations complètes.',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Courriers récupérés avec succès.' },
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              // Champs prioritaires
+              categorie: { type: 'string', example: 'Normal' },
+              classeCourrier: { type: 'string', nullable: true },
+              dateArrivee: { type: 'string', format: 'date-time' },
+              dateEnregistrement: { type: 'string', format: 'date-time' },
+              typeCourrier: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  libelle: { type: 'string' },
+                  code: { type: 'string' },
+                },
+              },
+              // Informations courrier
+              id: { type: 'number' },
+              reference: { type: 'string' },
+              objet: { type: 'string' },
+              priorite: { type: 'string' },
+              statut: { type: 'string' },
+              // Relations complètes
+              service_traitement: { type: 'object', description: 'Service avec hiérarchie complète' },
+              provenance: { type: 'object', description: 'Type courrier avec catégories' },
+              createur: { type: 'object', description: 'Utilisateur créateur avec service' },
+              transmissions: { type: 'array', description: 'Liste des transmissions' },
+              courrierDeparts: { type: 'array', description: 'Courriers de départ liés' },
+              piecesJointes: { type: 'array', description: 'Pièces jointes' },
+              reponses: { type: 'array', description: 'Réponses au courrier' },
+              // Compteurs
+              totalTransmissions: { type: 'number' },
+              totalCourrierDeparts: { type: 'number' },
+              totalPiecesJointes: { type: 'number' },
+              totalReponses: { type: 'number' },
+              // Dernière transmission
+              derniereTransmission: { type: 'object', nullable: true },
+            },
+          },
+        },
+        pagination: {
+          type: 'object',
+          properties: {
+            total: { type: 'number' },
+            page: { type: 'number' },
+            limit: { type: 'number' },
+            totalPages: { type: 'number' },
+          },
+        },
+      },
+    },
   })
   list(@Query() query: ListCourrierQueryDto) {
     return this.courrierService.list(query);

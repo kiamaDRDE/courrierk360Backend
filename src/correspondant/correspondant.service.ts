@@ -66,6 +66,7 @@ export class CorrespondantService {
     search?: string,
     page: number = 1,
     limit: number = 10,
+    categoryIds?: number[],
   ) {
     // Validation et calcul de pagination
     this.paginationService.validatePaginationParams(page, limit);
@@ -83,6 +84,17 @@ export class CorrespondantService {
         correspondantSearchConfig,
       );
       Object.assign(where, searchWhere);
+    }
+
+    // Ajouter le filtre par catégories
+    if (categoryIds && categoryIds.length > 0) {
+      where.categories = {
+        some: {
+          categorieId: {
+            in: categoryIds,
+          },
+        },
+      };
     }
 
     // Récupérer les données

@@ -1,7 +1,7 @@
 // src/service/dto/service-query.dto.ts
 
 import { IsOptional, IsInt, Min, IsString, IsBoolean } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ServiceQueryDto {
@@ -69,4 +69,25 @@ export class ServiceQueryDto {
   @Type(() => Number)
   @IsInt()
   parentId?: number;
+
+  @ApiPropertyOptional({
+    description: 'Filtrer par visibilité du service dans les transmissions',
+    example: true,
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    console.log('🔧 DEBUG Transform - Input:', value, typeof value);
+    if (value === 'true' || value === true) {
+      console.log('🔧 Output: true');
+      return true;
+    }
+    if (value === 'false' || value === false) {
+      console.log('🔧 Output: false');  
+      return false;
+    }
+    console.log('🔧 Output: undefined');
+    return undefined;
+  })
+  @IsBoolean()
+  isVisible?: boolean;
 }

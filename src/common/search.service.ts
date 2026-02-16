@@ -52,7 +52,7 @@ export class SearchService {
         searchConditions.push({
           [field]: {
             contains: trimmedSearch,
-            mode: 'insensitive', // Insensible à la casse (pour PostgreSQL/MySQL)
+            // Note: mode: 'insensitive' n'est pas supporté par MySQL, seulement PostgreSQL
           },
         });
       });

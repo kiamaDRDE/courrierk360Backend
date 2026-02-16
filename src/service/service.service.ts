@@ -71,7 +71,7 @@ export class ServiceService {
 
   // 📋 Liste de tous les services avec filtres et pagination
   async findAll(query: ServiceQueryDto) {
-    const { page = 1, limit = 10, search, type, isActive, isDelete, parentId } = query;
+    const { page = 1, limit = 10, search, type, isActive, isDelete, parentId, isVisible } = query;
 
     // Construction des filtres
     const where: any = {};
@@ -106,6 +106,11 @@ export class ServiceService {
     // Filtre par service parent
     if (parentId !== undefined) {
       where.parentId = parentId;
+    }
+
+    // Filtre par visibilité
+    if (isVisible !== undefined) {
+      where.isVisible = isVisible;
     }
 
     const total = await this.prismaService.service.count({ where });

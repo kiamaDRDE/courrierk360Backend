@@ -34,6 +34,52 @@ export class AuthService {
     // 1️⃣ Vérifier si l'utilisateur existe
     const user = await this.prismaService.user.findUnique({
       where: { username },
+      include: {
+        role: {
+          select: {
+            id: true,
+            nom: true,
+            description: true,
+          },
+        },
+        service: {
+          select: {
+            id: true,
+            nom: true,
+            sigle: true,
+            type: true,
+          },
+        },
+        correspondant: {
+          select: {
+            id: true,
+            nom: true,
+            adresse: true,
+            telephone: true,
+            email: true,
+            type: true,
+            civilite: true,
+            matricule: true,
+            isDelete: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        servicesAdditionnels: {
+          select: {
+            id: true,
+            createdAt: true,
+            service: {
+              select: {
+                id: true,
+                nom: true,
+                sigle: true,
+                type: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -73,7 +119,7 @@ export class AuthService {
     refreshExpiration.setDate(refreshExpiration.getDate() + 7); // 7 jours
 
     // 7️⃣ Mettre à jour l'utilisateur avec les tokens
-    await this.prismaService.user.update({
+    const updatedUser = await this.prismaService.user.update({
       where: { id: user.id },
       data: {
         token: accessToken,
@@ -83,10 +129,56 @@ export class AuthService {
         verifyOtp: null,
         verifyExpires: null,
       },
+      include: {
+        role: {
+          select: {
+            id: true,
+            nom: true,
+            description: true,
+          },
+        },
+        service: {
+          select: {
+            id: true,
+            nom: true,
+            sigle: true,
+            type: true,
+          },
+        },
+        correspondant: {
+          select: {
+            id: true,
+            nom: true,
+            adresse: true,
+            telephone: true,
+            email: true,
+            type: true,
+            civilite: true,
+            matricule: true,
+            isDelete: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        servicesAdditionnels: {
+          select: {
+            id: true,
+            createdAt: true,
+            service: {
+              select: {
+                id: true,
+                nom: true,
+                sigle: true,
+                type: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     // 8️⃣ Retourner les tokens et les informations de l'utilisateur
-    const { password: _, verifyOtp: __, verifyExpires: ___, ...userWithoutSensitiveData } = user;
+    const { password: _, verifyOtp: __, verifyExpires: ___, resetOtp: ____, resetExpires: _____, ...userWithoutSensitiveData } = updatedUser;
 
     return this.formatResponse(
       {

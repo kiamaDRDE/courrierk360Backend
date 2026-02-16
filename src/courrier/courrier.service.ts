@@ -398,9 +398,9 @@ export class CourrierService {
           priorite,
           dateArrivee: new Date(dateArrivee),
           categorie,
-          civilite,
-          telephone,
-          email,
+          civilite: civilite || null, // ✅ CORRECTION: normaliser en null si vide
+          telephone: telephone || null, // ✅ CORRECTION: normaliser en null si vide
+          email: email || null, // ✅ CORRECTION: normaliser en null si vide
           adresse: adresse || null,
           idProvenance: idProvenance || null,
           classeCourrier: classeCourrier || null,
@@ -821,9 +821,120 @@ export class CourrierService {
     }
 
     const includePayload = {
-      service: { select: { id: true, nom: true, sigle: true } },
-      user: { select: { id: true, firstName: true, lastName: true, username: true } },
-      _count: { select: { courrierDeparts: true } },
+      // 📋 RELATIONS COMPLÈTES AJOUTÉES
+      service: { 
+        select: { 
+          id: true, 
+          nom: true, 
+          sigle: true, 
+          type: true, 
+          isActive: true,
+          parent: { select: { id: true, nom: true, sigle: true } }
+        } 
+      },
+      user: { 
+        select: { 
+          id: true, 
+          firstName: true, 
+          lastName: true, 
+          username: true, 
+          email: true,
+          phone: true,
+          numero: true,
+          civilite: true,
+          service: { select: { id: true, nom: true, sigle: true } }
+        } 
+      },
+      provenance: {
+        select: {
+          id: true,
+          nom: true,
+          adresse: true,
+          telephone: true,
+          email: true,
+          type: true,
+          civilite: true,
+          matricule: true,
+          categories: {
+            select: {
+              categorie: { select: { id: true, nom: true } }
+            }
+          }
+        }
+      },
+      typeCourrier: {
+        select: {
+          id: true,
+          nom: true,
+          type: true,
+          classeCourrier: true
+        }
+      },
+      transmissions: {
+        select: {
+          id: true,
+          dateInstruction: true,
+          dateReception: true,
+          instruction: true,
+          delaiTraitement: true,
+          typeTransfert: true,
+          accuseReception: true,
+          statut: true,
+          traitePar: true,
+          isGeled: true,
+          isArchive: true,
+          isDelete: true,
+          service: { select: { id: true, nom: true, sigle: true } },
+          emetteur: { select: { id: true, firstName: true, lastName: true, username: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+      },
+      courrierDeparts: {
+        select: {
+          id: true,
+          dateSignature: true,
+          typeCourrier: true,
+          numeroReference: true,
+          classeCourrier: true,
+          categorie: true,
+          email: true,
+          numeroTelephone: true,
+          numeroActe: true,
+          destinataire: { select: { id: true, nom: true, email: true, telephone: true } },
+          signataire: { select: { id: true, firstName: true, lastName: true, username: true } }
+        }
+      },
+      piecesJointes: {
+        select: {
+          id: true,
+          nom: true,
+          intitule: true,
+          chemin: true,
+          type: true,
+          createdAt: true
+        },
+        where: { isDelete: false }
+      },
+      reponses: {
+        select: {
+          id: true,
+          objet: true,
+          dateReponse: true,
+          classeCourrier: true,
+          typeTransmission: true,
+          service: { select: { id: true, nom: true } },
+          serviceDestinataire: { select: { id: true, nom: true } },
+          redacteur: { select: { id: true, firstName: true, lastName: true, username: true } }
+        }
+      },
+      _count: { 
+        select: { 
+          courrierDeparts: true,
+          transmissions: true,
+          piecesJointes: { where: { isDelete: false } },
+          reponses: true
+        } 
+      }
     } as const;
 
     const requiresLastFilters = Boolean(filters.dernierStatut || filters.dernierServiceId);
@@ -874,36 +985,190 @@ export class CourrierService {
       const lastStatus = latestByCourrier.get(courrier.id);
 
       return {
+        // ===== CHAMPS DE BASE COMPLETS =====
         id: courrier.id,
         numero: courrier.numero,
         reference: courrier.reference,
         objet: courrier.objet,
         priorite: courrier.priorite,
         statut: courrier.statut,
-        dernierStatutService: lastStatus
-          ? {
-              statut: lastStatus.statut,
-              service: lastStatus.service,
-            }
-          : null,
-        service_traitement: courrier.service
-          ? { id: courrier.service.id, nom: courrier.service.nom }
-          : null,
+        
+        // 🆕 CHAMPS SPÉCIFIQUEMENT DEMANDÉS - MISE EN ÉVIDENCE
+        categorie: courrier.categorie,
+        classeCourrier: courrier.classeCourrier,
+        dateArrivee: courrier.dateArrivee,
+        dateEnregistrement: courrier.dateEnregistrement,
+        
+        // 🆕 AUTRES CHAMPS DATES SUPPLÉMENTAIRES
+        dateRemiseEffective: courrier.dateRemiseEffective,
+        dateCloture: courrier.dateCloture,
+        typeTransfert: courrier.typeTransfert,
+        document: courrier.document,
+        bordereauRemise: courrier.bordereauRemise,
+        statutArchive: courrier.statutArchive,
+        viderPar: courrier.viderPar,
+        
+        // ===== INFORMATIONS CONTACT =====
         nom: courrier.nom,
         civilite: courrier.civilite,
         matricule: courrier.matricule,
         telephone: courrier.telephone,
         email: courrier.email,
         adresse: courrier.adresse,
+        
+        // ===== COMMENTAIRES =====
         commentaire: courrier.commentaire,
         commentairePublic: courrier.commentairePublic,
         commentaireInterne: courrier.commentaireInterne,
-        nombrePieceJointe: courrier.nombrePieceJointe,
-        createur: courrier.user
-          ? { id: courrier.user.id, nom: createurFullName }
-          : null,
+        
+        // ===== STATUTS ET FLAGS =====
         isConfidentiel: courrier.isConfidentiel,
+        isGeled: courrier.isGeled,
         isArchive: courrier.isArchive,
+        isDelete: courrier.isDelete,
+        nombrePieceJointe: courrier.nombrePieceJointe,
+        
+        // ===== IDs DE RÉFÉRENCE =====
+        idProvenance: courrier.idProvenance,
+        idTypeCourrier: courrier.idTypeCourrier,
+        idService: courrier.idService,
+        idUser: courrier.idUser,
+        
+        // ===== DATES DE CRÉATION/MAJ =====
+        createdAt: courrier.createdAt,
+        updatedAt: courrier.updatedAt,
+
+        // ===== RELATIONS COMPLÈTES =====
+        dernierStatutService: lastStatus
+          ? {
+              statut: lastStatus.statut,
+              service: lastStatus.service,
+            }
+          : null,
+          
+        service_traitement: courrier.service
+          ? { 
+              id: courrier.service.id, 
+              nom: courrier.service.nom,
+              sigle: courrier.service.sigle,
+              type: courrier.service.type,
+              isActive: courrier.service.isActive,
+              parent: courrier.service.parent
+            }
+          : null,
+          
+        provenance: courrier.provenance ? {
+          id: courrier.provenance.id,
+          nom: courrier.provenance.nom,
+          adresse: courrier.provenance.adresse,
+          telephone: courrier.provenance.telephone,
+          email: courrier.provenance.email,
+          type: courrier.provenance.type,
+          civilite: courrier.provenance.civilite,
+          matricule: courrier.provenance.matricule,
+          categories: courrier.provenance.categories.map(cat => cat.categorie)
+        } : null,
+        
+        // 🆕 TYPE COURRIER - RELATION COMPLÈTE MISE EN ÉVIDENCE  
+        typeCourrier: courrier.typeCourrier ? {
+          id: courrier.typeCourrier.id,
+          nom: courrier.typeCourrier.nom,
+          type: courrier.typeCourrier.type,
+          classeCourrier: courrier.typeCourrier.classeCourrier
+        } : null,
+        
+        createur: courrier.user
+          ? { 
+              id: courrier.user.id, 
+              nom: createurFullName,
+              username: courrier.user.username,
+              email: courrier.user.email,
+              phone: courrier.user.phone,
+              numero: courrier.user.numero,
+              civilite: courrier.user.civilite,
+              service: courrier.user.service
+            }
+          : null,
+          
+        // ===== TRANSMISSIONS =====
+        transmissions: courrier.transmissions.map(t => ({
+          id: t.id,
+          dateInstruction: t.dateInstruction,
+          dateReception: t.dateReception,
+          instruction: t.instruction,
+          delaiTraitement: t.delaiTraitement,
+          typeTransfert: t.typeTransfert,
+          accuseReception: t.accuseReception,
+          statut: t.statut,
+          traitePar: t.traitePar,
+          isGeled: t.isGeled,
+          isArchive: t.isArchive,
+          isDelete: t.isDelete,
+          service: t.service,
+          emetteur: t.emetteur ? {
+            id: t.emetteur.id,
+            nom: `${t.emetteur.firstName || ''} ${t.emetteur.lastName || ''}`.trim() || t.emetteur.username
+          } : null
+        })),
+        
+        // ===== COURRIERS DE DÉPART =====
+        courrierDeparts: courrier.courrierDeparts.map(cd => ({
+          id: cd.id,
+          dateSignature: cd.dateSignature,
+          typeCourrier: cd.typeCourrier,
+          numeroReference: cd.numeroReference,
+          classeCourrier: cd.classeCourrier,
+          categorie: cd.categorie,
+          email: cd.email,
+          numeroTelephone: cd.numeroTelephone,
+          numeroActe: cd.numeroActe,
+          destinataire: cd.destinataire,
+          signataire: cd.signataire ? {
+            id: cd.signataire.id,
+            nom: `${cd.signataire.firstName || ''} ${cd.signataire.lastName || ''}`.trim() || cd.signataire.username
+          } : null
+        })),
+        
+        // ===== PIÈCES JOINTES =====
+        piecesJointes: courrier.piecesJointes.map(pj => ({
+          id: pj.id,
+          nom: pj.nom,
+          intitule: pj.intitule,
+          chemin: pj.chemin,
+          type: pj.type,
+          createdAt: pj.createdAt
+        })),
+        
+        // ===== RÉPONSES =====
+        reponses: courrier.reponses.map(rep => {
+          const redacteurNom = rep.redacteur 
+            ? `${(rep.redacteur as any).firstName || ''} ${(rep.redacteur as any).lastName || ''}`.trim() || (rep.redacteur as any).username
+            : null;
+          
+          return {
+            id: rep.id,
+            objet: rep.objet,
+            dateReponse: rep.dateReponse,
+            classeCourrier: rep.classeCourrier,
+            typeTransmission: rep.typeTransmission,
+            service: rep.service,
+            serviceDestinataire: rep.serviceDestinataire,
+            redacteur: rep.redacteur ? {
+              id: (rep.redacteur as any).id,
+              nom: redacteurNom
+            } : null
+          };
+        }),
+        
+        // ===== COMPTEURS =====
+        compteurs: {
+          transmissions: (courrier as any)._count?.transmissions || 0,
+          courrierDeparts: (courrier as any)._count?.courrierDeparts || 0,
+          piecesJointes: (courrier as any)._count?.piecesJointes || 0,
+          reponses: (courrier as any)._count?.reponses || 0
+        },
+        
+        // 🆕 CHAMPS DE COMPATIBILITÉ (anciens noms)
         hasCourrierDepart: (courrier as any)._count?.courrierDeparts > 0,
       };
     });
@@ -1454,7 +1719,11 @@ export class CourrierService {
         for (let i = 0; i < piecesJointes.length; i++) {
           const file = piecesJointes[i];
           const intituleData = piecesJointesInfo[i];
-          const intitule = intituleData?.intitule || file.originalname;
+
+          // ✅ CORRECTION: Appliquer la même validation qu'à la création
+          if (!intituleData || !intituleData.intitule) {
+            continue; // Ignorer si pas d'intitulé
+          }
 
           const timestamp = Date.now();
           const fileName = `${timestamp}-${i}-${file.originalname}`;
@@ -1464,7 +1733,7 @@ export class CourrierService {
           const pieceJointe = await prisma.pieceJointe.create({
             data: {
               nom: file.originalname,
-              intitule,
+              intitule: intituleData.intitule, // ✅ Utiliser directement l'intitulé (validé)
               chemin: `courrier/${fileName}`,
               type: file.mimetype,
               idCourrier: updatedCourrier.id,

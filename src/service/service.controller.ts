@@ -11,7 +11,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @ApiTags('Service')
 @Controller('service')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard) // 🔧 REMIS POUR TEST
 @ApiResponse({
   status: 400,
   description: 'Error 400: Bad Request.',
@@ -141,6 +141,7 @@ export class ServiceController {
   @ApiQuery({ name: 'isActive', required: false, description: 'Filtrer par statut actif/inactif', type: Boolean, example: true })
   @ApiQuery({ name: 'isDelete', required: false, description: 'Filtrer les services supprimés logiquement', type: Boolean, example: false })
   @ApiQuery({ name: 'parentId', required: false, description: 'Filtrer par ID du service parent', type: Number, example: 1 })
+  @ApiQuery({ name: 'isVisible', required: false, description: 'Filtrer par visibilité du service dans les transmissions', type: Boolean, example: true })
   @ApiResponse({
     status: 200,
     description: 'Liste des services récupérée avec succès.',
@@ -188,7 +189,7 @@ export class ServiceController {
     return this.serviceService.findAll(query);
   }
 
-  // 🔍 Récupérer un service par ID
+  //  Récupérer un service par ID
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
