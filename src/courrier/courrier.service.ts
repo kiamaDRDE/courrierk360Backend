@@ -450,7 +450,23 @@ export class CourrierService {
         }
       }
 
-      return { courrier, piecesJointes: piecesJointesCreees };
+      // 🆕 Créer automatiquement une transmission initiale si un service est spécifié
+      let transmissionCreee = null;
+      if (idService) {
+        transmissionCreee = await prisma.transmission.create({
+          data: {
+            idCourrier: courrier.id,
+            idService: idService,
+            idEmetteur: userId,
+            dateInstruction: new Date(dateArrivee), // Utiliser la date d'arrivée comme date d'instruction
+            typeTransfert: typeTransfert || 'Pour traitement',
+            instruction: commentaire || 'Transmission initiale du courrier',
+            statut: 'Transmis',
+          },
+        });
+      }
+
+      return { courrier, piecesJointes: piecesJointesCreees, transmission: transmissionCreee };
     });
 
     // Envoyer l'email d'accusé de réception au correspondant si email fourni ET shouldSendNotification = true
@@ -723,7 +739,7 @@ export class CourrierService {
     );
   }
 
-  // 📋 Liste des courriers
+  // � Liste des courriers
   async list(query?: ListCourrierQueryDto) {
     const filters = query || {};
     const { page, limit } = this.paginationService.validatePaginationParams(
@@ -918,13 +934,18 @@ export class CourrierService {
       reponses: {
         select: {
           id: true,
-          objet: true,
-          dateReponse: true,
-          classeCourrier: true,
-          typeTransmission: true,
-          service: { select: { id: true, nom: true } },
-          serviceDestinataire: { select: { id: true, nom: true } },
-          redacteur: { select: { id: true, firstName: true, lastName: true, username: true } }
+          reponse: {
+            select: {
+              id: true,
+              objet: true,
+              dateReponse: true,
+              classeCourrier: true,
+              typeTransmission: true,
+              service: { select: { id: true, nom: true } },
+              serviceDestinataire: { select: { id: true, nom: true } },
+              redacteur: { select: { id: true, firstName: true, lastName: true, username: true } }
+            }
+          }
         }
       },
       _count: { 
@@ -938,6 +959,13 @@ export class CourrierService {
     } as const;
 
     const requiresLastFilters = Boolean(filters.dernierStatut || filters.dernierServiceId);
+
+    // Charger toutes les catégories pour le mapping
+    const categories = await this.prismaService.categories.findMany({
+      where: { isDelete: false },
+      select: { id: true, nom: true }
+    });
+    const categoriesMap = new Map(categories.map(cat => [cat.nom.toLowerCase().trim(), cat]));
 
     const [courriers, totalBeforeLastFilters] = await Promise.all([
       this.prismaService.courrier.findMany({
@@ -984,6 +1012,11 @@ export class CourrierService {
 
       const lastStatus = latestByCourrier.get(courrier.id);
 
+      // Mapper la catégorie texte vers un objet {id, nom}
+      const categorieObj = courrier.categorie 
+        ? categoriesMap.get(courrier.categorie.toLowerCase().trim()) || { id: null, nom: courrier.categorie }
+        : null;
+
       return {
         // ===== CHAMPS DE BASE COMPLETS =====
         id: courrier.id,
@@ -994,7 +1027,7 @@ export class CourrierService {
         statut: courrier.statut,
         
         // 🆕 CHAMPS SPÉCIFIQUEMENT DEMANDÉS - MISE EN ÉVIDENCE
-        categorie: courrier.categorie,
+        categorie: categorieObj,
         classeCourrier: courrier.classeCourrier,
         dateArrivee: courrier.dateArrivee,
         dateEnregistrement: courrier.dateEnregistrement,
@@ -1140,9 +1173,10 @@ export class CourrierService {
         })),
         
         // ===== RÉPONSES =====
-        reponses: courrier.reponses.map(rep => {
+        reponses: courrier.reponses.map(repJoin => {
+          const rep = repJoin.reponse;
           const redacteurNom = rep.redacteur 
-            ? `${(rep.redacteur as any).firstName || ''} ${(rep.redacteur as any).lastName || ''}`.trim() || (rep.redacteur as any).username
+            ? `${rep.redacteur.firstName || ''} ${rep.redacteur.lastName || ''}`.trim() || rep.redacteur.username
             : null;
           
           return {
@@ -1154,7 +1188,7 @@ export class CourrierService {
             service: rep.service,
             serviceDestinataire: rep.serviceDestinataire,
             redacteur: rep.redacteur ? {
-              id: (rep.redacteur as any).id,
+              id: rep.redacteur.id,
               nom: redacteurNom
             } : null
           };
