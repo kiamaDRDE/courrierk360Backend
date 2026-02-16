@@ -451,7 +451,7 @@ export class CourrierService {
       }
 
       // 🆕 Créer automatiquement une transmission initiale si un service est spécifié
-      let transmissionCreee = null;
+      let transmissionCreee: any = null;
       if (idService) {
         transmissionCreee = await prisma.transmission.create({
           data: {
