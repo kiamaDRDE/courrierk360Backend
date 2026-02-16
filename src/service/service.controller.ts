@@ -258,7 +258,15 @@ export class ServiceController {
           nom: 'Direction Générale Modifiée',
           sigle: 'DGM',
           type: 'ADMINISTRATIF',
+          parentId: 1,
           isActive: false,
+          isVisible: true,
+        },
+      },
+      example2: {
+        summary: 'Masquer le service des transmissions',
+        value: {
+          isVisible: false,
         },
       },
     },

@@ -331,13 +331,19 @@ export class ServiceService {
       throw new NotFoundException('Service non trouvé.');
     }
 
-    // Vérifier s'il y a des services enfants
-    if (service.children.length > 0) {
-      throw new BadRequestException('Impossible de supprimer ce service car il a des services enfants.');
-    }
+    await this.prismaService.$transaction(async (tx) => {
+      // Dissocier les enfants
+      if (service.children.length > 0) {
+        await tx.service.updateMany({
+          where: { parentId: id },
+          data: { parentId: null },
+        });
+      }
 
-    await this.prismaService.service.delete({
-      where: { id },
+      // Supprimer définitivement le service
+      await tx.service.delete({
+        where: { id },
+      });
     });
 
     return this.responseFormatter.success(
