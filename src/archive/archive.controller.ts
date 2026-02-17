@@ -23,6 +23,7 @@ import { ArchiveQueryDto } from './dto/archive-query.dto';
 import { ViderCoffresDto } from './dto/vider-coffres.dto';
 import { RetirerArchivesDto } from './dto/retirer-archives.dto';
 import { ArchivesTransferesQueryDto } from './dto/archives-transferes-query.dto';
+import { UnarchiveDto } from './dto/unarchive.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -37,30 +38,87 @@ export class ArchiveController {
   @Post()
   @ApiOperation({
     summary: 'Créer une nouvelle archive',
-    description: 'Créer une archive avec vérification de la capacité du coffre. Vérifie que la salle et le coffre existent, sont actifs et que le coffre appartient à la salle. Met automatiquement à jour les courriers, transmissions et courriers départ (statut archivé, isArchive = true, statutArchive = non transféré). Incrémente automatiquement le nombre de places occupées dans le coffre.',
+    description: `
+Créer une archive avec logique bidirectionnelle automatique.
+
+**Logique d'archivage automatique** :
+- 📦 **Archiver un courrier** → Archive automatiquement toutes ses transmissions liées
+- 📄 **Archiver une transmission** → Archive automatiquement son courrier parent (mais pas les autres transmissions)
+- 📋 **Archiver un courrier départ** → Archive seulement le courrier départ
+
+**Vérifications effectuées** :
+- Vérifie que la salle et le coffre existent, sont actifs et que le coffre appartient à la salle
+- Vérifie la capacité maximale du coffre avant archivage
+- Met automatiquement à jour les statuts (statut = "Archivé", isArchive = true, statutArchive = "non transféré")
+- Incrémente automatiquement le nombre de places occupées dans le coffre
+
+**Exemple** : Si vous archivez 1 courrier avec 3 transmissions, le système archivera automatiquement les 4 éléments.
+    `
   })
   @ApiResponse({
     status: 201,
-    description: 'Archive créée avec succès.',
+    description: 'Archive créée avec succès avec logique bidirectionnelle.',
     schema: {
-      example: {
-        success: true,
-        message: 'Archive créée avec succès. Coffre: 15/20 places.',
-        title: 'Création archive',
-        data: {
-          id: 1,
-          idCourrier: [1, 2, 3],
-          idTransmission: [4, 5],
-          idCourrierDepart: [6],
-          idSalle: 1,
-          idCoffre: 1,
-          isDelete: false,
-          fichier: '',
-          createdAt: '2025-01-13T10:00:00.000Z',
-          updatedAt: '2025-01-13T10:00:00.000Z',
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { 
+          type: 'string', 
+          example: 'Archive créée avec succès: 1 courrier(s), 3 transmission(s) liée(s) automatiquement. Coffre: 15/20 places.' 
         },
+        title: { type: 'string', example: 'Création archive' },
+        data: {
+          type: 'object',
+          properties: {
+            id: { type: 'number', example: 1 },
+            idCourrier: { type: 'array', items: { type: 'number' }, example: [1, 2] },
+            idTransmission: { type: 'array', items: { type: 'number' }, example: [4, 5, 6, 7] },
+            idCourrierDepart: { type: 'array', items: { type: 'number' }, example: [8] },
+            idSalle: { type: 'number', example: 1 },
+            idCoffre: { type: 'number', example: 1 },
+            isDelete: { type: 'boolean', example: false },
+            fichier: { type: 'string', example: '' },
+            createdAt: { type: 'string', format: 'date-time', example: '2026-02-17T10:00:00.000Z' },
+            updatedAt: { type: 'string', format: 'date-time', example: '2026-02-17T10:00:00.000Z' },
+          }
+        }
+      }
+    }
+  })
+  @ApiBody({
+    type: CreateArchiveDto,
+    description: 'Données pour la création d\'archive avec logique bidirectionnelle',
+    examples: {
+      exemple1: {
+        summary: 'Archivage de courriers (archive automatiquement leurs transmissions)',
+        description: 'Archive 2 courriers et toutes leurs transmissions liées automatiquement',
+        value: {
+          idCourriers: [1, 2],
+          idSalle: 1,
+          idCoffre: 1
+        }
       },
-    },
+      exemple2: {
+        summary: 'Archivage de transmissions (archive automatiquement leurs courriers parents)',
+        description: 'Archive 2 transmissions et leurs courriers parents automatiquement',
+        value: {
+          idTransmissions: [4, 5],
+          idSalle: 1,
+          idCoffre: 1
+        }
+      },
+      exemple3: {
+        summary: 'Archivage mixte',
+        description: 'Archive courriers, transmissions et courriers départ avec logique bidirectionnelle',
+        value: {
+          idCourriers: [1],
+          idTransmissions: [4, 5],
+          idCourriersDepart: [6],
+          idSalle: 1,
+          idCoffre: 1
+        }
+      }
+    }
   })
   @ApiResponse({
     status: 400,
@@ -733,6 +791,97 @@ export class ArchiveController {
   })
   findArchivesTransferes(@Query() query: ArchivesTransferesQueryDto) {
     return this.archiveService.findArchivesTransferes(query);
+  }
+
+  @Post('unarchive')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ 
+    summary: 'Désarchiver des courriers, transmissions et courriers départ',
+    description: `
+Permet de désarchiver des courriers, transmissions et/ou courriers départ en les retirant du coffre et de la salle d'archive.
+
+**Actions effectuées** :
+- Retire les éléments du coffre et de la salle d'archive
+- Met à jour isArchive = false et statutArchive = null/vide
+- Décrémente automatiquement le nombre de places occupées dans le coffre
+- Détermine automatiquement le nouveau statut selon les règles métier
+- Supprime les enregistrements d'archivage de la base de données
+
+**Règles de détermination du statut** :
+- Si la dernière transmission a isArchive=true → statut = "Archivé"
+- Sinon si isinstance=true → statut = "En instance"
+- Sinon si accuseReception=true → statut = "Reçu" 
+- Par défaut → statut = "En traitement"
+    `
+  })
+  @ApiBody({
+    type: UnarchiveDto,
+    description: 'Données pour le désarchivage des éléments',
+    examples: {
+      exemple1: {
+        summary: 'Exemple complet',
+        description: 'Désarchivage de courriers, transmissions et courriers départ',
+        value: {
+          idCourriers: [1, 2, 3],
+          idTransmissions: [4, 5],
+          idCourriersDepart: [6, 7, 8],
+          idSalle: 1,
+          idCoffre: 1,
+        },
+      },
+      exemple2: {
+        summary: 'Exemple transmissions seulement',
+        description: 'Désarchivage uniquement des transmissions',
+        value: {
+          idTransmissions: [10, 11, 12],
+          idSalle: 2,
+          idCoffre: 3,
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Désarchivage réussi.',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { 
+          type: 'string', 
+          example: '6 élément(s) désarchivé(s) avec succès: 3 courrier(s), 2 transmission(s), 1 courrier(s) départ.' 
+        },
+        title: { type: 'string', example: 'Désarchivage réussi' },
+        data: {
+          type: 'object',
+          properties: {
+            courriersDesarchives: { type: 'number', example: 3 },
+            transmissionsDesarchivees: { type: 'number', example: 2 },
+            courriersDeparsDesarchives: { type: 'number', example: 1 },
+            totalElementsDesarchives: { type: 'number', example: 6 },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Requête invalide - Paramètres manquants ou invalides.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Salle ou coffre non trouvé.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Non autorisé - Token JWT manquant ou invalide.',
+  })
+  unarchive(
+    @Body() unarchiveDto: UnarchiveDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.archiveService.unarchive(unarchiveDto, user.id);
   }
 }
 

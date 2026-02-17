@@ -29,6 +29,7 @@ import { TraitementService } from './traitement.service';
 import { CreateTraitementDto } from './dto/create-traitement.dto';
 import { UpdateTraitementDto } from './dto/update-traitement.dto';
 import { AccuserReceptionTransmissionsDto } from './dto/accuser-reception-transmissions.dto';
+import { ClasserTransmissionDto } from './dto/classer-transmission.dto';
 import { ListTransmissionsQueryDto } from './dto/list-transmissions-query.dto';
 import { RelanceQueryDto } from './dto/relance-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -440,18 +441,38 @@ export class TraitementController {
               },
               structuresCopie: [3, 4],
               dateInstruction: '2026-02-12T09:30:00.000Z',
+              dateReception: '2026-02-12T09:35:00.000Z',
               instruction: 'Merci de traiter rapidement',
+              commentairePublic: 'Commentaire visible par tous',
+              commentaireInterne: 'Note interne confidentielle',
               delaiTraitement: 5,
               typeTransfert: 'Pour traitement',
               accuseReception: false,
               statut: 'Transmis',
+              document: 'transmissions/doc-123.pdf',
+              pieceJointe: null,
+              isDelete: false,
+              isArchive: false,
+              isGeled: false,
+              isinstance: false,
+              statutArchive: null,
+              viderPar: null,
               dernierStatutService: {
                 statut: 'Transmis',
                 service: { id: 5, nom: 'Finance', sigle: 'FIN' },
               },
-              instanceof: false,
+              canCreateTransmission: true,
+              canModifyTransmission: false,
+              lastMyTransmission: null,
               nombrePieceJointe: 1,
-              traitePar: [],
+              traitePar: [
+                {
+                  userId: 218,
+                  userName: 'Jean Dupont',
+                  action: 'Accusé de réception',
+                  date: '2026-02-12T10:15:00.000Z',
+                },
+              ],
               piecesJointes: [],
               createdAt: '2026-02-12T09:30:10.000Z',
               updatedAt: '2026-02-12T09:30:10.000Z',
@@ -523,6 +544,84 @@ export class TraitementController {
   @ApiResponse({
     status: 200,
     description: 'Transmissions en copie récupérées avec succès.',
+    schema: {
+      example: {
+        success: true,
+        message: '12 transmission(s) récupérée(s) avec succès.',
+        title: 'Liste des transmissions en copie',
+        data: {
+          items: [
+            {
+              id: 156,
+              courrier: {
+                id: 78,
+                numero: '2026-0045',
+                reference: 'REF-2026-0045',
+                objet: 'Transmission en copie',
+                commentaire: null,
+                commentairePublic: null,
+                commentaireInterne: null,
+                classeCourrier: 'Administratif',
+                categorie: 'Externe',
+                dateArrivee: '2026-02-15',
+                dateEnregistrement: '2026-02-15 14:20:00',
+                priorite: 'Normal',
+                statut: 'Transmis',
+                isConfidentiel: false,
+                typeCourrier: { id: 5, nom: 'Lettre' },
+                provenance: { id: 12, nom: 'Partenaire B', email: null, telephone: null },
+                reponses: [],
+              },
+              serviceDestinataire: { id: 3, nom: 'Service Principal', sigle: 'SP' },
+              emetteur: {
+                id: 9,
+                fullName: 'Marie Martin',
+                email: 'marie.martin@kiama.cm',
+                service: { id: 2, nom: 'DG', sigle: 'DG' },
+              },
+              structuresCopie: [5, 8],
+              dateInstruction: '2026-02-15T14:20:00.000Z',
+              dateReception: '2026-02-15T14:25:00.000Z',
+              instruction: 'Pour information',
+              commentairePublic: 'Document transmis en copie',
+              commentaireInterne: 'À conserver pour archives',
+              delaiTraitement: null,
+              typeTransfert: 'Pour information',
+              accuseReception: false,
+              statut: 'Transmis',
+              document: null,
+              pieceJointe: null,
+              isDelete: false,
+              isArchive: false,
+              isGeled: false,
+              isinstance: false,
+              statutArchive: null,
+              viderPar: null,
+              dernierStatutService: {
+                statut: 'Transmis',
+                service: { id: 3, nom: 'Service Principal', sigle: 'SP' },
+              },
+              canCreateTransmission: true,
+              canModifyTransmission: false,
+              lastMyTransmission: null,
+              nombrePieceJointe: 0,
+              traitePar: [],
+              piecesJointes: [],
+              createdAt: '2026-02-15T14:20:10.000Z',
+              updatedAt: '2026-02-15T14:20:10.000Z',
+            },
+          ],
+          pagination: {
+            currentPage: 1,
+            itemsPerPage: 10,
+            totalItems: 12,
+            totalPages: 2,
+            hasNextPage: true,
+            hasPreviousPage: false,
+          },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
@@ -549,6 +648,12 @@ export class TraitementController {
     - canCreateTransmission = true si la dernière transmission du courrier n'est pas de l'utilisateur connecté
     - canModifyTransmission = true si la dernière transmission du courrier est de l'utilisateur connecté et non accusée réception
 
+    **Champ traitePar** :
+    - Tableau JSON contenant l'historique de toutes les actions effectuées sur la transmission
+    - Chaque action inclut : userId, userName, action, date
+    - Actions possibles : "Classé", "Déclassé", "Instancié", "Désinstancié", "Accusé de réception"
+    - Permet de tracer qui a traité la transmission, particulièrement utile pour les services additionnels
+
     **Filtres disponibles (query params)** :
     - search
     - dateArriveeDebut, dateArriveeFin
@@ -574,6 +679,113 @@ export class TraitementController {
   @ApiResponse({
     status: 200,
     description: 'Transmissions des services additionnels récupérées avec succès.',
+    schema: {
+      example: {
+        success: true,
+        message: '25 transmission(s) récupérée(s) avec succès.',
+        title: 'Liste des transmissions',
+        data: {
+          items: [
+            {
+              id: 246,
+              courrier: {
+                id: 132,
+                numero: '2025-12-010',
+                reference: '2025-12-010',
+                objet: 'Demande d\'assistance',
+                commentaire: 'Urgent',
+                commentairePublic: null,
+                commentaireInterne: null,
+                classeCourrier: 'Dossier RH',
+                categorie: 'Normal',
+                dateArrivee: '2025-12-15',
+                dateEnregistrement: '2025-12-15 12:50:19',
+                priorite: 'haute',
+                statut: 'Reçu',
+                isConfidentiel: false,
+                typeCourrier: { id: 436, nom: 'Assistance Médicale' },
+                provenance: { id: 60, nom: 'Association Sportive', email: 'contact@asso.com', telephone: '+237612345678' },
+                reponses: [],
+              },
+              serviceDestinataire: { id: 446, nom: 'Secrétaire Général', sigle: 'SG' },
+              emetteur: {
+                id: 217,
+                fullName: 'Pierre Durand',
+                email: 'pierre@example.com',
+                service: { id: 452, nom: 'Cabinet Ministre', sigle: 'CAB' },
+              },
+              structuresCopie: [3, 5, 7],
+              dateInstruction: '2025-12-15T12:50:19.000Z',
+              dateReception: '2025-12-15T13:00:00.000Z',
+              instruction: 'Veuillez traiter en priorité',
+              commentairePublic: 'Document à traiter rapidement',
+              commentaireInterne: 'Demande du ministre',
+              delaiTraitement: 7,
+              typeTransfert: 'Pour_Instruction',
+              accuseReception: true,
+              statut: 'Reçu',
+              document: null,
+              pieceJointe: null,
+              isDelete: false,
+              isArchive: false,
+              isGeled: false,
+              isinstance: true,
+              statutArchive: null,
+              viderPar: null,
+              dernierStatutService: {
+                statut: 'Reçu',
+                service: { id: 446, nom: 'Secrétaire Général', sigle: 'SG' },
+              },
+              canCreateTransmission: false,
+              canModifyTransmission: true,
+              lastMyTransmission: {
+                id: 246,
+                service: { id: 446, nom: 'Secrétaire Général', sigle: 'SG' },
+                emetteur: {
+                  id: 217,
+                  fullName: 'Pierre Durand',
+                  email: 'pierre@example.com',
+                  service: { id: 452, nom: 'Cabinet Ministre', sigle: 'CAB' },
+                },
+                accuseReception: true,
+                canModify: true,
+              },
+              instanceof: false,
+              nombrePieceJointe: 2,
+              traitePar: [
+                {
+                  userId: 218,
+                  userName: 'Jean Dupont',
+                  action: 'Accusé de réception',
+                  date: '2025-12-15T15:35:53.000Z',
+                },
+                {
+                  userId: 220,
+                  userName: 'Marie Martin',
+                  action: 'Classé',
+                  date: '2025-12-16T10:11:13.000Z',
+                },
+              ],
+              piecesJointes: [],
+              createdAt: '2025-12-15T12:50:19.000Z',
+              updatedAt: '2025-12-15T15:35:53.000Z',
+            },
+          ],
+          pagination: {
+            currentPage: 1,
+            itemsPerPage: 10,
+            totalItems: 25,
+            totalPages: 3,
+            hasNextPage: true,
+            hasPreviousPage: false,
+            nextPage: 2,
+            previousPage: null,
+            startIndex: 0,
+            endIndex: 9,
+          },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 400,
@@ -814,14 +1026,21 @@ export class TraitementController {
     
     **Modifications automatiques sur la transmission** :
     - statut : "Classé"
-    - isArchive : true
+    - isGeled : true (gel de la transmission)
+    - commentairePublic : Peut être mis à jour via le body
+    - commentaireInterne : Peut être mis à jour via le body
+    - traitePar : Ajoute l'utilisateur connecté dans l'historique avec { userId, userName, action: "Classé", date }
     - updatedAt : Date actuelle (mise à jour automatique)
     
     **Modifications automatiques sur le courrier lié** :
     - statut : "Classé"
-    - isGeled : true
+    - isGeled : true (gel du courrier)
     
-    Une transmission déjà classée (archivée) ne peut pas être re-classée.`,
+    **Traçabilité** : Le champ traitePar enregistre automatiquement l'utilisateur qui effectue l'action,
+    particulièrement utile lorsqu'un utilisateur traite une transmission de son service additionnel.
+    
+    **Note** : Classer une transmission la gèle (isGeled=true), ce n'est pas la même chose qu'archiver (isArchive).
+    Une transmission déjà gelée (classée) ne peut pas être re-classée.`,
   })
   @ApiResponse({
     status: 200,
@@ -834,7 +1053,7 @@ export class TraitementController {
         data: {
           id: 1,
           statut: 'Classé',
-          isArchive: true,
+          isGeled: true,
           updatedAt: '2026-02-15T10:30:00.000Z',
         },
       },
@@ -846,10 +1065,14 @@ export class TraitementController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Transmission déjà classée (archivée).',
+    description: 'Transmission déjà classée (gelée).',
   })
-  classerTransmission(@Param('id', ParseIntPipe) id: number) {
-    return this.traitementService.classerTransmission(id);
+  classerTransmission(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() classerDto: ClasserTransmissionDto,
+    @CurrentUser('id') userId: number,
+  ) {
+    return this.traitementService.classerTransmission(id, classerDto, userId);
   }
 
   // 📂 Déclasser une transmission
@@ -859,8 +1082,8 @@ export class TraitementController {
     description: `Déclasse une transmission et le courrier lié automatiquement.
     
     **Modifications automatiques sur la transmission** :
-    - isArchive : false
-    - isGeled : false
+    - isGeled : false (dégel de la transmission)
+    - traitePar : Ajoute l'utilisateur connecté dans l'historique avec { userId, userName, action: "Déclassé", date }
     - updatedAt : Date actuelle (mise à jour automatique)
     - statut : Déterminé selon les propriétés de la transmission
     
@@ -874,7 +1097,10 @@ export class TraitementController {
     - Déclassement automatique du courrier (appel de l'API de déclassement courrier)
     - Le statut du courrier sera déterminé par la dernière transmission
     
-    Une transmission non classée (non archivée) ne peut pas être déclassée.`,
+    **Traçabilité** : Le champ traitePar enregistre automatiquement l'utilisateur qui effectue l'action,
+    particulièrement utile lorsqu'un utilisateur traite une transmission de son service additionnel.
+    
+    **Note** : Une transmission non gelée (non classée) ne peut pas être déclassée.`,
   })
   @ApiResponse({
     status: 200,
@@ -899,10 +1125,13 @@ export class TraitementController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Transmission non classée (non archivée). Impossible de déclasser.',
+    description: 'Transmission non classée (non gelée). Impossible de déclasser.',
   })
-  declasserTransmission(@Param('id', ParseIntPipe) id: number) {
-    return this.traitementService.declasserTransmission(id);
+  declasserTransmission(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser('id') userId: number,
+  ) {
+    return this.traitementService.declasserTransmission(id, userId);
   }
 
   // 📌 Instancier une transmission
@@ -914,7 +1143,11 @@ export class TraitementController {
     **Modifications automatiques** :
     - isinstance : true
     - statut : "Instancié"
+    - traitePar : Ajoute l'utilisateur connecté dans l'historique avec { userId, userName, action: "Instancié", date }
     - updatedAt : Date actuelle (mise à jour automatique)
+    
+    **Traçabilité** : Le champ traitePar enregistre automatiquement l'utilisateur qui effectue l'action,
+    particulièrement utile lorsqu'un utilisateur traite une transmission de son service additionnel.
     
     Une transmission déjà instanciée ne peut pas être re-instanciée.`,
   })
@@ -943,8 +1176,11 @@ export class TraitementController {
     status: 400,
     description: 'Transmission déjà instanciée.',
   })
-  instancierTransmission(@Param('id', ParseIntPipe) id: number) {
-    return this.traitementService.instancierTransmission(id);
+  instancierTransmission(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser('id') userId: number,
+  ) {
+    return this.traitementService.instancierTransmission(id, userId);
   }
 
   // 📍 Désinstancier une transmission
@@ -955,6 +1191,7 @@ export class TraitementController {
     
     **Modifications automatiques** :
     - isinstance : false
+    - traitePar : Ajoute l'utilisateur connecté dans l'historique avec { userId, userName, action: "Désinstancié", date }
     - updatedAt : Date actuelle (mise à jour automatique)
     - statut : Déterminé selon les propriétés de la transmission
     
@@ -963,6 +1200,9 @@ export class TraitementController {
     - Sinon si isinstance=true → statut = "Instancié"
     - Sinon si accuseReception=true → statut = "Reçu"
     - Par défaut → statut = "Transmis"
+    
+    **Traçabilité** : Le champ traitePar enregistre automatiquement l'utilisateur qui effectue l'action,
+    particulièrement utile lorsqu'un utilisateur traite une transmission de son service additionnel.
     
     Une transmission non instanciée ne peut pas être désinstanciée.`,
   })
@@ -991,8 +1231,11 @@ export class TraitementController {
     status: 400,
     description: 'Transmission non instanciée. Impossible de désinstancier.',
   })
-  desinstancierTransmission(@Param('id', ParseIntPipe) id: number) {
-    return this.traitementService.desinstancierTransmission(id);
+  desinstancierTransmission(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser('id') userId: number,
+  ) {
+    return this.traitementService.desinstancierTransmission(id, userId);
   }
 
   // ✉️ Accuser réception de plusieurs transmissions
@@ -1008,10 +1251,14 @@ export class TraitementController {
     **Modifications automatiques sur les transmissions** :
     - accuseReception : true
     - statut : "Reçu"
+    - traitePar : Ajoute l'utilisateur connecté dans l'historique avec { userId, userName, action: "Accusé de réception", date }
     - updatedAt : Date actuelle (mise à jour automatique)
     
     **Modifications automatiques sur les courriers liés** :
     - statut : "Reçu"
+    
+    **Traçabilité** : Le champ traitePar enregistre automatiquement l'utilisateur qui effectue l'action,
+    particulièrement utile lorsqu'un utilisateur traite une transmission de son service additionnel.
     
     Si les transmissions n'ont pas le même destinataire, l'opération sera rejetée.`,
   })
@@ -1041,7 +1288,8 @@ export class TraitementController {
   })
   accuserReceptionTransmissions(
     @Body() accuserReceptionDto: AccuserReceptionTransmissionsDto,
+    @CurrentUser('id') userId: number,
   ) {
-    return this.traitementService.accuserReceptionTransmissions(accuserReceptionDto);
+    return this.traitementService.accuserReceptionTransmissions(accuserReceptionDto, userId);
   }
 }

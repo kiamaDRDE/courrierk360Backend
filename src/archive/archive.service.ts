@@ -8,6 +8,7 @@ import { ArchiveQueryDto } from './dto/archive-query.dto';
 import { ViderCoffresDto } from './dto/vider-coffres.dto';
 import { RetirerArchivesDto } from './dto/retirer-archives.dto';
 import { ArchivesTransferesQueryDto } from './dto/archives-transferes-query.dto';
+import { UnarchiveDto } from './dto/unarchive.dto';
 import { ResponseFormatterService } from '../common/response-formatter.service';
 import { PaginationService } from '../common/pagination.service';
 import * as fs from 'fs';
@@ -63,28 +64,94 @@ export class ArchiveService {
 
     // Créer l'archive et mettre à jour les entités (transaction)
     const result = await this.prismaService.$transaction(async (prisma) => {
-      // Mettre à jour les courriers
+      let transmissionsLieesToCourriers: number[] = [];
+      
+      // Mettre à jour les courriers et récupérer leurs transmissions liées
       if (idCourriers.length > 0) {
+        // Récupérer toutes les transmissions liées aux courriers à archiver
+        const transmissionsLiees = await prisma.transmission.findMany({
+          where: { 
+            idCourrier: { in: idCourriers },
+            isArchive: false // Seulement celles pas déjà archivées
+          },
+          select: { id: true }
+        });
+        
+        transmissionsLieesToCourriers = transmissionsLiees.map(t => t.id);
+        
+        // Archiver les courriers
         await prisma.courrier.updateMany({
           where: { id: { in: idCourriers } },
           data: {
-            statut: 'archivé',
+            statut: 'Archivé',
             isArchive: true,
             statutArchive: 'non transféré',
           },
         });
+        
+        // Archiver automatiquement toutes les transmissions liées
+        if (transmissionsLieesToCourriers.length > 0) {
+          await prisma.transmission.updateMany({
+            where: { id: { in: transmissionsLieesToCourriers } },
+            data: {
+              statut: 'Archivé',
+              isArchive: true,
+              statutArchive: 'non transféré',
+            },
+          });
+        }
       }
 
-      // Mettre à jour les transmissions
-      if (idTransmissions.length > 0) {
+      // Mettre à jour les transmissions explicitement spécifiées et archiver leurs courriers liés
+      const transmissionsExplicites = idTransmissions.filter(id => 
+        !transmissionsLieesToCourriers.includes(id)
+      );
+      
+      let courriersLiesAuxTransmissions: number[] = [];
+      
+      if (transmissionsExplicites.length > 0) {
+        // Récupérer les courriers liés aux transmissions à archiver
+        const transmissionsAvecCourriers = await prisma.transmission.findMany({
+          where: { 
+            id: { in: transmissionsExplicites },
+            isArchive: false // Seulement celles pas déjà archivées
+          },
+          select: { id: true, idCourrier: true }
+        });
+        
+        // Extraire les IDs des courriers liés (qui ne sont pas déjà dans idCourriers)
+        const courriersLiesUniques = [...new Set(
+          transmissionsAvecCourriers
+            .map(t => t.idCourrier)
+            .filter((idCourrier): idCourrier is number => idCourrier !== null && !idCourriers.includes(idCourrier))
+        )];
+        
+        courriersLiesAuxTransmissions = courriersLiesUniques;
+        
+        // Archiver les transmissions
         await prisma.transmission.updateMany({
-          where: { id: { in: idTransmissions } },
+          where: { id: { in: transmissionsExplicites } },
           data: {
-            statut: 'archivé',
+            statut: 'Archivé',
             isArchive: true,
             statutArchive: 'non transféré',
           },
         });
+        
+        // Archiver automatiquement les courriers liés aux transmissions
+        if (courriersLiesAuxTransmissions.length > 0) {
+          await prisma.courrier.updateMany({
+            where: { 
+              id: { in: courriersLiesAuxTransmissions },
+              isArchive: false // Seulement ceux pas déjà archivés
+            },
+            data: {
+              statut: 'Archivé',
+              isArchive: true,
+              statutArchive: 'non transféré',
+            },
+          });
+        }
       }
 
       // Mettre à jour les courriers départ
@@ -98,11 +165,14 @@ export class ArchiveService {
         });
       }
 
-      // Créer l'archive
+      // Créer l'archive avec tous les éléments (courriers originaux + liés, transmissions)
+      const tousLesCourriers = [...new Set([...idCourriers, ...courriersLiesAuxTransmissions])];
+      const toutesLesTransmissions = [...new Set([...transmissionsLieesToCourriers, ...transmissionsExplicites])];
+      
       const archive = await prisma.archive.create({
         data: {
-          idCourrier: idCourriers,
-          idTransmission: idTransmissions,
+          idCourrier: tousLesCourriers,
+          idTransmission: toutesLesTransmissions,
           idCourrierDepart: idCourriersDepart,
           idSalle,
           idCoffre,
@@ -120,13 +190,40 @@ export class ArchiveService {
         },
       });
 
-      return { archive, updatedCoffre };
+      return { 
+        archive, 
+        updatedCoffre, 
+        transmissionsLieesToCourriers: transmissionsLieesToCourriers.length,
+        transmissionsExplicites: transmissionsExplicites.length,
+        courriersLiesAuxTransmissions: courriersLiesAuxTransmissions.length
+      };
     });
+
+    const totalTransmissions = result.transmissionsLieesToCourriers + result.transmissionsExplicites;
+    const messageDetails: string[] = [];
+    
+    if (idCourriers.length > 0) {
+      messageDetails.push(`${idCourriers.length} courrier(s)`);
+      if (result.transmissionsLieesToCourriers > 0) {
+        messageDetails.push(`${result.transmissionsLieesToCourriers} transmission(s) liée(s) automatiquement`);
+      }
+    }
+    
+    if (result.transmissionsExplicites > 0) {
+      messageDetails.push(`${result.transmissionsExplicites} transmission(s) explicite(s)`);
+      if (result.courriersLiesAuxTransmissions > 0) {
+        messageDetails.push(`${result.courriersLiesAuxTransmissions} courrier(s) parent(s) automatiquement`);
+      }
+    }
+    
+    if (idCourriersDepart.length > 0) {
+      messageDetails.push(`${idCourriersDepart.length} courrier(s) départ`);
+    }
 
     return this.responseFormatter.success(
       result.archive,
       'Création archive',
-      `Archive créée avec succès. Coffre: ${result.updatedCoffre.nombrePlaceActuelle}/${result.updatedCoffre.tailleMaximale} places.`,
+      `Archive créée avec succès: ${messageDetails.join(', ')}. Coffre: ${result.updatedCoffre.nombrePlaceActuelle}/${result.updatedCoffre.tailleMaximale} places.`,
     );
   }
 
@@ -1204,6 +1301,301 @@ export class ArchiveService {
       result,
       'Liste des éléments transférés',
       `${total} élément(s) transféré(s) trouvé(s) (${totalCourriers} courrier(s), ${totalTransmissions} transmission(s), ${totalCourriersDepart} courrier(s) départ).`,
+    );
+  }
+
+  // 📤 Désarchiver des éléments
+  async unarchive(unarchiveDto: UnarchiveDto, userId: number) {
+    const { idCourriers = [], idTransmissions = [], idCourriersDepart = [], idSalle, idCoffre } = unarchiveDto;
+
+    // Vérifier qu'au moins un type d'élément est fourni
+    if (idCourriers.length === 0 && idTransmissions.length === 0 && idCourriersDepart.length === 0) {
+      throw new BadRequestException('Au moins un type d\'élément doit être fourni pour le désarchivage.');
+    }
+
+    // Vérifier que la salle existe, n'est pas supprimée et est active
+    const salle = await this.prismaService.salle.findFirst({
+      where: { 
+        id: idSalle, 
+        isDelete: false,
+        isActive: true,
+      },
+    });
+
+    if (!salle) {
+      throw new BadRequestException(`La salle avec l'ID ${idSalle} n'existe pas, est supprimée ou inactive.`);
+    }
+
+    // Vérifier que le coffre existe, n'est pas supprimé et est actif
+    const coffre = await this.prismaService.coffre.findFirst({
+      where: {
+        id: idCoffre,
+        isDelete: false,
+        isActive: true,
+      },
+    });
+
+    if (!coffre) {
+      throw new NotFoundException('Coffre non trouvé, supprimé ou inactif.');
+    }
+
+    // Vérifier que le coffre appartient bien à la salle
+    if (coffre.idSalle !== idSalle) {
+      throw new BadRequestException(`Le coffre avec l'ID ${idCoffre} n'appartient pas à la salle avec l'ID ${idSalle}.`);
+    }
+
+    // Fonction utilitaire pour déterminer le statut selon les règles métier
+    const determinerStatut = (transmission: any) => {
+      if (transmission.isArchive) return 'Archivé';
+      if (transmission.isinstance) return 'En instance';
+      if (transmission.accuseReception) return 'Reçu';
+      return 'En traitement';
+    };
+
+    // Effectuer le désarchivage et mettre à jour les entités (transaction)
+    const result = await this.prismaService.$transaction(async (prisma) => {
+      let courriersDesarchives = 0;
+      let transmissionsDesarchivees = 0;
+      let courriersDeparsDesarchives = 0;
+      let transmissionsLieesDesarchivees = 0;
+      let courriersParentsDesarchives = 0;
+
+      // Désarchiver les courriers et leurs transmissions liées
+      if (idCourriers.length > 0) {
+        // Récupérer les détails des courriers pour déterminer le statut
+        const courriers = await prisma.courrier.findMany({
+          where: { id: { in: idCourriers }, isArchive: true },
+          include: {
+            transmissions: {
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+        });
+
+        // Mettre à jour chaque courrier et ses transmissions liées
+        for (const courrier of courriers) {
+          const derniereTrans = courrier.transmissions[0];
+          let nouveauStatut = 'En traitement';
+
+          if (derniereTrans) {
+            nouveauStatut = determinerStatut(derniereTrans);
+          }
+
+          // Désarchiver le courrier
+          await prisma.courrier.update({
+            where: { id: courrier.id },
+            data: {
+              statut: nouveauStatut,
+              isArchive: false,
+              statutArchive: null,
+            },
+          });
+
+          // Désarchiver automatiquement toutes les transmissions liées qui sont archivées
+          const transmissionsArchivees = courrier.transmissions.filter(t => t.isArchive);
+          
+          for (const transmission of transmissionsArchivees) {
+            const statutTransmission = determinerStatut(transmission);
+            
+            await prisma.transmission.update({
+              where: { id: transmission.id },
+              data: {
+                statut: statutTransmission,
+                isArchive: false,
+                statutArchive: null,
+              },
+            });
+            
+            transmissionsLieesDesarchivees++;
+          }
+        }
+
+        courriersDesarchives = courriers.length;
+      }
+
+      // Récupérer les IDs des transmissions déjà désarchivées par les courriers
+      const transmissionsDejaDesarchivees = new Set<number>();
+      
+      if (idCourriers.length > 0) {
+        const transmissionsDejaCouvertes = await prisma.transmission.findMany({
+          where: { 
+            idCourrier: { in: idCourriers },
+            isArchive: false // Celles qui ont été désarchivées
+          },
+          select: { id: true }
+        });
+        
+        transmissionsDejaCouvertes.forEach(t => transmissionsDejaDesarchivees.add(t.id));
+      }
+
+      // Désarchiver les transmissions explicites et gérer les courriers parents
+      if (idTransmissions.length > 0) {
+        const transmissionsExplicites = idTransmissions.filter(id => 
+          !transmissionsDejaDesarchivees.has(id)
+        );
+        
+        if (transmissionsExplicites.length > 0) {
+          const transmissions = await prisma.transmission.findMany({
+            where: { id: { in: transmissionsExplicites }, isArchive: true },
+            include: { courrier: true }
+          });
+
+          const courriersAVerifier = new Set<number>();
+
+          // Désarchiver chaque transmission et collecter les courriers parents
+          for (const transmission of transmissions) {
+            const nouveauStatut = determinerStatut(transmission);
+
+            await prisma.transmission.update({
+              where: { id: transmission.id },
+              data: {
+                statut: nouveauStatut,
+                isArchive: false,
+                statutArchive: null,
+              },
+            });
+
+            // Collecter le courrier parent pour vérification
+            if (transmission.idCourrier && transmission.courrier?.isArchive) {
+              courriersAVerifier.add(transmission.idCourrier);
+            }
+          }
+
+          // Vérifier chaque courrier parent : le désarchiver seulement si aucune autre transmission n'est archivée
+          for (const idCourrierParent of courriersAVerifier) {
+            // Vérifier s'il reste des transmissions archivées pour ce courrier
+            const transmissionsArchiveesRestantes = await prisma.transmission.findMany({
+              where: { 
+                idCourrier: idCourrierParent,
+                isArchive: true
+              }
+            });
+
+            // Si aucune transmission archivée ne reste, désarchiver le courrier parent
+            if (transmissionsArchiveesRestantes.length === 0) {
+              const courrier = await prisma.courrier.findUnique({
+                where: { id: idCourrierParent },
+                include: {
+                  transmissions: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1
+                  }
+                }
+              });
+
+              if (courrier) {
+                const derniereTrans = courrier.transmissions[0];
+                const nouveauStatut = derniereTrans ? determinerStatut(derniereTrans) : 'En traitement';
+
+                await prisma.courrier.update({
+                  where: { id: idCourrierParent },
+                  data: {
+                    statut: nouveauStatut,
+                    isArchive: false,
+                    statutArchive: null,
+                  },
+                });
+
+                courriersParentsDesarchives++;
+              }
+            }
+          }
+
+          transmissionsDesarchivees = transmissions.length;
+        }
+      }
+
+      // Désarchiver les courriers départ
+      if (idCourriersDepart.length > 0) {
+        const courriersDepart = await prisma.courrierDepart.findMany({
+          where: { id: { in: idCourriersDepart }, isArchive: true },
+        });
+
+        await prisma.courrierDepart.updateMany({
+          where: { id: { in: idCourriersDepart }, isArchive: true },
+          data: {
+            isArchive: false,
+            statutArchive: null,
+          },
+        });
+
+        courriersDeparsDesarchives = courriersDepart.length;
+      }
+
+      // Décrémenter le nombre de places occupées dans le coffre
+      const totalElementsDesarchives = courriersDesarchives + transmissionsDesarchivees + transmissionsLieesDesarchivees + courriersDeparsDesarchives + courriersParentsDesarchives;
+      
+      if (totalElementsDesarchives > 0) {
+        await prisma.coffre.update({
+          where: { id: idCoffre },
+          data: {
+            nombrePlaceActuelle: Math.max(0, coffre.nombrePlaceActuelle - totalElementsDesarchives),
+          },
+        });
+      }
+
+      // Supprimer les enregistrements d'archivage
+      const archivesToDelete: any[] = [];
+
+      if (idCourriers.length > 0) {
+        archivesToDelete.push({
+          idCourrier: { in: idCourriers }
+        });
+      }
+
+      if (idTransmissions.length > 0) {
+        archivesToDelete.push({
+          idTransmission: { in: idTransmissions }
+        });
+      }
+
+      if (idCourriersDepart.length > 0) {
+        archivesToDelete.push({
+          idCourrierDepart: { in: idCourriersDepart }
+        });
+      }
+
+      // Supprimer les archives avec OR condition
+      if (archivesToDelete.length > 0) {
+        await prisma.archive.deleteMany({
+          where: {
+            OR: archivesToDelete,
+            idSalle,
+            idCoffre,
+          },
+        });
+      }
+
+      return {
+        courriersDesarchives,
+        transmissionsDesarchivees,
+        transmissionsLieesDesarchivees,
+        courriersParentsDesarchives,
+        courriersDeparsDesarchives,
+        totalElementsDesarchives,
+      };
+    });
+
+    // Message de succès
+    const messages: string[] = [];
+    if (result.courriersDesarchives > 0) {
+      messages.push(`${result.courriersDesarchives} courrier(s)`);
+      if (result.transmissionsLieesDesarchivees > 0) {
+        messages.push(`${result.transmissionsLieesDesarchivees} transmission(s) liée(s) automatiquement`);
+      }
+    }
+    if (result.transmissionsDesarchivees > 0) {
+      messages.push(`${result.transmissionsDesarchivees} transmission(s) explicite(s)`);
+      if (result.courriersParentsDesarchives > 0) {
+        messages.push(`${result.courriersParentsDesarchives} courrier(s) parent(s) automatiquement`);
+      }
+    }
+    if (result.courriersDeparsDesarchives > 0) messages.push(`${result.courriersDeparsDesarchives} courrier(s) départ`);
+
+    return this.responseFormatter.success(
+      result,
+      'Désarchivage réussi',
+      `${result.totalElementsDesarchives} élément(s) désarchivé(s) avec succès: ${messages.join(', ')}.`,
     );
   }
 }

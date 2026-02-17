@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateTraitementDto } from './dto/create-traitement.dto';
 import { UpdateTraitementDto } from './dto/update-traitement.dto';
 import { AccuserReceptionTransmissionsDto } from './dto/accuser-reception-transmissions.dto';
+import { ClasserTransmissionDto } from './dto/classer-transmission.dto';
 import { ListTransmissionsQueryDto } from './dto/list-transmissions-query.dto';
 import { RelanceQueryDto } from './dto/relance-query.dto';
 import { PaginationService } from '../common/pagination.service';
@@ -1073,11 +1074,22 @@ export class TraitementService {
           : null,
         structuresCopie: transmission.structuresCopie || null,
         dateInstruction: transmission.dateInstruction,
+        dateReception: transmission.dateReception,
         instruction: transmission.instruction,
+        commentairePublic: transmission.commentairePublic,
+        commentaireInterne: transmission.commentaireInterne,
         delaiTraitement: transmission.delaiTraitement,
         typeTransfert: transmission.typeTransfert,
         accuseReception: transmission.accuseReception,
         statut: transmission.statut,
+        document: transmission.document,
+        pieceJointe: transmission.pieceJointe,
+        isDelete: transmission.isDelete,
+        isArchive: transmission.isArchive,
+        isGeled: transmission.isGeled,
+        isinstance: transmission.isinstance,
+        statutArchive: transmission.statutArchive,
+        viderPar: transmission.viderPar,
         dernierStatutService: latestTransmission
           ? {
               statut: latestTransmission.statut,
@@ -1095,7 +1107,6 @@ export class TraitementService {
               canModify: canModifyTransmission,
             }
           : null,
-        isinstance: transmission.isinstance,
         nombrePieceJointe: transmission.nombrePieceJointe,
         traitePar: transmission.traitePar || [],
         piecesJointes: transmission.piecesJointes || [],
@@ -1988,6 +1999,14 @@ export class TraitementService {
         typeTransfert: transmission.typeTransfert,
         accuseReception: transmission.accuseReception,
         statut: transmission.statut,
+        document: transmission.document,
+        pieceJointe: transmission.pieceJointe,
+        isDelete: transmission.isDelete,
+        isArchive: transmission.isArchive,
+        isGeled: transmission.isGeled,
+        isinstance: transmission.isinstance,
+        statutArchive: transmission.statutArchive,
+        viderPar: transmission.viderPar,
         dernierStatutService: latestTransmission
           ? {
               statut: latestTransmission.statut,
@@ -2005,7 +2024,6 @@ export class TraitementService {
               canModify: canModifyTransmission,
             }
           : null,
-        instanceof: transmission.isinstance,
         nombrePieceJointe: transmission.nombrePieceJointe,
         traitePar: transmission.traitePar || [],
         piecesJointes: transmission.piecesJointes || [],
@@ -2469,7 +2487,7 @@ export class TraitementService {
   }
 
   // 📁 Classer une transmission (et le courrier lié automatiquement)
-  async classerTransmission(id: number) {
+  async classerTransmission(id: number, classerDto: ClasserTransmissionDto, userId: number) {
     // Vérifier que la transmission existe
     const transmission = await this.prismaService.transmission.findUnique({
       where: { id },
@@ -2480,9 +2498,9 @@ export class TraitementService {
       throw new NotFoundException(`La transmission avec l'ID ${id} n'existe pas.`);
     }
 
-    // Vérifier que la transmission n'est pas déjà archivée (classée)
-    if (transmission.isArchive) {
-      throw new BadRequestException('Cette transmission est déjà classée (archivée).');
+    // Vérifier que la transmission n'est pas déjà gelée (classée)
+    if (transmission.isGeled) {
+      throw new BadRequestException('Cette transmission est déjà classée (gelée).');
     }
 
     // Vérifier que le courrier existe
@@ -2490,12 +2508,31 @@ export class TraitementService {
       throw new NotFoundException(`Le courrier lié à cette transmission n'existe pas.`);
     }
 
+    // Récupérer les informations de l'utilisateur qui classe
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { id: true, firstName: true, lastName: true, username: true },
+    });
+
+    // Préparer les données de traitement
+    const traitePar = (transmission.traitePar as any[]) || [];
+    const nouveauTraitement = {
+      userId: userId,
+      userName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : 'Utilisateur inconnu',
+      action: 'Classé',
+      date: new Date(),
+    };
+    traitePar.push(nouveauTraitement);
+
     // Mettre à jour la transmission
     const transmissionClassee = await this.prismaService.transmission.update({
       where: { id },
       data: {
         statut: 'Classé',
-        isArchive: true,
+        isGeled: true,
+        traitePar: traitePar,
+        commentairePublic: classerDto.commentairePublic || transmission.commentairePublic,
+        commentaireInterne: classerDto.commentaireInterne || transmission.commentaireInterne,
       },
     });
 
@@ -2520,7 +2557,7 @@ export class TraitementService {
   }
 
   // 📂 Déclasser une transmission (et le courrier lié automatiquement)
-  async declasserTransmission(id: number) {
+  async declasserTransmission(id: number, userId: number) {
     // Vérifier que la transmission existe
     const transmission = await this.prismaService.transmission.findUnique({
       where: { id },
@@ -2531,9 +2568,9 @@ export class TraitementService {
       throw new NotFoundException(`La transmission avec l'ID ${id} n'existe pas.`);
     }
 
-    // Vérifier que la transmission est bien archivée (classée)
-    if (!transmission.isArchive) {
-      throw new BadRequestException('Cette transmission n\'est pas classée (archivée). Impossible de la déclasser.');
+    // Vérifier que la transmission est bien gelée (classée)
+    if (!transmission.isGeled) {
+      throw new BadRequestException('Cette transmission n\'est pas classée (gelée). Impossible de la déclasser.');
     }
 
     // Vérifier que le courrier existe
@@ -2541,24 +2578,40 @@ export class TraitementService {
       throw new NotFoundException(`Le courrier lié à cette transmission n'existe pas.`);
     }
 
+    // Récupérer les informations de l'utilisateur
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { id: true, firstName: true, lastName: true, username: true },
+    });
+
     // Déterminer le nouveau statut basé sur les propriétés de la transmission
-    let nouveauStatut = 'Transmis'; // Statut par défaut
+    let nouveauStatut = 'En traitement'; // Statut par défaut
 
     if (transmission.isArchive) {
       nouveauStatut = 'Archivé';
     } else if (transmission.isinstance) {
-      nouveauStatut = 'Instancié';
+      nouveauStatut = 'En instance';
     } else if (transmission.accuseReception) {
       nouveauStatut = 'Reçu';
     }
 
-    // Mettre à jour la transmission
+    // Préparer les données de traitement
+    const traitePar = (transmission.traitePar as any[]) || [];
+    const nouveauTraitement = {
+      userId: userId,
+      userName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : 'Utilisateur inconnu',
+      action: 'Déclassé',
+      date: new Date(),
+    };
+    traitePar.push(nouveauTraitement);
+
+    // Mettre à jour la transmission (ne pas modifier isArchive)
     const transmissionDeclassee = await this.prismaService.transmission.update({
       where: { id },
       data: {
         statut: nouveauStatut,
-        isArchive: false,
         isGeled: false,
+        traitePar: traitePar,
       },
     });
 
@@ -2583,7 +2636,7 @@ export class TraitementService {
   }
 
   // 📌 Instancier une transmission
-  async instancierTransmission(id: number) {
+  async instancierTransmission(id: number, userId: number) {
     // Vérifier que la transmission existe
     const transmission = await this.prismaService.transmission.findUnique({
       where: { id },
@@ -2598,12 +2651,29 @@ export class TraitementService {
       throw new BadRequestException('Cette transmission est déjà instanciée.');
     }
 
+    // Récupérer les informations de l'utilisateur
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { id: true, firstName: true, lastName: true, username: true },
+    });
+
+    // Préparer les données de traitement
+    const traitePar = (transmission.traitePar as any[]) || [];
+    const nouveauTraitement = {
+      userId: userId,
+      userName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : 'Utilisateur inconnu',
+      action: 'Instancié',
+      date: new Date(),
+    };
+    traitePar.push(nouveauTraitement);
+
     // Mettre à jour la transmission
     const transmissionInstanciee = await this.prismaService.transmission.update({
       where: { id },
       data: {
         isinstance: true,
         statut: 'Instancié',
+        traitePar: traitePar,
       },
     });
 
@@ -2615,7 +2685,7 @@ export class TraitementService {
   }
 
   // 📍 Désinstancier une transmission
-  async desinstancierTransmission(id: number) {
+  async desinstancierTransmission(id: number, userId: number) {
     // Vérifier que la transmission existe
     const transmission = await this.prismaService.transmission.findUnique({
       where: { id },
@@ -2629,6 +2699,12 @@ export class TraitementService {
     if (!transmission.isinstance) {
       throw new BadRequestException('Cette transmission n\'est pas instanciée. Impossible de la désinstancier.');
     }
+
+    // Récupérer les informations de l'utilisateur
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { id: true, firstName: true, lastName: true, username: true },
+    });
 
     // Déterminer le nouveau statut basé sur les propriétés de la transmission
     let nouveauStatut = 'Transmis'; // Statut par défaut
@@ -2645,12 +2721,23 @@ export class TraitementService {
       nouveauStatut = 'Reçu';
     }
 
+    // Préparer les données de traitement
+    const traitePar = (transmission.traitePar as any[]) || [];
+    const nouveauTraitement = {
+      userId: userId,
+      userName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : 'Utilisateur inconnu',
+      action: 'Désinstancié',
+      date: new Date(),
+    };
+    traitePar.push(nouveauTraitement);
+
     // Mettre à jour la transmission
     const transmissionDesinstanciee = await this.prismaService.transmission.update({
       where: { id },
       data: {
         isinstance: false,
         statut: nouveauStatut,
+        traitePar: traitePar,
       },
     });
 
@@ -2662,7 +2749,7 @@ export class TraitementService {
   }
 
   // ✉️ Accuser réception de plusieurs transmissions
-  async accuserReceptionTransmissions(accuserReceptionDto: AccuserReceptionTransmissionsDto) {
+  async accuserReceptionTransmissions(accuserReceptionDto: AccuserReceptionTransmissionsDto, userId: number) {
     const { transmissionIds } = accuserReceptionDto;
 
     // Récupérer toutes les transmissions
@@ -2697,16 +2784,34 @@ export class TraitementService {
       );
     }
 
-    // Mettre à jour toutes les transmissions
-    await this.prismaService.transmission.updateMany({
-      where: {
-        id: { in: transmissionIds },
-      },
-      data: {
-        accuseReception: true,
-        statut: 'Reçu',
-      },
+    // Récupérer les informations de l'utilisateur
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { id: true, firstName: true, lastName: true, username: true },
     });
+
+    const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : 'Utilisateur inconnu';
+
+    // Mettre à jour chaque transmission individuellement pour ajouter traitePar
+    for (const transmission of transmissions) {
+      const traitePar = (transmission.traitePar as any[]) || [];
+      const nouveauTraitement = {
+        userId: userId,
+        userName: userName,
+        action: 'Accusé de réception',
+        date: new Date(),
+      };
+      traitePar.push(nouveauTraitement);
+
+      await this.prismaService.transmission.update({
+        where: { id: transmission.id },
+        data: {
+          accuseReception: true,
+          statut: 'Reçu',
+          traitePar: traitePar,
+        },
+      });
+    }
 
     // Récupérer les IDs des courriers uniques liés aux transmissions
     const courrierIds = [...new Set(

@@ -63,6 +63,19 @@ export class StatistiqueService {
       ...(filters.serviceId ? { idService: filters.serviceId } : {}),
     };
 
+    // Filtres pour les entités liées aux courriers
+    const courrierRelationFilter: any = {
+      isDelete: false,
+      ...(filters.priorite || filters.isConfidentiel !== undefined || filters.serviceId ? {
+        courrier: {
+          isDelete: false,
+          ...(filters.priorite ? { priorite: filters.priorite } : {}),
+          ...(filters.isConfidentiel !== undefined ? { isConfidentiel: filters.isConfidentiel } : {}),
+          ...(filters.serviceId ? { idService: filters.serviceId } : {}),
+        }
+      } : {}),
+    };
+
     const [
       courriers,
       courriersDepart,
@@ -85,7 +98,7 @@ export class StatistiqueService {
       }),
       this.prismaService.courrierDepart.findMany({
         where: {
-          isDelete: false,
+          ...courrierRelationFilter,
           ...(createdAt ? { createdAt } : {}),
         },
         include: {
@@ -96,7 +109,7 @@ export class StatistiqueService {
       }),
       this.prismaService.transmission.findMany({
         where: {
-          isDelete: false,
+          ...courrierRelationFilter,
           ...(createdAt ? { createdAt } : {}),
         },
         include: {
@@ -107,7 +120,7 @@ export class StatistiqueService {
       }),
       this.prismaService.reponse.findMany({
         where: {
-          isDelete: false,
+          ...courrierRelationFilter,
           ...(createdAt ? { createdAt } : {}),
         },
         include: {

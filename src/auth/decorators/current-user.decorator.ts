@@ -3,8 +3,16 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 export const CurrentUser = createParamDecorator(
-  (data: unknown, ctx: ExecutionContext) => {
+  (data: string | undefined, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
-    return request.user;
+    const user = request.user;
+    
+    // Si un paramètre est passé (ex: 'sub', 'id', 'email'), retourner cette propriété
+    if (data && user) {
+      return user[data];
+    }
+    
+    // Sinon retourner l'objet user complet
+    return user;
   },
 );

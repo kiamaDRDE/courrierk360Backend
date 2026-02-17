@@ -107,6 +107,7 @@ export class CourrierInterneService {
       );
     }
     const typesCourrierIds = this.parseJsonIds(dto.typesCourrierIds);
+    const idTransmissions = this.parseJsonIds(dto.idTransmissions);
     const piecesJointesInfo = this.parsePiecesJointesData(dto.piecesJointesData);
 
     const uploadDir = this.ensureUploadDir();
@@ -116,7 +117,7 @@ export class CourrierInterneService {
         data: {
           classeCourrier: dto.classeCourrier || null,
           typesCourrierIds: typesCourrierIds,
-          idTransmission: [],
+          idTransmission: idTransmissions,
           objet: dto.objet || null,
           commentairePublic: dto.commentairePublic || null,
           idService: dto.idService || null,

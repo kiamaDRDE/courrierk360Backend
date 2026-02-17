@@ -542,6 +542,8 @@ model Transmission {
   dateInstruction   DateTime? @default(now()) @map("date_instruction")
   dateReception     DateTime? @default(now()) @map("date_reception")
   instruction       String?   @map("instruction") @db.Text
+  commentairePublic String?   @map("commentaire_public") @db.Text
+  commentaireInterne String?  @map("commentaire_interne") @db.Text
   delaiTraitement   Int?      @map("delai_traitement")
   typeTransfert     String?   @map("type_transfert") @db.VarChar(100)
   idService         Int?      @map("id_service")

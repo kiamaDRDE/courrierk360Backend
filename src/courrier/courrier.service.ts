@@ -672,19 +672,36 @@ export class CourrierService {
       throw new BadRequestException('Ce courrier est déjà classé (gelé).');
     }
 
-    // Mettre à jour le courrier
-    const courrierClasse = await this.prismaService.courrier.update({
-      where: { id },
-      data: {
-        statut: 'Classé',
-        isGeled: true,
-      },
+    // Effectuer les mises à jour en transaction
+    const result = await this.prismaService.$transaction(async (prisma) => {
+      // Mettre à jour le courrier
+      const courrierClasse = await prisma.courrier.update({
+        where: { id },
+        data: {
+          statut: 'Classé',
+          isGeled: true,
+        },
+      });
+
+      // Classer toutes les transmissions liées
+      await prisma.transmission.updateMany({
+        where: { 
+          idCourrier: id,
+          isGeled: false // Seulement les transmissions non déjà gelées
+        },
+        data: {
+          statut: 'Classé',
+          isGeled: true,
+        },
+      });
+
+      return courrierClasse;
     });
 
     return this.responseFormatter.success(
-      courrierClasse,
+      result,
       'Classement courrier',
-      `Courrier ${courrierClasse.numero} classé avec succès.`,
+      `Courrier ${result.numero} et toutes ses transmissions classés avec succès.`,
     );
   }
 
@@ -711,31 +728,48 @@ export class CourrierService {
     });
 
     // Déterminer le nouveau statut basé sur la dernière transmission
-    let nouveauStatut = 'Transmis'; // Statut par défaut
+    let nouveauStatut = 'En traitement'; // Statut par défaut
 
     if (derniereTransmission) {
       if (derniereTransmission.isArchive) {
         nouveauStatut = 'Archivé';
       } else if (derniereTransmission.isinstance) {
-        nouveauStatut = 'Instancié';
+        nouveauStatut = 'En instance';
       } else if (derniereTransmission.accuseReception) {
         nouveauStatut = 'Reçu';
       }
     }
 
-    // Mettre à jour le courrier
-    const courrierDeclasse = await this.prismaService.courrier.update({
-      where: { id },
-      data: {
-        statut: nouveauStatut,
-        isGeled: false,
-      },
+    // Effectuer les mises à jour en transaction
+    const result = await this.prismaService.$transaction(async (prisma) => {
+      // Mettre à jour le courrier
+      const courrierDeclasse = await prisma.courrier.update({
+        where: { id },
+        data: {
+          statut: nouveauStatut,
+          isGeled: false,
+        },
+      });
+
+      // Déclasser toutes les transmissions liées
+      await prisma.transmission.updateMany({
+        where: { 
+          idCourrier: id,
+          isGeled: true // Seulement les transmissions actuellement gelées
+        },
+        data: {
+          statut: nouveauStatut,
+          isGeled: false,
+        },
+      });
+
+      return courrierDeclasse;
     });
 
     return this.responseFormatter.success(
-      courrierDeclasse,
+      result,
       'Déclassement courrier',
-      `Courrier ${courrierDeclasse.numero} déclassé avec succès. Nouveau statut: ${nouveauStatut}.`,
+      `Courrier ${result.numero} et toutes ses transmissions déclassés avec succès. Nouveau statut : ${nouveauStatut}.`,
     );
   }
 

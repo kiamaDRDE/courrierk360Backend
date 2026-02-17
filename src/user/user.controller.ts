@@ -166,15 +166,7 @@ export class UserController {
     }
   })
   async getProfile(@CurrentUser() user: UserPayload) {
-    const profile = await this.userService.getProfile(user.id);
-    return new ResponseApi(
-      true,
-      200,
-      'USER_PROFILE_RETRIEVED',
-      'Profil utilisateur récupéré avec succès',
-      'Les informations du profil utilisateur ont été récupérées avec succès',
-      profile
-    );
+    return this.userService.getProfile(user.id);
   }
 
   // 🔐 API 2: Changer le mot de passe de l'utilisateur connecté

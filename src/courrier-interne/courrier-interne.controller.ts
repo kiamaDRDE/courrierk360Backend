@@ -34,7 +34,30 @@ export class CourrierInterneController {
   @Post()
   @UseInterceptors(FileFieldsInterceptor([{ name: 'piecesJointes', maxCount: 10 }]))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Créer une réponse interne' })
+  @ApiOperation({ 
+    summary: 'Créer une réponse interne',
+    description: `
+Créer une réponse courrier interne avec possibilité de la lier à des transmissions existantes.
+
+**Champs obligatoires** :
+- classeCourrier : Classe du courrier
+- typesCourrierIds : IDs des types de courrier (JSON array ou liste CSV)
+- objet : Objet du courrier
+- idService : ID du service destinataire
+
+**Champs optionnels** :
+- idTransmissions : IDs des transmissions à lier (JSON array ou liste CSV)
+- commentairePublic : Commentaire public
+- typeTransmission : Type de transmission
+- nombrePieceJointe : Nombre de pièces jointes
+- piecesJointesData : Métadonnées des pièces jointes (JSON)
+- sendNotification : Envoyer une notification (email/SMS) au service
+- piecesJointes : Fichiers à joindre
+
+**Exemple d'utilisation** :
+Si vous liez des transmissions existantes, la réponse sera associée à ces transmissions pour un suivi cohérent.
+    `
+  })
   @ApiResponse({
     status: 201,
     description: 'Réponse créée avec succès.',
@@ -75,24 +98,64 @@ export class CourrierInterneController {
     schema: {
       type: 'object',
       properties: {
-        classeCourrier: { type: 'string' },
-        typesCourrierIds: { type: 'string', description: 'JSON array ou liste séparée par virgules' },
-        objet: { type: 'string' },
-        commentairePublic: { type: 'string' },
-        idService: { type: 'number' },
-        typeTransmission: { type: 'string' },
-        nombrePieceJointe: { type: 'number' },
+        classeCourrier: { 
+          type: 'string', 
+          description: 'Classe du courrier (obligatoire)',
+          example: 'Interne'
+        },
+        typesCourrierIds: { 
+          type: 'string', 
+          description: 'IDs des types de courrier - JSON array ou liste CSV (obligatoire)',
+          example: '[1,3]'
+        },
+        objet: { 
+          type: 'string', 
+          description: 'Objet du courrier (obligatoire)',
+          example: 'Réponse à la demande d\'information'
+        },
+        idService: { 
+          type: 'number', 
+          description: 'ID du service destinataire (obligatoire)',
+          example: 2
+        },
+        idTransmissions: {
+          type: 'string',
+          description: 'IDs des transmissions à lier - JSON array ou liste CSV (optionnel)',
+          example: '[10,15,20]'
+        },
+        commentairePublic: { 
+          type: 'string', 
+          description: 'Commentaire public (optionnel)',
+          example: 'Traitement effectué selon la procédure'
+        },
+        typeTransmission: { 
+          type: 'string', 
+          description: 'Type de transmission (optionnel)',
+          example: 'Copie'
+        },
+        nombrePieceJointe: { 
+          type: 'number', 
+          description: 'Nombre de pièces jointes (optionnel, calculé automatiquement)',
+          example: 2
+        },
         piecesJointesData: {
           type: 'string',
-          description: 'JSON stringifié contenant les intitulés des pièces jointes',
-          example: '[{"intitule":"PJ 1"},{"intitule":"PJ 2"}]',
+          description: 'Métadonnées des pièces jointes en JSON (optionnel)',
+          example: '[{"intitule":"Document annexe"},{"intitule":"Justificatif"}]',
         },
-        sendNotification: { type: 'boolean', example: true, default: false },
+        sendNotification: { 
+          type: 'boolean', 
+          description: 'Envoyer une notification email/SMS au service (optionnel)',
+          example: true, 
+          default: false 
+        },
         piecesJointes: {
           type: 'array',
+          description: 'Fichiers à joindre (optionnel)',
           items: { type: 'string', format: 'binary' },
         },
       },
+      required: ['classeCourrier', 'typesCourrierIds', 'objet', 'idService']
     },
   })
   create(

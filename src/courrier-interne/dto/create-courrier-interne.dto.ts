@@ -2,6 +2,7 @@
 
 import { IsOptional, IsString, IsInt, IsNumber, IsBoolean, IsNotEmpty } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateCourrierInterneDto {
   @IsString()
@@ -27,6 +28,15 @@ export class CreateCourrierInterneDto {
   @IsOptional()
   @IsString()
   typeTransmission?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({
+    description: 'IDs des transmissions à lier au courrier interne (JSON array ou liste CSV)',
+    example: '[10,15,20]',
+    required: false
+  })
+  idTransmissions?: string; // JSON string or comma list des IDs de transmission
 
   @IsOptional()
   @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : value))
