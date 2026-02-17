@@ -463,8 +463,20 @@ export class CourrierController {
   // 🔍 Détails d'un courrier
   @Get(':id')
   @ApiOperation({
-    summary: 'Récupérer les détails d\'un courrier',
-    description: 'Retourne les informations détaillées d\'un courrier avec la dernière transmission.',
+    summary: 'Récupérer les détails complets d\'un courrier',
+    description: `
+Retourne toutes les informations détaillées d'un courrier incluant tous ses champs.
+
+**Informations retournées** :
+- Données de base : numero, reference, objet, commentaires
+- Informations expéditeur : nom, civilite, matricule, telephone, email, adresse
+- Classification : classeCourrier, categorie, priorite, statut
+- États : isArchive, statutArchive, isGeled, isDelete, isConfidentiel
+- Dates : dateArrivee, dateEnregistrement, createdAt, updatedAt
+- Relations : provenance, service traitant, créateur
+- Fichiers : document principal et pièces jointes
+- Dernière transmission avec ses détails complets
+    `
   })
   @ApiResponse({
     status: 200,
@@ -478,6 +490,7 @@ export class CourrierController {
         message: 'Courrier récupéré avec succès.',
         data: {
           id: 1,
+          numero: 'CRR-2025-0045',
           reference: 'CA-00045/2025',
           objet: 'Demande de subvention',
           commentaire: 'Lettre prioritaire',
@@ -497,6 +510,12 @@ export class CourrierController {
           nombrePieceJointe: 3,
           dateArrivee: '2025-02-14T09:30:00+00:00',
           dateEnregistrement: '2025-02-14T09:35:00+00:00',
+          idTypeCourrier: 1,
+          isArchive: false,
+          statutArchive: null,
+          isGeled: false,
+          isDelete: false,
+          isConfidentiel: true,
           createdAt: '2025-02-14T09:30:00+00:00',
           updatedAt: '2025-02-14T09:35:00+00:00',
           idProvenance: { id: 5, nom: 'Correspondant externe' },

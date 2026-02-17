@@ -1350,6 +1350,7 @@ export class CourrierService {
 
     const response = {
       id: courrier.id,
+      numero: courrier.numero,
       reference: courrier.reference,
       objet: courrier.objet,
       commentaire: courrier.commentaire,
@@ -1369,6 +1370,12 @@ export class CourrierService {
       nombrePieceJointe: courrier.nombrePieceJointe,
       dateArrivee: courrier.dateArrivee,
       dateEnregistrement: courrier.dateEnregistrement,
+      idTypeCourrier: courrier.idTypeCourrier,
+      isArchive: courrier.isArchive,
+      statutArchive: courrier.statutArchive,
+      isGeled: courrier.isGeled,
+      isDelete: courrier.isDelete,
+      isConfidentiel: courrier.isConfidentiel,
       createdAt: courrier.createdAt,
       updatedAt: courrier.updatedAt,
       idProvenance: courrier.provenance ? { id: courrier.provenance.id, nom: courrier.provenance.nom } : null,
