@@ -1120,7 +1120,7 @@ export class TraitementService {
         const last = item.dernierStatutService;
         if (!last) return false;
 
-        if (filters.dernierStatut && last.statut !== filters.dernierStatut) {
+        if (filters.dernierStatut && last.statut?.toLowerCase() !== filters.dernierStatut.toLowerCase()) {
           return false;
         }
 
@@ -1565,7 +1565,7 @@ export class TraitementService {
         const last = item.dernierStatutService;
         if (!last) return false;
 
-        if (filters.dernierStatut && last.statut !== filters.dernierStatut) {
+        if (filters.dernierStatut && last.statut?.toLowerCase() !== filters.dernierStatut.toLowerCase()) {
           return false;
         }
 
@@ -2037,7 +2037,7 @@ export class TraitementService {
         const last = item.dernierStatutService;
         if (!last) return false;
 
-        if (filters.dernierStatut && last.statut !== filters.dernierStatut) {
+        if (filters.dernierStatut && last.statut?.toLowerCase() !== filters.dernierStatut.toLowerCase()) {
           return false;
         }
 
@@ -2584,8 +2584,16 @@ export class TraitementService {
       select: { id: true, firstName: true, lastName: true, username: true },
     });
 
-    // Déterminer le nouveau statut basé sur les propriétés de la transmission
+    // Déterminer le nouveau statut basé sur les propriétés actuelles de la transmission
     let nouveauStatut = 'En traitement'; // Statut par défaut
+
+    // Debug: Afficher les propriétés pour diagnostic
+    console.log(`DEBUG Déclassement transmission ${id}:`, {
+      isArchive: transmission.isArchive,
+      isinstance: transmission.isinstance,
+      accuseReception: transmission.accuseReception,
+      currentStatus: transmission.statut
+    });
 
     if (transmission.isArchive) {
       nouveauStatut = 'Archivé';
@@ -2594,6 +2602,8 @@ export class TraitementService {
     } else if (transmission.accuseReception) {
       nouveauStatut = 'Reçu';
     }
+
+    console.log(`DEBUG Nouveau statut calculé: ${nouveauStatut}`);
 
     // Préparer les données de traitement
     const traitePar = (transmission.traitePar as any[]) || [];
