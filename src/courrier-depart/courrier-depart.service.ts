@@ -47,6 +47,21 @@ export class CourrierDepartService {
     return range;
   }
 
+  private parseSingleDate(dateValue: string, label?: string) {
+    // Vérifier que la date est valide
+    const testDate = new Date(dateValue);
+    if (Number.isNaN(testDate.getTime())) {
+      throw new BadRequestException(`La date pour ${label || 'le filtre'} est invalide.`);
+    }
+
+    // Retourner directement les chaînes ISO - Prisma gère la conversion automatiquement
+    // Pas besoin de créer des objets Date qui introduisent des problèmes de timezone
+    const start = `${dateValue}T00:00:00.000Z`;
+    const end = `${dateValue}T23:59:59.999Z`;
+
+    return { gte: start, lte: end };
+  }
+
   private parsePiecesJointesData(input?: string): Array<{ intitule?: string }> {
     if (!input) return [];
     const trimmed = String(input).trim();
@@ -79,22 +94,39 @@ export class CourrierDepartService {
     const where: any = { isDelete: false };
     const courrierFilters: any = {};
 
-    const dateArriveeRange = this.parseDateRange(
-      filters.dateArriveeDebut,
-      filters.dateArriveeFin,
-      'dateArrivee',
-    );
-    if (dateArriveeRange) {
-      courrierFilters.dateArrivee = dateArriveeRange;
+    // Filtrer sur dateSignature avec dateArriveeDebut/Fin
+    if (filters.dateArriveeDebut || filters.dateArriveeFin) {
+      // Si les dates sont identiques, utiliser parseSingleDate
+      if (filters.dateArriveeDebut && filters.dateArriveeDebut === filters.dateArriveeFin) {
+        where.dateSignature = this.parseSingleDate(
+          filters.dateArriveeDebut,
+          'dateSignature',
+        );
+      } else {
+        // Sinon utiliser parseDateRange
+        const dateSignatureRange = this.parseDateRange(
+          filters.dateArriveeDebut,
+          filters.dateArriveeFin,
+          'dateSignature',
+        );
+        if (dateSignatureRange) {
+          where.dateSignature = dateSignatureRange;
+        }
+      }
     }
 
-    const dateEnregistrementRange = this.parseDateRange(
-      filters.dateEnregistrementDebut,
-      filters.dateEnregistrementFin,
-      'dateEnregistrement',
-    );
-    if (dateEnregistrementRange) {
-      courrierFilters.dateEnregistrement = dateEnregistrementRange;
+    if (filters.dateEnregistrement) {
+      courrierFilters.dateEnregistrement = this.parseSingleDate(
+        filters.dateEnregistrement,
+        'dateEnregistrement',
+      );
+    }
+
+    if (filters.dateSignature) {
+      where.dateSignature = this.parseSingleDate(
+        filters.dateSignature,
+        'dateSignature',
+      );
     }
 
     if (filters.priorite) {
@@ -132,6 +164,10 @@ export class CourrierDepartService {
       courrierFilters.idProvenance = filters.provenanceId;
     }
 
+    if (filters.CorrespondantId) {
+      where.idDestinataire = filters.CorrespondantId;
+    }
+
     if (Object.keys(courrierFilters).length > 0) {
       where.courrier = { is: courrierFilters };
     }
@@ -139,7 +175,9 @@ export class CourrierDepartService {
     const search = filters.search?.trim();
     if (search) {
       const numericSearch = Number(search);
-      const orFilters: any[] = [
+      
+      // Conditions de recherche sur le courrier départ
+      const courrierDepartOrFilters: any[] = [
         { numeroReference: { contains: search } },
         { numeroActe: { contains: search } },
         { commentaire: { contains: search } },
@@ -148,33 +186,99 @@ export class CourrierDepartService {
         { typeCourrier: { contains: search } },
         { email: { contains: search } },
         { numeroTelephone: { contains: search } },
+        { statutArchive: { contains: search } },
         { destinataire: { is: { nom: { contains: search } } } },
         { destinataire: { is: { email: { contains: search } } } },
         { destinataire: { is: { telephone: { contains: search } } } },
+        { destinataire: { is: { adresse: { contains: search } } } },
+        { destinataire: { is: { civilite: { contains: search } } } },
+        { destinataire: { is: { matricule: { contains: search } } } },
         { signataire: { is: { username: { contains: search } } } },
         { signataire: { is: { firstName: { contains: search } } } },
         { signataire: { is: { lastName: { contains: search } } } },
-        { courrier: { is: { numero: { contains: search } } } },
-        { courrier: { is: { reference: { contains: search } } } },
-        { courrier: { is: { objet: { contains: search } } } },
-        { courrier: { is: { provenance: { is: { nom: { contains: search } } } } } },
+        { signataire: { is: { email: { contains: search } } } },
+        { signataire: { is: { phone: { contains: search } } } },
+        { signataire: { is: { numero: { contains: search } } } },
       ];
 
+      // Conditions de recherche sur le courrier lié
+      const courrierSearchFilters: any[] = [
+        { numero: { contains: search } },
+        { reference: { contains: search } },
+        { objet: { contains: search } },
+        { commentaire: { contains: search } },
+        { commentairePublic: { contains: search } },
+        { commentaireInterne: { contains: search } },
+        { priorite: { contains: search } },
+        { statut: { contains: search } },
+        { document: { contains: search } },
+        { telephone: { contains: search } },
+        { email: { contains: search } },
+        { adresse: { contains: search } },
+        { civilite: { contains: search } },
+        { nom: { contains: search } },
+        { matricule: { contains: search } },
+        { typeTransfert: { contains: search } },
+        { classeCourrier: { contains: search } },
+        { categorie: { contains: search } },
+        { statutArchive: { contains: search } },
+        { typeCourrier: { is: { nom: { contains: search } } } },
+        { provenance: { is: { nom: { contains: search } } } },
+        { provenance: { is: { email: { contains: search } } } },
+        { provenance: { is: { telephone: { contains: search } } } },
+        { provenance: { is: { adresse: { contains: search } } } },
+      ];
+
+      // Recherche numérique
       if (!Number.isNaN(numericSearch)) {
-        orFilters.push(
+        courrierDepartOrFilters.push(
           { id: numericSearch },
           { idDestinataire: numericSearch },
           { idCourrier: numericSearch },
           { idSignataire: numericSearch },
+          { nombrePieceJointe: numericSearch },
+        );
+        
+        // IDs dans le courrier lié
+        courrierSearchFilters.push(
+          { id: numericSearch },
+          { idProvenance: numericSearch },
+          { idTypeCourrier: numericSearch },
+          { idService: numericSearch },
+          { idUser: numericSearch },
+          { nombrePieceJointe: numericSearch },
         );
       }
 
-      where.OR = orFilters;
+      // Ajouter les recherches sur le courrier lié
+      courrierSearchFilters.forEach((filter) => {
+        courrierDepartOrFilters.push({
+          courrier: { is: filter },
+        });
+      });
+
+      where.OR = courrierDepartOrFilters;
     }
 
     const includePayload = {
+      destinataire: { select: { id: true, nom: true } },
+      signataire: { select: { id: true, firstName: true, lastName: true } },
       piecesJointes: { select: { id: true, nom: true, chemin: true, type: true } },
-      courrier: { select: { id: true } },
+      courrier: {
+        select: {
+          id: true,
+          numero: true,
+          reference: true,
+          objet: true,
+          isGeled: true,
+          dateArrivee: true,
+          dateEnregistrement: true,
+          categorie: true,
+          priorite: true,
+          typeCourrier: { select: { nom: true } },
+          provenance: { select: { nom: true } },
+        },
+      },
     } as const;
 
     const requiresLastFilters = Boolean(filters.dernierStatut || filters.dernierServiceId);
@@ -190,6 +294,26 @@ export class CourrierDepartService {
         ? Promise.resolve(0)
         : this.prismaService.courrierDepart.count({ where }),
     ]);
+
+    // Récupérer tous les IDs des correspondants en copie
+    const allProvenancesCopieIds = new Set<number>();
+    courriersDeparts.forEach((cd) => {
+      if (cd.provenancesCopie && Array.isArray(cd.provenancesCopie)) {
+        cd.provenancesCopie.forEach((id: any) => {
+          if (typeof id === 'number') allProvenancesCopieIds.add(id);
+        });
+      }
+    });
+
+    // Charger tous les correspondants en une seule requête
+    const correspondantsMap = new Map<number, { id: number; nom: string }>();
+    if (allProvenancesCopieIds.size > 0) {
+      const correspondants = await this.prismaService.correspondant.findMany({
+        where: { id: { in: Array.from(allProvenancesCopieIds) } },
+        select: { id: true, nom: true },
+      });
+      correspondants.forEach((c) => correspondantsMap.set(c.id, c));
+    }
 
     const courrierIds = courriersDeparts
       .map((c) => c.courrier?.id)
@@ -223,18 +347,82 @@ export class CourrierDepartService {
       }
     }
 
-    let data = courriersDeparts.map((courrierDepart) => ({
-      id: courrierDepart.id,
-      numeroReference: courrierDepart.numeroReference,
-      classeCourrier: courrierDepart.classeCourrier,
-      categorie: courrierDepart.categorie,
-      document: courrierDepart.document,
-      nombrePieceJointe: courrierDepart.nombrePieceJointe,
-      isArchive: courrierDepart.isArchive,
-      provenancesCopie: courrierDepart.provenancesCopie || [],
-      piecesJointes: courrierDepart.piecesJointes || [],
-      courrierId: courrierDepart.courrier?.id || null,
-    }));
+    let data = courriersDeparts.map((courrierDepart) => {
+      const courrierId = courrierDepart.courrier?.id || null;
+      const dernierStatutService = courrierId ? latestByCourrier.get(courrierId) : null;
+
+      // Mapper les provenancesCopie avec les détails des correspondants
+      const provenancesCopieDetaillees: { id: number; nom: string }[] = [];
+      if (courrierDepart.provenancesCopie && Array.isArray(courrierDepart.provenancesCopie)) {
+        courrierDepart.provenancesCopie.forEach((id: any) => {
+          if (typeof id === 'number') {
+            const correspondant = correspondantsMap.get(id);
+            if (correspondant) {
+              provenancesCopieDetaillees.push(correspondant);
+            }
+          }
+        });
+      }
+
+      return {
+        id: courrierDepart.id,
+        numeroReference: courrierDepart.numeroReference,
+        numeroActe: courrierDepart.numeroActe,
+        dateSignature: courrierDepart.dateSignature,
+        typeCourrier: courrierDepart.typeCourrier,
+        commentaire: courrierDepart.commentaire,
+        classeCourrier: courrierDepart.classeCourrier,
+        categorie: courrierDepart.categorie,
+        document: courrierDepart.document,
+        email: courrierDepart.email,
+        numeroTelephone: courrierDepart.numeroTelephone,
+        nombrePieceJointe: courrierDepart.nombrePieceJointe,
+        provenancesCopie: provenancesCopieDetaillees,
+        piecesJointes: (courrierDepart.piecesJointes || []).map((pj) => ({
+          id: pj.id,
+          nom: pj.nom,
+          chemin: pj.chemin,
+          type: pj.type,
+        })),
+        destinataire: courrierDepart.destinataire
+          ? {
+              id: courrierDepart.destinataire.id,
+              nom: courrierDepart.destinataire.nom,
+            }
+          : null,
+        signataire: courrierDepart.signataire
+          ? {
+              id: courrierDepart.signataire.id,
+              fullName: `${courrierDepart.signataire.firstName} ${courrierDepart.signataire.lastName}`,
+            }
+          : { id: null, fullName: null },
+        courrier: courrierDepart.courrier
+          ? {
+              id: courrierDepart.courrier.id,
+              numero: courrierDepart.courrier.numero,
+              reference: courrierDepart.courrier.reference,
+              objet: courrierDepart.courrier.objet,
+              is_geled: courrierDepart.courrier.isGeled,
+              dateArrivee: courrierDepart.courrier.dateArrivee,
+              dateEnregistrement: courrierDepart.courrier.dateEnregistrement,
+              typeCourrier: courrierDepart.courrier.typeCourrier?.nom || null,
+              provenance: courrierDepart.courrier.provenance?.nom || null,
+              categorie: courrierDepart.courrier.categorie,
+              priorite: courrierDepart.courrier.priorite,
+            }
+          : null,
+        dernierStatutService: dernierStatutService
+          ? {
+              statut: dernierStatutService.statut,
+              service: dernierStatutService.service,
+            }
+          : null,
+        isDelete: courrierDepart.isDelete,
+        isArchive: courrierDepart.isArchive,
+        createdAt: courrierDepart.createdAt,
+        courrierId,
+      };
+    });
 
     if (filters.dernierStatut || filters.dernierServiceId) {
       data = data.filter((item) => {
@@ -278,7 +466,24 @@ export class CourrierDepartService {
     const courrierDepart = await this.prismaService.courrierDepart.findUnique({
       where: { id },
       include: {
+        destinataire: { select: { id: true, nom: true, email: true, telephone: true, adresse: true } },
+        signataire: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
         piecesJointes: { select: { id: true, nom: true, intitule: true, chemin: true, type: true, createdAt: true } },
+        courrier: {
+          select: {
+            id: true,
+            numero: true,
+            reference: true,
+            objet: true,
+            isGeled: true,
+            dateArrivee: true,
+            dateEnregistrement: true,
+            categorie: true,
+            priorite: true,
+            typeCourrier: { select: { nom: true } },
+            provenance: { select: { nom: true } },
+          },
+        },
       },
     });
 
@@ -286,19 +491,68 @@ export class CourrierDepartService {
       throw new NotFoundException(`Courrier départ avec l'ID ${id} introuvable.`);
     }
 
+    // Charger les correspondants en copie
+    const provenancesCopieDetaillees: { id: number; nom: string; email: string | null; telephone: string; adresse: string | null }[] = [];
+    if (courrierDepart.provenancesCopie && Array.isArray(courrierDepart.provenancesCopie)) {
+      const correspondantIds = courrierDepart.provenancesCopie.filter((id: any) => typeof id === 'number');
+      if (correspondantIds.length > 0) {
+        const correspondants = await this.prismaService.correspondant.findMany({
+          where: { id: { in: correspondantIds } },
+          select: { id: true, nom: true, email: true, telephone: true, adresse: true },
+        });
+        provenancesCopieDetaillees.push(...correspondants);
+      }
+    }
+
     const response = {
       id: courrierDepart.id,
       numeroReference: courrierDepart.numeroReference,
+      numeroActe: courrierDepart.numeroActe,
       dateSignature: courrierDepart.dateSignature,
       typeCourrier: courrierDepart.typeCourrier,
       commentaire: courrierDepart.commentaire,
       classeCourrier: courrierDepart.classeCourrier,
       categorie: courrierDepart.categorie,
       document: courrierDepart.document,
+      email: courrierDepart.email,
+      numeroTelephone: courrierDepart.numeroTelephone,
       nombrePieceJointe: courrierDepart.nombrePieceJointe,
-      provenancesCopie: courrierDepart.provenancesCopie || [],
+      provenancesCopie: provenancesCopieDetaillees,
       piecesJointes: courrierDepart.piecesJointes || [],
+      destinataire: courrierDepart.destinataire
+        ? {
+            id: courrierDepart.destinataire.id,
+            nom: courrierDepart.destinataire.nom,
+            email: courrierDepart.destinataire.email,
+            telephone: courrierDepart.destinataire.telephone,
+            adresse: courrierDepart.destinataire.adresse,
+          }
+        : null,
+      signataire: courrierDepart.signataire
+        ? {
+            id: courrierDepart.signataire.id,
+            fullName: `${courrierDepart.signataire.firstName} ${courrierDepart.signataire.lastName}`,
+            email: courrierDepart.signataire.email,
+            phone: courrierDepart.signataire.phone,
+          }
+        : null,
+      courrier: courrierDepart.courrier
+        ? {
+            id: courrierDepart.courrier.id,
+            numero: courrierDepart.courrier.numero,
+            reference: courrierDepart.courrier.reference,
+            objet: courrierDepart.courrier.objet,
+            is_geled: courrierDepart.courrier.isGeled,
+            dateArrivee: courrierDepart.courrier.dateArrivee,
+            dateEnregistrement: courrierDepart.courrier.dateEnregistrement,
+            typeCourrier: courrierDepart.courrier.typeCourrier?.nom || null,
+            provenance: courrierDepart.courrier.provenance?.nom || null,
+            categorie: courrierDepart.courrier.categorie,
+            priorite: courrierDepart.courrier.priorite,
+          }
+        : null,
       isDelete: courrierDepart.isDelete,
+      isArchive: courrierDepart.isArchive,
       createdAt: courrierDepart.createdAt,
       updatedAt: courrierDepart.updatedAt,
     };
@@ -450,9 +704,9 @@ export class CourrierDepartService {
     document?: Express.Multer.File,
     piecesJointes?: Express.Multer.File[],
   ) {
-    if (!document || !dto.categorie || !dto.classeCourrier || !dto.typeCourrier || !dto.dateSignature || !dto.idSignataire) {
+    if (!document || !dto.categorie || !dto.classeCourrier || !dto.typeCourrier || !dto.dateSignature || !dto.idSignataire || !dto.idDestinataire) {
       throw new BadRequestException(
-        'Les champs document, categorie, classeCourrier, typeCourrier, dateSignature et idSignataire sont obligatoires.',
+        'Les champs document, categorie, classeCourrier, typeCourrier, dateSignature, idSignataire et idDestinataire sont obligatoires.',
       );
     }
     const uploadDir = this.ensureUploadDir();
@@ -467,6 +721,19 @@ export class CourrierDepartService {
     }
 
     const piecesJointesInfo = this.parsePiecesJointesData(dto.piecesJointesData);
+    
+    // Parser provenancesCopie (array d'IDs de correspondants)
+    let provenancesCopieArray: number[] = [];
+    if (dto.provenancesCopie) {
+      try {
+        provenancesCopieArray = JSON.parse(dto.provenancesCopie);
+        if (!Array.isArray(provenancesCopieArray)) {
+          provenancesCopieArray = [];
+        }
+      } catch (error) {
+        provenancesCopieArray = [];
+      }
+    }
 
     const result = await this.prismaService.$transaction(async (prisma) => {
       const courrierDepart = await prisma.courrierDepart.create({
@@ -474,6 +741,7 @@ export class CourrierDepartService {
           document: documentPath,
           numeroReference: dto.numeroReference || null,
           categorie: dto.categorie || null,
+          idDestinataire: dto.idDestinataire,
           idSignataire: dto.idSignataire || null,
           classeCourrier: dto.classeCourrier || null,
           typeCourrier: dto.typeCourrier || null,
@@ -482,6 +750,7 @@ export class CourrierDepartService {
           email: dto.email || null,
           numeroTelephone: dto.numeroTelephone || null,
           nombrePieceJointe: dto.nombrePieceJointe || (piecesJointes?.length ?? 0),
+          provenancesCopie: provenancesCopieArray.length > 0 ? provenancesCopieArray : undefined,
         },
       });
 

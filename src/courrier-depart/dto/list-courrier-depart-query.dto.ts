@@ -19,15 +19,15 @@ export class ListCourrierDepartQueryDto extends PaginationQueryDto {
   @IsString()
   dateArriveeFin?: string;
 
-  @ApiPropertyOptional({ description: "Date d'enregistrement - début (YYYY-MM-DD ou ISO)", example: '2025-02-01' })
+  @ApiPropertyOptional({ description: "Date d'enregistrement (YYYY-MM-DD)", example: '2025-02-16' })
   @IsOptional()
   @IsString()
-  dateEnregistrementDebut?: string;
+  dateEnregistrement?: string;
 
-  @ApiPropertyOptional({ description: "Date d'enregistrement - fin (YYYY-MM-DD ou ISO)", example: '2025-02-28' })
+  @ApiPropertyOptional({ description: 'Date de signature (YYYY-MM-DD)', example: '2025-02-16' })
   @IsOptional()
   @IsString()
-  dateEnregistrementFin?: string;
+  dateSignature?: string;
 
   @ApiPropertyOptional({ description: 'Priorité du courrier lié', example: 'Urgent' })
   @IsOptional()
@@ -78,6 +78,12 @@ export class ListCourrierDepartQueryDto extends PaginationQueryDto {
   @Type(() => Number)
   @IsInt()
   provenanceId?: number;
+
+  @ApiPropertyOptional({ description: 'ID du correspondant destinataire du courrier départ', example: 5 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  CorrespondantId?: number;
 }
 
 export class CourrierDepartIdsDto {

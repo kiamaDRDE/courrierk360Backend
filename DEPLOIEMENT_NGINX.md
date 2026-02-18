@@ -369,6 +369,25 @@ mysql -u courrierk360_user -p courrierk360-backend < backup_20251212.sql
 
 ---
 
+
+<!-- mysql -u root
+
+Créer la base de données (si elle n’existe pas)
+CREATE DATABASE IF NOT EXISTS nom_de_ta_base_de_donnee;
+
+Créer l’utilisateur
+CREATE USER 'nom_de_lutilisateur'@'127.0.0.1' IDENTIFIED BY 'mot_de_passe';
+
+Donner tous les droits sur la base
+GRANT ALL PRIVILEGES ON nom_de_ta_base_de_donnee.* TO 'nom_de_lutilisateur'@'127.0.0.1';
+
+Appliquer les changements
+FLUSH PRIVILEGES;
+
+Vérifier
+SHOW GRANTS FOR 'nom_de_lutilisateur'@'127.0.0.1'; -->
+
+
 ## 🐛 Résolution de problèmes
 
 ### Erreur 502 Bad Gateway

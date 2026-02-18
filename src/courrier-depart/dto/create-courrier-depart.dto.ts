@@ -14,7 +14,16 @@ export class CreateCourrierDepartDto {
 
   @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : value))
   @IsInt()
+  @IsNotEmpty()
+  idDestinataire: number;
+
+  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : value))
+  @IsInt()
   idSignataire: number;
+
+  @IsOptional()
+  @IsString()
+  provenancesCopie?: string; // JSON string des IDs de correspondants en copie
 
   @IsString()
   @IsNotEmpty()

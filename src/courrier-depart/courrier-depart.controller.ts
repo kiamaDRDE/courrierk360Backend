@@ -41,25 +41,131 @@ export class CourrierDepartController {
   @Get()
   @ApiOperation({
     summary: 'Lister les courriers départ',
-    description: 'Liste paginée des courriers départ avec filtres et recherche.',
+    description: `Liste paginée des courriers départ avec filtres et recherche.
+    
+Retourne toutes les informations détaillées incluant:
+- Les données complètes du courrier départ (numeroReference, numeroActe, dateSignature, etc.)
+- Le destinataire avec { id, nom }
+- Le signataire avec { id, fullName }
+- Le courrier lié (si existe) avec tous ses détails (numero, reference, objet, is_geled, dates, typeCourrier, provenance, categorie, priorite)
+- Les pièces jointes avec { id, nom, chemin, type }
+- Les provenances en copie
+- Les métadonnées (isDelete, isArchive, createdAt)`,
   })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'search', required: false, type: String })
-  @ApiQuery({ name: 'dateArriveeDebut', required: false, type: String })
-  @ApiQuery({ name: 'dateArriveeFin', required: false, type: String })
-  @ApiQuery({ name: 'dateEnregistrementDebut', required: false, type: String })
-  @ApiQuery({ name: 'dateEnregistrementFin', required: false, type: String })
-  @ApiQuery({ name: 'priorite', required: false, type: String })
-  @ApiQuery({ name: 'categorie', required: false, type: String })
-  @ApiQuery({ name: 'categorieId', required: false, type: Number })
-  @ApiQuery({ name: 'typeCourrierId', required: false, type: Number })
-  @ApiQuery({ name: 'statut', required: false, type: String })
-  @ApiQuery({ name: 'dernierStatut', required: false, type: String })
-  @ApiQuery({ name: 'serviceId', required: false, type: Number })
-  @ApiQuery({ name: 'dernierServiceId', required: false, type: Number })
-  @ApiQuery({ name: 'provenanceId', required: false, type: Number })
-  @ApiResponse({ status: 200, description: 'Courriers départ récupérés avec succès.' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Numéro de la page (défaut: 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Nombre d\'éléments par page (défaut: 10)' })
+  @ApiQuery({ name: 'search', required: false, type: String, description: 'Recherche dans numeroReference, numeroActe, commentaire, email, destinataire, signataire, courrier lié' })
+  @ApiQuery({ name: 'dateArriveeDebut', required: false, type: String, description: 'Date début (format: YYYY-MM-DD)' })
+  @ApiQuery({ name: 'dateArriveeFin', required: false, type: String, description: 'Date fin (format: YYYY-MM-DD)' })
+  @ApiQuery({ name: 'dateEnregistrementDebut', required: false, type: String, description: 'Date début (format: YYYY-MM-DD)' })
+  @ApiQuery({ name: 'dateEnregistrementFin', required: false, type: String, description: 'Date fin (format: YYYY-MM-DD)' })
+  @ApiQuery({ name: 'priorite', required: false, type: String, description: 'Filtrer par priorité' })
+  @ApiQuery({ name: 'categorie', required: false, type: String, description: 'Filtrer par catégorie' })
+  @ApiQuery({ name: 'categorieId', required: false, type: Number, description: 'Filtrer par ID de catégorie' })
+  @ApiQuery({ name: 'typeCourrierId', required: false, type: Number, description: 'Filtrer par ID de type de courrier' })
+  @ApiQuery({ name: 'statut', required: false, type: String, description: 'Filtrer par statut' })
+  @ApiQuery({ name: 'dernierStatut', required: false, type: String, description: 'Filtrer par dernier statut de transmission' })
+  @ApiQuery({ name: 'serviceId', required: false, type: Number, description: 'Filtrer par ID de service' })
+  @ApiQuery({ name: 'dernierServiceId', required: false, type: Number, description: 'Filtrer par dernier service de transmission' })
+  @ApiQuery({ name: 'provenanceId', required: false, type: Number, description: 'Filtrer par ID de provenance' })
+  @ApiResponse({
+    status: 200,
+    description: 'Courriers départ récupérés avec succès.',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        statusCode: { type: 'number', example: 200 },
+        code: { type: 'string', example: 'success' },
+        title: { type: 'string', example: 'Liste des courriers départ' },
+        message: { type: 'string', example: '10 courrier(s) départ récupéré(s) avec succès.' },
+        data: {
+          type: 'object',
+          properties: {
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  numeroReference: { type: 'string' },
+                  numeroActe: { type: 'string' },
+                  dateSignature: { type: 'string' },
+                  typeCourrier: { type: 'string' },
+                  commentaire: { type: 'string' },
+                  classeCourrier: { type: 'string' },
+                  categorie: { type: 'string' },
+                  document: { type: 'string' },
+                  email: { type: 'string' },
+                  numeroTelephone: { type: 'string' },
+                  nombrePieceJointe: { type: 'number' },
+                  provenancesCopie: { 
+                    type: 'array',
+                    description: 'Liste des correspondants en copie avec leurs détails',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'number' },
+                        nom: { type: 'string' },
+                      }
+                    }
+                  },
+                  piecesJointes: { type: 'array' },
+                  destinataire: { 
+                    type: 'object',
+                    nullable: true,
+                    properties: { 
+                      id: { type: 'number' }, 
+                      nom: { type: 'string' } 
+                    } 
+                  },
+                  signataire: { type: 'object', properties: { id: { type: 'number' }, fullName: { type: 'string' } } },
+                  courrier: { 
+                    type: 'object',
+                    nullable: true,
+                    properties: {
+                      id: { type: 'number' },
+                      numero: { type: 'string' },
+                      reference: { type: 'string' },
+                      objet: { type: 'string' },
+                      is_geled: { type: 'boolean' },
+                      dateArrivee: { type: 'string' },
+                      dateEnregistrement: { type: 'string' },
+                      typeCourrier: { type: 'string', nullable: true },
+                      provenance: { type: 'string', nullable: true },
+                      categorie: { type: 'string' },
+                      priorite: { type: 'string' },
+                    }
+                  },
+                  dernierStatutService: {
+                    type: 'object',
+                    nullable: true,
+                    description: 'Dernier statut et service de transmission du courrier lié',
+                    properties: {
+                      statut: { type: 'string', example: 'Transmis' },
+                      service: {
+                        type: 'object',
+                        nullable: true,
+                        properties: {
+                          id: { type: 'number', example: 5 },
+                          nom: { type: 'string', example: 'Finance' },
+                          sigle: { type: 'string', nullable: true, example: 'FIN' },
+                        },
+                      },
+                    },
+                  },
+                  isDelete: { type: 'boolean' },
+                  isArchive: { type: 'boolean' },
+                  createdAt: { type: 'string' },
+                },
+              },
+            },
+            pagination: { type: 'object' },
+          },
+        },
+      },
+    },
+  })
   list(@Query() query: ListCourrierDepartQueryDto) {
     return this.courrierDepartService.list(query);
   }
@@ -80,11 +186,17 @@ export class CourrierDepartController {
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['document', 'categorie', 'classeCourrier', 'typeCourrier', 'dateSignature', 'idSignataire'],
+      required: ['document', 'categorie', 'classeCourrier', 'typeCourrier', 'dateSignature', 'idDestinataire', 'idSignataire'],
       properties: {
         numeroReference: { type: 'string', example: 'MINEPIA/2025/09/17/25/A' },
         categorie: { type: 'string', example: 'Administrative' },
-        idSignataire: { type: 'number', example: 5 },
+        idDestinataire: { type: 'number', example: 15, description: 'ID du correspondant destinataire (obligatoire)' },
+        idSignataire: { type: 'number', example: 5, description: 'ID de l\'utilisateur signataire (obligatoire)' },
+        provenancesCopie: { 
+          type: 'string', 
+          example: '[15, 60, 354]',
+          description: 'JSON string contenant un tableau d\'IDs des correspondants en copie'
+        },
         classeCourrier: { type: 'string', example: 'Interne' },
         typeCourrier: { type: 'string', example: 'Note' },
         dateSignature: { type: 'string', example: '2025-09-20T16:00:00.000Z' },
