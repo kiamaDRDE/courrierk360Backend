@@ -132,13 +132,14 @@ export class UpdateCourrierDto {
   })
   @IsOptional()
   @Transform(({ value }) => {
+    if (value === undefined || value === null) return undefined;
     if (typeof value === 'boolean') return value;
     if (typeof value === 'number') return value === 1;
     if (typeof value === 'string') {
       const v = value.trim().toLowerCase();
       return v === 'true' || v === '1';
     }
-    return undefined;
+    return false;
   })
   @IsBoolean({ message: 'isConfidentiel doit être un booléen' })
   isConfidentiel?: boolean;

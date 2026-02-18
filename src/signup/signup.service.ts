@@ -87,6 +87,19 @@ export class SignupService {
       if (!service) {
         throw new BadRequestException(`Le service avec l'ID ${idService} n'existe pas.`);
       }
+
+      // Vérifier qu'aucun autre utilisateur actif n'a déjà ce service principal
+      const userWithService = await this.prismaService.user.findFirst({
+        where: {
+          idService: idService,
+          isDelete: false,
+          isActive: true,
+        },
+      });
+
+      if (userWithService) {
+        throw new BadRequestException(`Le service "${service.nom}" est déjà attribué à un autre utilisateur actif.`);
+      }
     }
 
     // 5️⃣ Vérifier que le correspondant existe s'il est fourni
@@ -238,10 +251,18 @@ export class SignupService {
     }
 
     // 1️⃣1️⃣ Retourner l'utilisateur créé (sans le mot de passe)
-    const { password: _, ...userWithoutPassword } = userWithServices;
+    const { password: _, servicesAdditionnels, ...userWithoutPassword } = userWithServices;
 
     return this.formatResponse(
-      userWithoutPassword,
+      {
+        ...userWithoutPassword,
+        servicesAdditionel: servicesAdditionnels.map((sa) => ({
+          serviceId: sa.service.id,
+          serviceName: sa.service.nom,
+          userId: userWithServices.id,
+          userName: userWithServices.username,
+        })),
+      },
       'Création utilisateur',
       'Utilisateur créé avec succès. Un email de bienvenue a été envoyé.',
     );
@@ -310,6 +331,22 @@ export class SignupService {
 
       if (!service) {
         throw new BadRequestException(`Le service avec l'ID ${updateUserDto.idService} n'existe pas.`);
+      }
+
+      // Vérifier qu'aucun autre utilisateur actif n'a déjà ce service principal (sauf l'utilisateur actuel)
+      if (updateUserDto.idService !== existingUser.idService) {
+        const userWithService = await this.prismaService.user.findFirst({
+          where: {
+            idService: updateUserDto.idService,
+            isDelete: false,
+            isActive: true,
+            id: { not: id }, // Exclure l'utilisateur actuel
+          },
+        });
+
+        if (userWithService) {
+          throw new BadRequestException(`Le service "${service.nom}" est déjà attribué à un autre utilisateur actif.`);
+        }
       }
     }
 
@@ -446,10 +483,18 @@ export class SignupService {
       throw new NotFoundException('Utilisateur non trouvé.');
     }
     // 1️⃣2️⃣ Retourner l'utilisateur mis à jour (sans le mot de passe)
-    const { password: _, ...userWithoutPassword } = userWithRelations;
+    const { password: _, servicesAdditionnels, ...userWithoutPassword } = userWithRelations;
 
     return this.formatResponse(
-      userWithoutPassword,
+      {
+        ...userWithoutPassword,
+        servicesAdditionel: servicesAdditionnels.map((sa) => ({
+          serviceId: sa.service.id,
+          serviceName: sa.service.nom,
+          userId: userWithRelations.id,
+          userName: userWithRelations.username,
+        })),
+      },
       'Mise à jour utilisateur',
       'Utilisateur mis à jour avec succès.',
     );

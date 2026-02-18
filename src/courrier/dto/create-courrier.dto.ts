@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsEmail, IsInt, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 export class PieceJointeDto {
@@ -155,7 +155,15 @@ export class CreateCourrierDto {
     example: false,
   })
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') {
+      const v = value.trim().toLowerCase();
+      return v === 'true' || v === '1';
+    }
+    return false;
+  })
   @IsBoolean({ message: 'isConfidentiel doit être un booléen' })
   isConfidentiel?: boolean;
 
@@ -189,7 +197,15 @@ export class CreateCourrierDto {
     example: false,
   })
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') {
+      const v = value.trim().toLowerCase();
+      return v === 'true' || v === '1';
+    }
+    return false;
+  })
   @IsBoolean({ message: 'sendNotification doit être un booléen' })
   sendNotification?: boolean;
 }
