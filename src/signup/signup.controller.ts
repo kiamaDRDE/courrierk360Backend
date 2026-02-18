@@ -136,6 +136,38 @@ export class SignupController {
       },
     },
   })
+  @ApiResponse({
+    status: 400,
+    description: 'Erreur de validation (email/username existant, service déjà attribué, etc.).',
+    content: {
+      'application/json': {
+        examples: {
+          emailExistant: {
+            summary: 'Email déjà utilisé',
+            value: {
+              success: false,
+              statusCode: 400,
+              code: 'failure',
+              title: 'BadRequestException',
+              message: 'Cet email est déjà utilisé.',
+              data: [],
+            },
+          },
+          serviceDejaAttribue: {
+            summary: 'Service principal déjà attribué',
+            value: {
+              success: false,
+              statusCode: 400,
+              code: 'failure',
+              title: 'BadRequestException',
+              message: 'Le service "Service Informatique" est déjà attribué à un autre utilisateur actif.',
+              data: [],
+            },
+          },
+        },
+      },
+    },
+  })
   async signup(@Body() signupDto: SignupDto) {
     return this.signupService.signup(signupDto);
   }
@@ -441,6 +473,38 @@ export class SignupController {
             ],
             createdAt: '2025-12-12T10:41:24.000Z',
             updatedAt: '2025-12-12T12:00:00.000Z',
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Erreur de validation (email/username existant, service déjà attribué, etc.).',
+    content: {
+      'application/json': {
+        examples: {
+          emailExistant: {
+            summary: 'Email déjà utilisé',
+            value: {
+              success: false,
+              statusCode: 400,
+              code: 'failure',
+              title: 'BadRequestException',
+              message: 'Cet email est déjà utilisé par un autre utilisateur.',
+              data: [],
+            },
+          },
+          serviceDejaAttribue: {
+            summary: 'Service principal déjà attribué',
+            value: {
+              success: false,
+              statusCode: 400,
+              code: 'failure',
+              title: 'BadRequestException',
+              message: 'Le service "Service Commercial" est déjà attribué à un autre utilisateur actif.',
+              data: [],
+            },
           },
         },
       },
