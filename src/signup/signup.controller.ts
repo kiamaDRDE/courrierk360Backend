@@ -50,7 +50,17 @@ export class SignupController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Création d\'un utilisateur',
-    description: 'Crée un nouvel utilisateur dans le système.',
+    description: `Crée un nouvel utilisateur dans le système.
+
+**Validations effectuées** :
+- ✅ Email unique : L'email ne doit pas être déjà utilisé
+- ✅ Username unique : Le nom d'utilisateur ne doit pas être déjà utilisé
+- ✅ Service unique : Le service principal (idService) ne peut être attribué qu'à un seul utilisateur actif à la fois
+- ✅ Rôle valide : Le rôle doit exister et ne pas être supprimé (isDelete=false)
+- ✅ Service valide : Le service doit exister et ne pas être supprimé
+- ✅ Correspondant valide : Le correspondant doit exister et ne pas être supprimé (si fourni)
+
+**Note** : Plusieurs utilisateurs peuvent partager les mêmes services additionnels (servicesAdditionel).`,
   })
   @ApiBody({
     type: SignupDto,
@@ -391,7 +401,18 @@ export class SignupController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Mise à jour d\'un utilisateur',
-    description: 'Met à jour les informations d\'un utilisateur existant.',
+    description: `Met à jour les informations d'un utilisateur existant. Tous les champs sont optionnels.
+
+**Validations effectuées** :
+- ✅ Utilisateur existant : L'utilisateur doit exister dans le système
+- ✅ Email unique : Si modifié, l'email ne doit pas être déjà utilisé par un autre utilisateur
+- ✅ Username unique : Si modifié, le nom d'utilisateur ne doit pas être déjà utilisé par un autre utilisateur
+- ✅ Service unique : Si modifié, le service principal (idService) ne peut être attribué qu'à un seul utilisateur actif à la fois
+- ✅ Rôle valide : Le rôle doit exister et ne pas être supprimé (si fourni)
+- ✅ Service valide : Le service doit exister et ne pas être supprimé (si fourni)
+- ✅ Correspondant valide : Le correspondant doit exister et ne pas être supprimé (si fourni)
+
+**Note** : Plusieurs utilisateurs peuvent partager les mêmes services additionnels (servicesAdditionel).`,
   })
   @ApiParam({
     name: 'id',
