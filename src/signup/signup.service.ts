@@ -560,6 +560,15 @@ export class SignupService {
       isActive,
     } = query;
 
+    // 🔍 DEBUG: Log des paramètres reçus
+    console.log('📥 Paramètres reçus dans getAllUsers:', {
+      query: query,
+      isActive: isActive,
+      isActiveType: typeof isActive,
+      isSignataire: isSignataire,
+      isSignataireType: typeof isSignataire,
+    });
+
     // Construction des filtres
     const where: any = {};
 
@@ -588,12 +597,17 @@ export class SignupService {
     }
 
     if (isSignataire !== undefined) {
+      console.log('✅ Filtre isSignataire appliqué:', isSignataire);
       where.isSignataire = isSignataire;
     }
 
     if (isActive !== undefined) {
+      console.log('✅ Filtre isActive appliqué:', isActive);
       where.isActive = isActive;
     }
+
+    // 🔍 DEBUG: Log du filtre WHERE final
+    console.log('📋 Filtre WHERE envoyé à Prisma:', JSON.stringify(where, null, 2));
 
     // Compter le total
     const total = await this.prismaService.user.count({ where });

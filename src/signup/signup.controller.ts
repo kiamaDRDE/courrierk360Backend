@@ -197,8 +197,8 @@ export class SignupController {
   @ApiQuery({ name: 'fonction', required: false, description: 'Filtrer par fonction', example: 'Développeur' })
   @ApiQuery({ name: 'idRole', required: false, description: 'Filtrer par ID du rôle', type: Number, example: 1 })
   @ApiQuery({ name: 'idService', required: false, description: 'Filtrer par ID du service', type: Number, example: 1 })
-  @ApiQuery({ name: 'isSignataire', required: false, description: 'Filtrer les utilisateurs signataires', type: Boolean, example: true })
-  @ApiQuery({ name: 'isActive', required: false, description: 'Filtrer par statut actif/inactif', type: Boolean, example: true })
+  @ApiQuery({ name: 'isSignataire', required: false, description: 'Filtrer les utilisateurs signataires (true/false, 1/0)', schema: { type: 'string', enum: ['true', 'false', '1', '0'] }, example: 'true' })
+  @ApiQuery({ name: 'isActive', required: false, description: 'Filtrer par statut actif/inactif (true/false, 1/0)', schema: { type: 'string', enum: ['true', 'false', '1', '0'] }, example: 'true' })
   @ApiResponse({
     status: 200,
     description: 'Liste des utilisateurs récupérée avec succès.',
@@ -258,7 +258,8 @@ export class SignupController {
             },
           },
           withFilters: {
-            summary: 'Avec filtres',
+            summary: 'Avec filtres (isActive=true, isSignataire=true)',
+            description: 'Exemple: /signup?isActive=true&isSignataire=true',
             value: {
               success: true,
               statusCode: 201,
@@ -293,6 +294,52 @@ export class SignupController {
                 ],
                 pagination: {
                   total: 2,
+                  page: 1,
+                  limit: 10,
+                  totalPages: 1,
+                  hasNextPage: false,
+                  hasPreviousPage: false,
+                },
+              },
+            },
+          },
+          usersInactifs: {
+            summary: 'Filtrer utilisateurs inactifs (isActive=false)',
+            description: 'Exemple: /signup?isActive=false',
+            value: {
+              success: true,
+              statusCode: 201,
+              code: 'success',
+              title: 'Liste des utilisateurs',
+              message: '1 utilisateur(s) sur 1 récupéré(s) avec succès.',
+              data: {
+                users: [
+                  {
+                    id: 5,
+                    username: 'ancien_user',
+                    firstName: 'Pierre',
+                    lastName: 'Martin',
+                    email: 'pierre.martin@example.com',
+                    numero: '+237688888888',
+                    isActive: false,
+                    isSignataire: false,
+                    role: {
+                      id: 2,
+                      nom: 'Utilisateur',
+                      description: 'Rôle utilisateur standard',
+                    },
+                    service: {
+                      id: 3,
+                      nom: 'Service RH',
+                      sigle: 'RH',
+                    },
+                    servicesAdditionel: [],
+                    createdAt: '2025-11-10T08:30:00.000Z',
+                    updatedAt: '2025-12-01T14:20:00.000Z',
+                  },
+                ],
+                pagination: {
+                  total: 1,
                   page: 1,
                   limit: 10,
                   totalPages: 1,

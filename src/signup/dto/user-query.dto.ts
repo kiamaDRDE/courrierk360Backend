@@ -1,7 +1,7 @@
 // src/signup/dto/user-query.dto.ts
 
 import { IsOptional, IsInt, Min, IsString, IsEnum } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UserQueryDto {
@@ -79,14 +79,70 @@ export class UserQueryDto {
     example: true,
   })
   @IsOptional()
-  @Type(() => Boolean)
-  isSignataire?: boolean;
+  @Transform(({ value }) => {
+    console.log('🔄 Transform isSignataire - Valeur brute reçue:', value, 'Type:', typeof value);
+    if (value === undefined || value === null) {
+      console.log('⚠️ Retourne: undefined (null/undefined)');
+      return undefined;
+    }
+    if (typeof value === 'boolean') {
+      console.log('✅ Retourne:', value, '(boolean)');
+      return value;
+    }
+    if (typeof value === 'number') {
+      const result = value === 1;
+      console.log('✅ Retourne:', result, '(number)');
+      return result;
+    }
+    if (typeof value === 'string') {
+      const v = value.trim().toLowerCase();
+      if (v === 'true' || v === '1') {
+        console.log('✅ Retourne: true (string)');
+        return true;
+      }
+      if (v === 'false' || v === '0') {
+        console.log('✅ Retourne: false (string)');
+        return false;
+      }
+    }
+    console.log('⚠️ Retourne: undefined (aucune condition)');
+    return undefined;
+  })
+  isSignataire?: any;
 
   @ApiPropertyOptional({
     description: 'Filtrer par statut actif/inactif',
     example: true,
   })
   @IsOptional()
-  @Type(() => Boolean)
-  isActive?: boolean;
+  @Transform(({ value }) => {
+    console.log('🔄 Transform isActive - Valeur brute reçue:', value, 'Type:', typeof value);
+    if (value === undefined || value === null) {
+      console.log('⚠️ Retourne: undefined (null/undefined)');
+      return undefined;
+    }
+    if (typeof value === 'boolean') {
+      console.log('✅ Retourne:', value, '(boolean)');
+      return value;
+    }
+    if (typeof value === 'number') {
+      const result = value === 1;
+      console.log('✅ Retourne:', result, '(number)');
+      return result;
+    }
+    if (typeof value === 'string') {
+      const v = value.trim().toLowerCase();
+      if (v === 'true' || v === '1') {
+        console.log('✅ Retourne: true (string)');
+        return true;
+      }
+      if (v === 'false' || v === '0') {
+        console.log('✅ Retourne: false (string)');
+        return false;
+      }
+    }
+    console.log('⚠️ Retourne: undefined (aucune condition)');
+    return undefined;
+  })
+  isActive?: any;
 }
