@@ -135,6 +135,7 @@ Retourne toutes les informations détaillées incluant:
                       provenance: { type: 'string', nullable: true },
                       categorie: { type: 'string' },
                       priorite: { type: 'string' },
+                      statut: { type: 'string', nullable: true },
                     }
                   },
                   dernierStatutService: {
@@ -189,8 +190,10 @@ Retourne toutes les informations détaillées incluant:
       required: ['document', 'categorie', 'classeCourrier', 'typeCourrier', 'dateSignature', 'idDestinataire', 'idSignataire'],
       properties: {
         numeroReference: { type: 'string', example: 'MINEPIA/2025/09/17/25/A' },
+        numeroActe: { type: 'string', example: 'ACTE-2025-001', description: 'Numéro d\'acte du courrier départ' },
         categorie: { type: 'string', example: 'Administrative' },
         idDestinataire: { type: 'number', example: 15, description: 'ID du correspondant destinataire (obligatoire)' },
+        idCourrier: { type: 'number', example: 123, description: 'ID du courrier lié (optionnel)' },
         idSignataire: { type: 'number', example: 5, description: 'ID de l\'utilisateur signataire (obligatoire)' },
         provenancesCopie: { 
           type: 'string', 
@@ -283,8 +286,16 @@ Retourne toutes les informations détaillées incluant:
       required: ['document', 'categorie', 'classeCourrier', 'typeCourrier', 'dateSignature', 'idSignataire'],
       properties: {
         numeroReference: { type: 'string', example: 'MINEPIA/2025/09/17/25/A' },
+        numeroActe: { type: 'string', example: 'ACTE-2025-001', description: 'Numéro d\'acte du courrier départ' },
         categorie: { type: 'string', example: 'Administrative' },
-        idSignataire: { type: 'number', example: 5 },
+        idDestinataire: { type: 'number', example: 15, description: 'ID du correspondant destinataire' },
+        idCourrier: { type: 'number', example: 123, description: 'ID du courrier lié (optionnel)' },
+        idSignataire: { type: 'number', example: 5, description: 'ID de l\'utilisateur signataire (obligatoire)' },
+        provenancesCopie: { 
+          type: 'string', 
+          example: '[15, 60, 354]',
+          description: 'JSON string contenant un tableau d\'IDs des correspondants en copie'
+        },
         classeCourrier: { type: 'string', example: 'Interne' },
         typeCourrier: { type: 'string', example: 'Note' },
         dateSignature: { type: 'string', example: '2025-09-20T16:00:00.000Z' },

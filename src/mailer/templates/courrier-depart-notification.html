@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification Courrier Départ - KIAMA S.A</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            border: 2px solid #10b981;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: #ffffff;
+            color: #065f46;
+            padding: 30px 20px;
+            text-align: center;
+            border-bottom: 3px solid #10b981;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e5e7eb;
+            gap: 10px;
+        }
+        .header-left {
+            text-align: left;
+            flex: 1;
+            font-size: 11px;
+            line-height: 1.5;
+            font-weight: 500;
+            text-transform: uppercase;
+            color: #000000;
+            padding-right: 5px;
+        }
+        .header-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 15px;
+            flex-shrink: 0;
+        }
+        .header-center img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+        }
+        .header-right {
+            text-align: right !important;
+            flex: 1;
+            font-size: 11px;
+            line-height: 1.5;
+            font-weight: 500;
+            text-transform: uppercase;
+            color: #000000;
+            padding-left: 5px;
+            direction: rtl;
+        }
+        .header-right br {
+            content: "";
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            color: #065f46;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            color: #374151;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 16px;
+            color: #1f2937;
+            margin-bottom: 20px;
+        }
+        .info-box {
+            background-color: #ecfdf5;
+            border-left: 4px solid #10b981;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+        .info-box h2 {
+            color: #065f46;
+            font-size: 18px;
+            margin: 0 0 15px 0;
+            text-align: center;
+        }
+        .info-item {
+            display: flex;
+            padding: 8px 0;
+            border-bottom: 1px solid #d1fae5;
+        }
+        .info-item:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #065f46;
+            min-width: 150px;
+        }
+        .info-value {
+            color: #374151;
+            flex: 1;
+        }
+        .message {
+            font-size: 15px;
+            color: #4b5563;
+            line-height: 1.6;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .footer {
+            background-color: #f8fafc;
+            padding: 25px 30px;
+            text-align: center;
+            font-size: 14px;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
+        }
+        .footer strong {
+            color: #065f46;
+            display: block;
+            margin-top: 10px;
+        }
+        @media only screen and (max-width: 600px) {
+            .header-top {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .header-left,
+            .header-right {
+                text-align: center;
+            }
+            .header-center {
+                order: -1;
+                padding: 10px 0;
+            }
+            .info-item {
+                flex-direction: column;
+            }
+            .info-label {
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-top">
+                <div class="header-left">
+                    <img src="cid:logo" alt="Logo KIAMA" style="width: 120px; height: auto; object-fit: contain;">
+                </div>
+                <div class="header-center">
+                    <!-- <img src="https://cdeno.org/wp-content/uploads/2023/11/LOGO-MINEPIA-1024x1024.jpg" alt="Logo MINEPIA"> -->
+                </div>
+                <div class="header-right">
+                    KIAMA S.A. au capital de 40 000 000 de FCFA.<br>
+                    Mobile Omnisport, Derrière le Stade Annexe N°3 contact@kiama.cm www.kiama.cm<br>
+                    Tel: (237) 697 812 515 / 682 202 675<br>
+                    Fixe: (237) 222 209 04 WhatsApp +237 8220 2675<br>
+                    BP: 15709 Yaoundé Cameroun
+                </div>
+            </div>
+            <h1>📤 Notification Courrier Départ</h1>
+            <p>KIAMA S.A Au coeur de l'innovation</p>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                Bonjour <strong>{{destinataire}}</strong>,
+            </div>
+            
+            <p class="message">
+                Nous vous informons qu'un courrier départ a été créé et vous est adressé.
+            </p>
+            
+            <div class="info-box">
+                <h2>📄 Détails du courrier départ</h2>
+                <div class="info-item">
+                    <span class="info-label">Numéro de référence :</span>
+                    <span class="info-value">{{numeroReference}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Numéro d'acte :</span>
+                    <span class="info-value">{{numeroActe}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Type de courrier :</span>
+                    <span class="info-value">{{typeCourrier}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Catégorie :</span>
+                    <span class="info-value">{{categorie}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Classe :</span>
+                    <span class="info-value">{{classeCourrier}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Date de signature :</span>
+                    <span class="info-value">{{dateSignature}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Signataire :</span>
+                    <span class="info-value">{{signataire}}</span>
+                </div>
+                {{commentaireBlock}}
+            </div>
+            
+            <p class="message">
+                Le courrier et ses pièces jointes sont en cours d'acheminement.
+            </p>
+        </div>
+        
+        <div class="footer">
+            Cordialement,
+            <strong>KIAMA S.A Au coeur de l'innovation : https://kiama.cm/</strong>
+        </div>
+    </div>
+</body>
+</html>

@@ -8,6 +8,10 @@ export class CreateCourrierDepartDto {
   @IsString()
   numeroReference?: string;
 
+  @IsOptional()
+  @IsString()
+  numeroActe?: string;
+
   @IsString()
   @IsNotEmpty()
   categorie: string;
@@ -16,6 +20,11 @@ export class CreateCourrierDepartDto {
   @IsInt()
   @IsNotEmpty()
   idDestinataire: number;
+
+  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : value))
+  @IsOptional()
+  @IsInt()
+  idCourrier?: number;
 
   @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : value))
   @IsInt()

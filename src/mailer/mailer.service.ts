@@ -440,64 +440,6 @@ export class MailerService {
   }
 
   /**
-   * Envoie un email de notification pour un courrier départ
-   */
-  async sendCourrierDepartNotification(
-    email: string,
-    subject: string,
-    message: string,
-    details?: {
-      numeroReference?: string;
-      categorie?: string;
-      classeCourrier?: string;
-      typeCourrier?: string;
-      dateSignature?: Date | null;
-    },
-  ): Promise<boolean> {
-    try {
-      const dateSignature = details?.dateSignature
-        ? new Date(details.dateSignature).toLocaleDateString('fr-FR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-          })
-        : '';
-
-      const htmlContent = `
-        <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
-          <h2 style="color:#1a73e8;">${subject}</h2>
-          <p>${message}</p>
-          <ul>
-            ${details?.numeroReference ? `<li><strong>Référence:</strong> ${details.numeroReference}</li>` : ''}
-            ${details?.categorie ? `<li><strong>Catégorie:</strong> ${details.categorie}</li>` : ''}
-            ${details?.classeCourrier ? `<li><strong>Classe:</strong> ${details.classeCourrier}</li>` : ''}
-            ${details?.typeCourrier ? `<li><strong>Type:</strong> ${details.typeCourrier}</li>` : ''}
-            ${dateSignature ? `<li><strong>Date de signature:</strong> ${dateSignature}</li>` : ''}
-          </ul>
-          <p>Merci.</p>
-        </div>
-      `;
-
-      const mailOptions = {
-        from: {
-          name: 'KIAMA S.A. - Gestion du Courrier',
-          address: 'ppatnuc@gmail.com',
-        },
-        to: email,
-        subject,
-        html: htmlContent,
-      };
-
-      await this.transporter.sendMail(mailOptions);
-      this.logger.log(`Email courrier départ envoyé à ${email}`);
-      return true;
-    } catch (error) {
-      this.logger.error(`Erreur lors de l'envoi email courrier départ à ${email}:`, error);
-      return false;
-    }
-  }
-
-  /**
    * Envoie un email de notification pour un courrier interne
    */
   async sendCourrierInterneNotification(
@@ -549,6 +491,84 @@ export class MailerService {
       return true;
     } catch (error) {
       this.logger.error(`Erreur lors de l'envoi email courrier interne à ${userEmail}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Envoie un email de notification pour un courrier départ
+   */
+  async sendCourrierDepartNotification(
+    destinataireEmail: string,
+    destinataireNom: string,
+    courrierDepart: {
+      numeroReference?: string | null;
+      numeroActe?: string | null;
+      typeCourrier?: string | null;
+      categorie?: string | null;
+      classeCourrier?: string | null;
+      dateSignature?: Date | null;
+      signataire?: string | null;
+      commentaire?: string | null;
+    },
+  ): Promise<boolean> {
+    try {
+      const templatePath = path.join(__dirname, 'templates', 'courrier-depart-notification.html');
+      let htmlContent = fs.readFileSync(templatePath, 'utf8');
+
+      // Formater la date de signature
+      const dateSignature = courrierDepart.dateSignature
+        ? new Date(courrierDepart.dateSignature).toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+          })
+        : 'N/A';
+
+      // Gérer le bloc commentaire
+      let commentaireBlock = '';
+      if (courrierDepart.commentaire) {
+        commentaireBlock = `
+                <div class="info-item">
+                    <span class="info-label">Commentaire :</span>
+                    <span class="info-value">${courrierDepart.commentaire}</span>
+                </div>`;
+      }
+
+      // Remplacer les placeholders
+      htmlContent = htmlContent
+        .replace(/{{destinataire}}/g, destinataireNom || 'Monsieur/Madame')
+        .replace(/{{numeroReference}}/g, courrierDepart.numeroReference || 'N/A')
+        .replace(/{{numeroActe}}/g, courrierDepart.numeroActe || 'N/A')
+        .replace(/{{typeCourrier}}/g, courrierDepart.typeCourrier || 'N/A')
+        .replace(/{{categorie}}/g, courrierDepart.categorie || 'N/A')
+        .replace(/{{classeCourrier}}/g, courrierDepart.classeCourrier || 'N/A')
+        .replace(/{{dateSignature}}/g, dateSignature)
+        .replace(/{{signataire}}/g, courrierDepart.signataire || 'N/A')
+        .replace(/{{commentaireBlock}}/g, commentaireBlock);
+
+      const mailOptions = {
+        from: {
+          name: 'KIAMA S.A. - Gestion du Courrier',
+          address: 'ppatnuc@gmail.com',
+        },
+        to: destinataireEmail,
+        subject: `📤 Courrier Départ - ${courrierDepart.numeroReference || 'Notification'}`,
+        html: htmlContent,
+        attachments: [
+          {
+            filename: 'logo.png',
+            path: path.join(process.cwd(), 'public', 'logo.png'),
+            cid: 'logo',
+          },
+        ],
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Email courrier départ envoyé à ${destinataireEmail}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Erreur lors de l'envoi email courrier départ à ${destinataireEmail}:`, error);
       return false;
     }
   }
