@@ -21,6 +21,8 @@ import { CourrierService } from './courrier.service';
 import { CreateCourrierDto } from './dto/create-courrier.dto';
 import { UpdateCourrierDto } from './dto/update-courrier.dto';
 import { CloseCourrierDto } from './dto/close-courrier.dto';
+import { ClasserCourrierDto } from './dto/classer-courrier.dto';
+import { DeclasserCourrierDto } from './dto/declasser-courrier.dto';
 import { ListCourrierQueryDto } from './dto/list-courrier-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -407,8 +409,11 @@ export class CourrierController {
     status: 400,
     description: 'Courrier déjà classé (gelé).',
   })
-  classerCourrier(@Param('id', ParseIntPipe) id: number) {
-    return this.courrierService.classerCourrier(id);
+  classerCourrier(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() classerCourrierDto: ClasserCourrierDto,
+  ) {
+    return this.courrierService.classerCourrier(id, classerCourrierDto);
   }
 
   // 📂 Déclasser un courrier
@@ -456,8 +461,11 @@ export class CourrierController {
     status: 400,
     description: 'Courrier non classé (non gelé). Impossible de déclasser.',
   })
-  declasserCourrier(@Param('id', ParseIntPipe) id: number) {
-    return this.courrierService.declasserCourrier(id);
+  declasserCourrier(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() declasserCourrierDto: DeclasserCourrierDto,
+  ) {
+    return this.courrierService.declasserCourrier(id, declasserCourrierDto);
   }
 
   // 🔍 Détails d'un courrier

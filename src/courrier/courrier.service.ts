@@ -657,7 +657,7 @@ export class CourrierService {
   }
 
   // 📁 Classer un courrier
-  async classerCourrier(id: number) {
+  async classerCourrier(id: number, classerCourrierDto?: any) {
     // Vérifier que le courrier existe
     const courrier = await this.prismaService.courrier.findUnique({
       where: { id },
@@ -674,13 +674,24 @@ export class CourrierService {
 
     // Effectuer les mises à jour en transaction
     const result = await this.prismaService.$transaction(async (prisma) => {
+      // Préparer les données de mise à jour
+      const updateData: any = {
+        statut: 'Classé',
+        isGeled: true,
+      };
+
+      // Ajouter les commentaires s'ils sont fournis
+      if (classerCourrierDto?.commentairePublic !== undefined) {
+        updateData.commentairePublic = classerCourrierDto.commentairePublic;
+      }
+      if (classerCourrierDto?.commentaireInterne !== undefined) {
+        updateData.commentaireInterne = classerCourrierDto.commentaireInterne;
+      }
+
       // Mettre à jour le courrier
       const courrierClasse = await prisma.courrier.update({
         where: { id },
-        data: {
-          statut: 'Classé',
-          isGeled: true,
-        },
+        data: updateData,
       });
 
       // Classer toutes les transmissions liées
@@ -706,7 +717,7 @@ export class CourrierService {
   }
 
   // 📂 Déclasser un courrier
-  async declasserCourrier(id: number) {
+  async declasserCourrier(id: number, declasserCourrierDto?: any) {
     // Vérifier que le courrier existe
     const courrier = await this.prismaService.courrier.findUnique({
       where: { id },
@@ -728,7 +739,7 @@ export class CourrierService {
     });
 
     // Déterminer le nouveau statut basé sur la dernière transmission
-    let nouveauStatut = 'En traitement'; // Statut par défaut
+    let nouveauStatut = 'Transmis'; // Statut par défaut
 
     if (derniereTransmission) {
       if (derniereTransmission.isArchive) {
@@ -737,18 +748,32 @@ export class CourrierService {
         nouveauStatut = 'En instance';
       } else if (derniereTransmission.accuseReception) {
         nouveauStatut = 'Reçu';
+      } else if (derniereTransmission.statut) {
+        // Utiliser le statut de la dernière transmission si disponible
+        nouveauStatut = derniereTransmission.statut;
       }
     }
 
     // Effectuer les mises à jour en transaction
     const result = await this.prismaService.$transaction(async (prisma) => {
+      // Préparer les données de mise à jour
+      const updateData: any = {
+        statut: nouveauStatut,
+        isGeled: false,
+      };
+
+      // Ajouter les commentaires s'ils sont fournis
+      if (declasserCourrierDto?.commentairePublic !== undefined) {
+        updateData.commentairePublic = declasserCourrierDto.commentairePublic;
+      }
+      if (declasserCourrierDto?.commentaireInterne !== undefined) {
+        updateData.commentaireInterne = declasserCourrierDto.commentaireInterne;
+      }
+
       // Mettre à jour le courrier
       const courrierDeclasse = await prisma.courrier.update({
         where: { id },
-        data: {
-          statut: nouveauStatut,
-          isGeled: false,
-        },
+        data: updateData,
       });
 
       // Déclasser toutes les transmissions liées
@@ -1022,8 +1047,9 @@ export class CourrierService {
         orderBy: { createdAt: 'desc' },
         select: {
           idCourrier: true,
+          idService: true,
           statut: true,
-          service: { select: { id: true, nom: true, sigle: true } },
+          service: { select: { nom: true, sigle: true } },
         },
       });
 
@@ -1031,8 +1057,8 @@ export class CourrierService {
         if (typeof t.idCourrier === 'number' && !latestByCourrier.has(t.idCourrier)) {
           latestByCourrier.set(t.idCourrier, {
             statut: t.statut || null,
-            service: t.service
-              ? { id: t.service.id, nom: t.service.nom, sigle: t.service.sigle }
+            service: t.service && t.idService
+              ? { id: t.idService, nom: t.service.nom, sigle: t.service.sigle }
               : null,
           });
         }
@@ -1242,19 +1268,50 @@ export class CourrierService {
     });
 
     if (filters.dernierStatut || filters.dernierServiceId) {
+      console.log('🔍 Filtrage par dernierStatut/dernierServiceId:', {
+        dernierStatut: filters.dernierStatut,
+        dernierServiceId: filters.dernierServiceId,
+        nombreCourriersAvantFiltre: data.length
+      });
+
       data = data.filter((item) => {
         const last = item.dernierStatutService;
-        if (!last) return false;
-
-        if (filters.dernierStatut && last.statut !== filters.dernierStatut) {
+        if (!last) {
+          console.log('⚠️ Courrier sans dernierStatutService:', { id: item.id });
           return false;
         }
 
-        if (filters.dernierServiceId && last.service?.id !== filters.dernierServiceId) {
-          return false;
+        if (filters.dernierStatut) {
+          console.log('🔄 Vérification dernierStatut:', {
+            courrierId: item.id,
+            statutReçu: filters.dernierStatut,
+            statutTrouvé: last.statut,
+            match: last.statut === filters.dernierStatut
+          });
+          
+          if (last.statut !== filters.dernierStatut) {
+            return false;
+          }
+        }
+
+        if (filters.dernierServiceId) {
+          console.log('🔄 Vérification dernierServiceId:', {
+            courrierId: item.id,
+            serviceIdReçu: filters.dernierServiceId,
+            serviceIdTrouvé: last.service?.id,
+            match: last.service?.id === filters.dernierServiceId
+          });
+          
+          if (last.service?.id !== filters.dernierServiceId) {
+            return false;
+          }
         }
 
         return true;
+      });
+
+      console.log('✅ Résultat filtrage:', {
+        nombreCourriersAprèsFiltre: data.length
       });
     }
 
@@ -1821,7 +1878,24 @@ export class CourrierService {
         }
       }
 
-      return { courrier: updatedCourrier, piecesJointes: piecesJointesCreees };
+      // 🆕 Créer une nouvelle transmission si l'idService a changé
+      let transmissionCreee: any = null;
+      const serviceHasChanged = updateCourrierDto.idService !== undefined && updateCourrierDto.idService !== courrier.idService;
+      if (serviceHasChanged && updateCourrierDto.idService) {
+        transmissionCreee = await prisma.transmission.create({
+          data: {
+            idCourrier: updatedCourrier.id,
+            idService: updateCourrierDto.idService,
+            idEmetteur: userId,
+            dateInstruction: dateArriveeParsed || new Date(),
+            typeTransfert: updateCourrierDto.typeTransfert || courrier.typeTransfert || 'Pour traitement',
+            instruction: updateCourrierDto.commentaire || courrier.commentaire || 'Transmission suite à modification du service destinataire',
+            statut: 'Transmis',
+          },
+        });
+      }
+
+      return { courrier: updatedCourrier, piecesJointes: piecesJointesCreees, transmission: transmissionCreee };
     });
 
     const idServiceFinal = updateCourrierDto.idService ?? courrier.idService ?? null;
