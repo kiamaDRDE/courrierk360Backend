@@ -1339,6 +1339,20 @@ export class CourrierService {
       return undefined;
     }
 
+    // Si les deux dates sont fournies et identiques, traiter comme une date unique
+    if (start && end && start === end) {
+      const date = new Date(start);
+      if (Number.isNaN(date.getTime())) {
+        throw new BadRequestException(`La date pour ${label || 'le filtre'} est invalide.`);
+      }
+      
+      // Créer un range pour toute la journée
+      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0);
+      const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+      
+      return { gte: startOfDay, lte: endOfDay };
+    }
+
     const range: { gte?: Date; lte?: Date } = {};
 
     if (start) {
