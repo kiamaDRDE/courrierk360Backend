@@ -30,6 +30,7 @@ import { CreateTraitementDto } from './dto/create-traitement.dto';
 import { UpdateTraitementDto } from './dto/update-traitement.dto';
 import { AccuserReceptionTransmissionsDto } from './dto/accuser-reception-transmissions.dto';
 import { ClasserTransmissionDto } from './dto/classer-transmission.dto';
+import { DeclasserTransmissionDto } from './dto/declasser-transmission.dto';
 import { ListTransmissionsQueryDto } from './dto/list-transmissions-query.dto';
 import { RelanceQueryDto } from './dto/relance-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -1129,9 +1130,10 @@ export class TraitementController {
   })
   declasserTransmission(
     @Param('id', ParseIntPipe) id: number,
+    @Body() declasserDto: DeclasserTransmissionDto,
     @CurrentUser('id') userId: number,
   ) {
-    return this.traitementService.declasserTransmission(id, userId);
+    return this.traitementService.declasserTransmission(id, declasserDto, userId);
   }
 
   // 📌 Instancier une transmission

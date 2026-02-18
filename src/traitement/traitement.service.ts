@@ -722,21 +722,45 @@ export class TraitementService {
 
     const courrierWhere: any = {};
 
+    console.log('🔍 [listForService] Filtre dateArrivee reçu:', {
+      dateArriveeDebut: filters.dateArriveeDebut,
+      dateArriveeFin: filters.dateArriveeFin,
+    });
+
     const dateArriveeRange = this.parseDateRangeOrSingle(
       filters.dateArriveeDebut,
       filters.dateArriveeFin,
       'dateArrivee',
     );
+    
+    console.log('📅 [listForService] Range dateArrivee construit:', {
+      dateArriveeRange: dateArriveeRange,
+      gte: dateArriveeRange?.gte,
+      lte: dateArriveeRange?.lte,
+    });
+    
     if (dateArriveeRange) {
       courrierWhere.dateArrivee = dateArriveeRange;
     }
 
+    console.log('🔍 [listForService] Filtre dateEnregistrement reçu:', {
+      dateEnregistrement: filters.dateEnregistrement,
+    });
+
     if (filters.dateEnregistrement) {
-      courrierWhere.dateEnregistrement = this.parseSingleDate(
+      const dateEnregRange = this.parseSingleDate(
         filters.dateEnregistrement,
         'dateEnregistrement',
       );
+      console.log('📅 [listForService] Range dateEnregistrement construit:', {
+        dateEnregRange: dateEnregRange,
+        gte: dateEnregRange?.gte,
+        lte: dateEnregRange?.lte,
+      });
+      courrierWhere.dateEnregistrement = dateEnregRange;
     }
+
+    console.log('📋 [listForService] courrierWhere après dateEnregistrement:', courrierWhere);
 
     if (filters.priorite) {
       courrierWhere.priorite = filters.priorite;
@@ -769,19 +793,54 @@ export class TraitementService {
       transmissionWhere.statut = filters.statut;
     }
 
+    console.log('📊 [listForService] Construction transmissionWhere:', {
+      idService: user.idService,
+      statut: filters.statut,
+    });
+
     const search = filters.search?.trim();
     if (search) {
+      console.log(`🔍 [SEARCH] Recherche avec le terme: "${search}"`);
       const numericSearch = Number(search);
-      const orFilters: any[] = [
+      
+      // Conditions de recherche sur la transmission (MySQL est case-insensitive par défaut)
+      const transmissionOrFilters: any[] = [
         { instruction: { contains: search } },
         { typeTransfert: { contains: search } },
         { statut: { contains: search } },
         { statutArchive: { contains: search } },
         { document: { contains: search } },
+        { commentairePublic: { contains: search } },
+        { commentaireInterne: { contains: search } },
       ];
 
+      // Conditions de recherche sur le courrier lié
+      const courrierSearchFilters: any[] = [
+        { numero: { contains: search } },
+        { reference: { contains: search } },
+        { objet: { contains: search } },
+        { commentaire: { contains: search } },
+        { commentairePublic: { contains: search } },
+        { commentaireInterne: { contains: search } },
+        { priorite: { contains: search } },
+        { statut: { contains: search } },
+        { document: { contains: search } },
+        { telephone: { contains: search } },
+        { email: { contains: search } },
+        { adresse: { contains: search } },
+        { civilite: { contains: search } },
+        { nom: { contains: search } },
+        { matricule: { contains: search } },
+        { typeTransfert: { contains: search } },
+        { classeCourrier: { contains: search } },
+        { categorie: { contains: search } },
+        { statutArchive: { contains: search } },
+      ];
+
+      // Recherche numérique
       if (!Number.isNaN(numericSearch)) {
-        orFilters.push(
+        console.log(`🔍 [SEARCH] Recherche numérique: ${numericSearch}`);
+        transmissionOrFilters.push(
           { id: numericSearch },
           { idCourrier: numericSearch },
           { idEmetteur: numericSearch },
@@ -789,9 +848,27 @@ export class TraitementService {
           { delaiTraitement: numericSearch },
           { nombrePieceJointe: numericSearch },
         );
+        
+        // IDs dans le courrier
+        courrierSearchFilters.push(
+          { id: numericSearch },
+          { idProvenance: numericSearch },
+          { idTypeCourrier: numericSearch },
+          { idService: numericSearch },
+          { idUser: numericSearch },
+          { nombrePieceJointe: numericSearch },
+        );
       }
 
-      transmissionWhere.OR = orFilters;
+      // Ajouter les recherches sur le courrier
+      courrierSearchFilters.forEach((filter) => {
+        transmissionOrFilters.push({
+          courrier: { is: filter },
+        });
+      });
+
+      console.log(`🔍 [SEARCH] Nombre de conditions OR: ${transmissionOrFilters.length}`);
+      transmissionWhere.OR = transmissionOrFilters;
     }
 
     if (Object.keys(courrierWhere).length > 0) {
@@ -1226,17 +1303,47 @@ export class TraitementService {
 
     const search = filters.search?.trim();
     if (search) {
+      console.log(`🔍 [SEARCH COPIE] Recherche avec le terme: "${search}"`);
       const numericSearch = Number(search);
-      const orFilters: any[] = [
+      
+      // Conditions de recherche sur la transmission (MySQL est case-insensitive par défaut)
+      const transmissionOrFilters: any[] = [
         { instruction: { contains: search } },
         { typeTransfert: { contains: search } },
         { statut: { contains: search } },
         { statutArchive: { contains: search } },
         { document: { contains: search } },
+        { commentairePublic: { contains: search } },
+        { commentaireInterne: { contains: search } },
       ];
 
+      // Conditions de recherche sur le courrier lié
+      const courrierSearchFilters: any[] = [
+        { numero: { contains: search } },
+        { reference: { contains: search } },
+        { objet: { contains: search } },
+        { commentaire: { contains: search } },
+        { commentairePublic: { contains: search } },
+        { commentaireInterne: { contains: search } },
+        { priorite: { contains: search } },
+        { statut: { contains: search } },
+        { document: { contains: search } },
+        { telephone: { contains: search } },
+        { email: { contains: search } },
+        { adresse: { contains: search } },
+        { civilite: { contains: search } },
+        { nom: { contains: search } },
+        { matricule: { contains: search } },
+        { typeTransfert: { contains: search } },
+        { classeCourrier: { contains: search } },
+        { categorie: { contains: search } },
+        { statutArchive: { contains: search } },
+      ];
+
+      // Recherche numérique
       if (!Number.isNaN(numericSearch)) {
-        orFilters.push(
+        console.log(`🔍 [SEARCH COPIE] Recherche numérique: ${numericSearch}`);
+        transmissionOrFilters.push(
           { id: numericSearch },
           { idCourrier: numericSearch },
           { idEmetteur: numericSearch },
@@ -1244,9 +1351,27 @@ export class TraitementService {
           { delaiTraitement: numericSearch },
           { nombrePieceJointe: numericSearch },
         );
+        
+        // IDs dans le courrier
+        courrierSearchFilters.push(
+          { id: numericSearch },
+          { idProvenance: numericSearch },
+          { idTypeCourrier: numericSearch },
+          { idService: numericSearch },
+          { idUser: numericSearch },
+          { nombrePieceJointe: numericSearch },
+        );
       }
 
-      transmissionWhere.OR = orFilters;
+      // Ajouter les recherches sur le courrier
+      courrierSearchFilters.forEach((filter) => {
+        transmissionOrFilters.push({
+          courrier: { is: filter },
+        });
+      });
+
+      console.log(`🔍 [SEARCH COPIE] Nombre de conditions OR: ${transmissionOrFilters.length}`);
+      transmissionWhere.OR = transmissionOrFilters;
     }
 
     if (Object.keys(courrierWhere).length > 0) {
@@ -1691,17 +1816,47 @@ export class TraitementService {
 
     const search = filters.search?.trim();
     if (search) {
+      console.log(`🔍 [SEARCH ADDITIONNEL] Recherche avec le terme: "${search}"`);
       const numericSearch = Number(search);
-      const orFilters: any[] = [
+      
+      // Conditions de recherche sur la transmission (MySQL est case-insensitive par défaut)
+      const transmissionOrFilters: any[] = [
         { instruction: { contains: search } },
         { typeTransfert: { contains: search } },
         { statut: { contains: search } },
         { statutArchive: { contains: search } },
         { document: { contains: search } },
+        { commentairePublic: { contains: search } },
+        { commentaireInterne: { contains: search } },
       ];
 
+      // Conditions de recherche sur le courrier lié
+      const courrierSearchFilters: any[] = [
+        { numero: { contains: search } },
+        { reference: { contains: search } },
+        { objet: { contains: search } },
+        { commentaire: { contains: search } },
+        { commentairePublic: { contains: search } },
+        { commentaireInterne: { contains: search } },
+        { priorite: { contains: search } },
+        { statut: { contains: search } },
+        { document: { contains: search } },
+        { telephone: { contains: search } },
+        { email: { contains: search } },
+        { adresse: { contains: search } },
+        { civilite: { contains: search } },
+        { nom: { contains: search } },
+        { matricule: { contains: search } },
+        { typeTransfert: { contains: search } },
+        { classeCourrier: { contains: search } },
+        { categorie: { contains: search } },
+        { statutArchive: { contains: search } },
+      ];
+
+      // Recherche numérique
       if (!Number.isNaN(numericSearch)) {
-        orFilters.push(
+        console.log(`🔍 [SEARCH ADDITIONNEL] Recherche numérique: ${numericSearch}`);
+        transmissionOrFilters.push(
           { id: numericSearch },
           { idCourrier: numericSearch },
           { idEmetteur: numericSearch },
@@ -1709,9 +1864,27 @@ export class TraitementService {
           { delaiTraitement: numericSearch },
           { nombrePieceJointe: numericSearch },
         );
+        
+        // IDs dans le courrier
+        courrierSearchFilters.push(
+          { id: numericSearch },
+          { idProvenance: numericSearch },
+          { idTypeCourrier: numericSearch },
+          { idService: numericSearch },
+          { idUser: numericSearch },
+          { nombrePieceJointe: numericSearch },
+        );
       }
 
-      transmissionWhere.OR = orFilters;
+      // Ajouter les recherches sur le courrier
+      courrierSearchFilters.forEach((filter) => {
+        transmissionOrFilters.push({
+          courrier: { is: filter },
+        });
+      });
+
+      console.log(`🔍 [SEARCH ADDITIONNEL] Nombre de conditions OR: ${transmissionOrFilters.length}`);
+      transmissionWhere.OR = transmissionOrFilters;
     }
 
     if (Object.keys(courrierWhere).length > 0) {
@@ -2557,7 +2730,7 @@ export class TraitementService {
   }
 
   // 📂 Déclasser une transmission (et le courrier lié automatiquement)
-  async declasserTransmission(id: number, userId: number) {
+  async declasserTransmission(id: number, declasserDto: any, userId: number) {
     // Vérifier que la transmission existe
     const transmission = await this.prismaService.transmission.findUnique({
       where: { id },
@@ -2615,14 +2788,25 @@ export class TraitementService {
     };
     traitePar.push(nouveauTraitement);
 
+    // Préparer les données de mise à jour
+    const updateData: any = {
+      statut: nouveauStatut,
+      isGeled: false,
+      traitePar: traitePar,
+    };
+
+    // Ajouter les commentaires s'ils sont fournis
+    if (declasserDto?.commentairePublic !== undefined) {
+      updateData.commentairePublic = declasserDto.commentairePublic;
+    }
+    if (declasserDto?.commentaireInterne !== undefined) {
+      updateData.commentaireInterne = declasserDto.commentaireInterne;
+    }
+
     // Mettre à jour la transmission (ne pas modifier isArchive)
     const transmissionDeclassee = await this.prismaService.transmission.update({
       where: { id },
-      data: {
-        statut: nouveauStatut,
-        isGeled: false,
-        traitePar: traitePar,
-      },
+      data: updateData,
     });
 
     // Déclasser automatiquement le courrier lié si classé
@@ -2897,6 +3081,20 @@ export class TraitementService {
       return undefined;
     }
 
+    // Si les deux dates sont fournies et identiques, traiter comme une date unique
+    if (start && end && start === end) {
+      const date = new Date(start);
+      if (Number.isNaN(date.getTime())) {
+        throw new BadRequestException(`La date pour ${label || 'le filtre'} est invalide.`);
+      }
+      
+      // Créer un range pour toute la journée
+      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0);
+      const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+      
+      return { gte: startOfDay, lte: endOfDay };
+    }
+
     const range: { gte?: Date; lte?: Date } = {};
 
     if (start) {
@@ -2931,13 +3129,22 @@ export class TraitementService {
   }
 
   private parseSingleDate(dateValue: string, label?: string) {
-    const date = new Date(dateValue);
-    if (Number.isNaN(date.getTime())) {
+    // Vérifier que la date est valide
+    const testDate = new Date(dateValue);
+    if (Number.isNaN(testDate.getTime())) {
       throw new BadRequestException(`La date pour ${label || 'le filtre'} est invalide.`);
     }
 
-    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0);
-    const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+    // Retourner directement les chaînes ISO - Prisma gère la conversion automatiquement
+    // Pas besoin de créer des objets Date qui introduisent des problèmes de timezone
+    const start = `${dateValue}T00:00:00.000Z`;
+    const end = `${dateValue}T23:59:59.999Z`;
+
+    console.log(`🕐 parseSingleDate pour ${label}:`, {
+      input: dateValue,
+      gte: start,
+      lte: end,
+    });
 
     return { gte: start, lte: end };
   }
