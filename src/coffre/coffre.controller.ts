@@ -6,6 +6,7 @@ import { CoffreService } from './coffre.service';
 import { CreateMultipleCoffresDto } from './dto/create-multiple-coffres.dto';
 import { UpdateCoffreDto } from './dto/update-coffre.dto';
 import { CoffreQueryDto } from './dto/coffre-query.dto';
+import { GroupedCoffreQueryDto } from './dto/grouped-coffre-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('Coffre')
@@ -78,9 +79,9 @@ export class CoffreController {
         value: {
           idSalle: 1,
           coffres: [
-            { nom: 'Coffre A1', tailleMaximale: 20 },
-            { nom: 'Coffre A2', tailleMaximale: 25 },
-            { nom: 'Coffre A3' },
+            { nom: 'Coffre A1', tailleMaximale: 20, isActive: true },
+            { nom: 'Coffre A2', tailleMaximale: 25, isActive: true },
+            { nom: 'Coffre A3', isActive: false },
           ],
         },
       },
@@ -90,7 +91,7 @@ export class CoffreController {
           idSalle: 2,
           coffres: [
             { nom: 'Coffre B1' },
-            { nom: 'Coffre B2' },
+            { nom: 'Coffre B2', isActive: true },
           ],
         },
       },
@@ -154,7 +155,118 @@ export class CoffreController {
     return this.coffreService.createMultiple(createMultipleCoffresDto);
   }
 
-  // 📋 Liste de tous les coffres
+  // � Liste des coffres groupés par salle
+  @Get('grouped-by-salle')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Lister les coffres groupés par salle avec filtres et pagination',
+    description: 'Récupère les coffres groupés par salle avec pagination à deux niveaux : pagination des salles et pagination des coffres dans chaque salle. Possibilité de filtrer par recherche, salle spécifique et statut actif.',
+  })
+  @ApiQuery({ name: 'search', required: false, description: 'Recherche globale (nom de coffre)', example: 'Coffre A' })
+  @ApiQuery({ name: 'idSalle', required: false, description: 'Filtrer par ID de salle spécifique', type: Number, example: 1 })
+  @ApiQuery({ name: 'isActive', required: false, description: 'Filtrer par statut actif/inactif des coffres', type: Boolean, example: true })
+  @ApiQuery({ name: 'page', required: false, description: 'Numéro de la page pour les salles (défaut: 1)', type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, description: 'Nombre de salles par page (0 = toutes, défaut: 10)', type: Number, example: 10 })
+  @ApiQuery({ name: 'coffrePage', required: false, description: 'Numéro de la page pour les coffres de chaque salle (défaut: 1)', type: Number, example: 1 })
+  @ApiQuery({ name: 'coffreLimit', required: false, description: 'Nombre de coffres par page pour chaque salle (0 = tous, défaut: 10)', type: Number, example: 10 })
+  @ApiResponse({
+    status: 200,
+    description: 'Coffres groupés récupérés avec succès.',
+    content: {
+      'application/json': {
+        example: {
+          success: true,
+          statusCode: 200,
+          code: 'success',
+          title: 'Coffres groupés par salle',
+          message: '15 coffre(s) dans 3 salle(s) récupéré(s) avec succès.',
+          data: {
+            salles: [
+              {
+                salle: {
+                  id: 1,
+                  nom: 'Salle A',
+                  isActive: true,
+                  isDelete: false,
+                  createdAt: '2026-02-10T10:00:00.000Z',
+                  updatedAt: '2026-02-10T10:00:00.000Z',
+                },
+                coffres: [
+                  {
+                    id: 1,
+                    nom: 'Coffre A1',
+                    nombrePlaceActuelle: 5,
+                    tailleMaximale: 20,
+                    idSalle: 1,
+                    isActive: true,
+                    isDelete: false,
+                    createdAt: '2026-02-10T10:00:00.000Z',
+                    updatedAt: '2026-02-10T10:00:00.000Z',
+                  },
+                  {
+                    id: 2,
+                    nom: 'Coffre A2',
+                    nombrePlaceActuelle: 10,
+                    tailleMaximale: 25,
+                    idSalle: 1,
+                    isActive: true,
+                    isDelete: false,
+                    createdAt: '2026-02-10T10:00:00.000Z',
+                    updatedAt: '2026-02-10T10:00:00.000Z',
+                  },
+                ],
+                totalCoffres: 2,
+                placesTotales: 45,
+                placesOccupees: 15,
+              },
+              {
+                salle: {
+                  id: 2,
+                  nom: 'Salle B',
+                  isActive: true,
+                  isDelete: false,
+                  createdAt: '2026-02-10T10:00:00.000Z',
+                  updatedAt: '2026-02-10T10:00:00.000Z',
+                },
+                coffres: [
+                  {
+                    id: 3,
+                    nom: 'Coffre B1',
+                    nombrePlaceActuelle: 8,
+                    tailleMaximale: 20,
+                    idSalle: 2,
+                    isActive: true,
+                    isDelete: false,
+                    createdAt: '2026-02-10T10:00:00.000Z',
+                    updatedAt: '2026-02-10T10:00:00.000Z',
+                  },
+                ],
+                totalCoffres: 1,
+                placesTotales: 20,
+                placesOccupees: 8,
+              },
+            ],
+            resume: {
+              totalSalles: 2,
+              totalCoffres: 3,
+              totalPlacesDisponibles: 65,
+              totalPlacesOccupees: 23,
+            },
+          },
+        },
+      },
+    },
+  })
+  findGroupedBySalle(@Query() query: GroupedCoffreQueryDto) {
+    console.log('=== CONTROLLER - Paramètres reçus ===');
+    console.log('Query brut:', query);
+    console.log('isActive type:', typeof query.isActive);
+    console.log('isActive value:', query.isActive);
+    console.log('======================================');
+    return this.coffreService.findGroupedBySalle(query);
+  }
+
+  // �📋 Liste de tous les coffres
   @Get()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -284,6 +396,22 @@ export class CoffreController {
         summary: 'Mise à jour du nombre de places',
         value: {
           nombrePlaceActuelle: 10,
+        },
+      },
+      example4: {
+        summary: 'Mise à jour du statut actif',
+        value: {
+          isActive: false,
+        },
+      },
+      example5: {
+        summary: 'Mise à jour complète',
+        value: {
+          nom: 'Coffre B1',
+          tailleMaximale: 25,
+          nombrePlaceActuelle: 8,
+          isActive: true,
+          idSalle: 2,
         },
       },
     },

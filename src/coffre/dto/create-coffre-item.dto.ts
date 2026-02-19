@@ -1,6 +1,6 @@
 // src/coffre/dto/create-coffre-item.dto.ts
 
-import { IsString, IsOptional, IsInt } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -21,4 +21,14 @@ export class CreateCoffreItemDto {
   @IsInt()
   @Type(() => Number)
   tailleMaximale?: number;
+
+  @ApiPropertyOptional({
+    description: 'Statut actif du coffre',
+    example: true,
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  isActive?: boolean;
 }
