@@ -283,7 +283,6 @@ Retourne toutes les informations détaillées incluant:
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['document', 'categorie', 'classeCourrier', 'typeCourrier', 'dateSignature', 'idSignataire'],
       properties: {
         numeroReference: { type: 'string', example: 'MINEPIA/2025/09/17/25/A' },
         numeroActe: { type: 'string', example: 'ACTE-2025-001', description: 'Numéro d\'acte du courrier départ' },

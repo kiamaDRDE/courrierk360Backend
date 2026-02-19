@@ -851,12 +851,6 @@ export class CourrierDepartService {
       throw new NotFoundException(`Courrier départ avec l'ID ${id} introuvable.`);
     }
 
-    if (!document || !dto.categorie || !dto.classeCourrier || !dto.typeCourrier || !dto.dateSignature || !dto.idSignataire) {
-      throw new BadRequestException(
-        'Les champs document, categorie, classeCourrier, typeCourrier, dateSignature et idSignataire sont obligatoires.',
-      );
-    }
-
     const uploadDir = this.ensureUploadDir();
 
     let documentPath: string | null = existing.document || null;
@@ -885,21 +879,25 @@ export class CourrierDepartService {
 
     const result = await this.prismaService.$transaction(async (prisma) => {
       const updateData: any = {
-        document: documentPath,
-        numeroReference: dto.numeroReference || null,
-        numeroActe: dto.numeroActe || null,
-        categorie: dto.categorie || null,
-        idDestinataire: dto.idDestinataire || existing.idDestinataire,
-        idCourrier: dto.idCourrier || null,
-        idSignataire: dto.idSignataire || null,
-        classeCourrier: dto.classeCourrier || null,
-        typeCourrier: dto.typeCourrier || null,
-        dateSignature: dto.dateSignature ? new Date(dto.dateSignature) : null,
-        commentaire: dto.commentaire || null,
-        email: dto.email || null,
-        numeroTelephone: dto.numeroTelephone || null,
-        nombrePieceJointe: dto.nombrePieceJointe || (piecesJointes?.length ?? 0),
+        numeroReference: dto.numeroReference !== undefined ? dto.numeroReference : existing.numeroReference,
+        numeroActe: dto.numeroActe !== undefined ? dto.numeroActe : existing.numeroActe,
+        categorie: dto.categorie !== undefined ? dto.categorie : existing.categorie,
+        idDestinataire: dto.idDestinataire !== undefined ? dto.idDestinataire : existing.idDestinataire,
+        idCourrier: dto.idCourrier !== undefined ? dto.idCourrier : existing.idCourrier,
+        idSignataire: dto.idSignataire !== undefined ? dto.idSignataire : existing.idSignataire,
+        classeCourrier: dto.classeCourrier !== undefined ? dto.classeCourrier : existing.classeCourrier,
+        typeCourrier: dto.typeCourrier !== undefined ? dto.typeCourrier : existing.typeCourrier,
+        dateSignature: dto.dateSignature !== undefined ? (dto.dateSignature ? new Date(dto.dateSignature) : null) : existing.dateSignature,
+        commentaire: dto.commentaire !== undefined ? dto.commentaire : existing.commentaire,
+        email: dto.email !== undefined ? dto.email : existing.email,
+        numeroTelephone: dto.numeroTelephone !== undefined ? dto.numeroTelephone : existing.numeroTelephone,
+        nombrePieceJointe: dto.nombrePieceJointe !== undefined ? dto.nombrePieceJointe : (piecesJointes?.length ?? existing.nombrePieceJointe),
       };
+
+      // Mettre à jour le document seulement si fourni
+      if (document) {
+        updateData.document = documentPath;
+      }
 
       // Ajouter provenancesCopie seulement si fourni dans le DTO
       if (dto.provenancesCopie !== undefined) {
