@@ -376,17 +376,25 @@ export class CourrierInterneService {
     const where: any = { isDelete: false, idRedacteur: userId };
     const courrierWhere: any = {};
 
-    const dateArriveeRange = this.parseDateRange(
-      filters.dateArriveeDebut,
-      filters.dateArriveeFin,
-      'dateArrivee',
-    );
-    if (dateArriveeRange) {
-      courrierWhere.dateArrivee = dateArriveeRange;
+    // Filtres sur la date de réponse (dateArriveeDebut) et date de création (dateArriveeFin)
+    if (filters.dateArriveeDebut) {
+      const startDate = new Date(filters.dateArriveeDebut);
+      if (!Number.isNaN(startDate.getTime())) {
+        where.dateReponse = { ...where.dateReponse, gte: startDate };
+      }
     }
 
+    if (filters.dateArriveeFin) {
+      const endDate = new Date(filters.dateArriveeFin);
+      if (!Number.isNaN(endDate.getTime())) {
+        where.createdAt = { ...where.createdAt, lte: endDate };
+      }
+    }
+
+    // Filtre sur la date de réponse (dateEnregistrement)
     if (filters.dateEnregistrement) {
-      courrierWhere.dateEnregistrement = this.parseSingleDate(filters.dateEnregistrement, 'dateEnregistrement');
+      const dateReponseRange = this.parseSingleDate(filters.dateEnregistrement, 'dateEnregistrement');
+      where.dateReponse = { ...where.dateReponse, ...dateReponseRange };
     }
 
     if (filters.priorite) {
@@ -722,17 +730,25 @@ export class CourrierInterneService {
     const where: any = { isDelete: false, idService: serviceId };
     const courrierWhere: any = {};
 
-    const dateArriveeRange = this.parseDateRange(
-      filters.dateArriveeDebut,
-      filters.dateArriveeFin,
-      'dateArrivee',
-    );
-    if (dateArriveeRange) {
-      courrierWhere.dateArrivee = dateArriveeRange;
+    // Filtres sur la date de réponse (dateArriveeDebut) et date de création (dateArriveeFin)
+    if (filters.dateArriveeDebut) {
+      const startDate = new Date(filters.dateArriveeDebut);
+      if (!Number.isNaN(startDate.getTime())) {
+        where.dateReponse = { ...where.dateReponse, gte: startDate };
+      }
     }
 
+    if (filters.dateArriveeFin) {
+      const endDate = new Date(filters.dateArriveeFin);
+      if (!Number.isNaN(endDate.getTime())) {
+        where.createdAt = { ...where.createdAt, lte: endDate };
+      }
+    }
+
+    // Filtre sur la date de réponse (dateEnregistrement)
     if (filters.dateEnregistrement) {
-      courrierWhere.dateEnregistrement = this.parseSingleDate(filters.dateEnregistrement, 'dateEnregistrement');
+      const dateReponseRange = this.parseSingleDate(filters.dateEnregistrement, 'dateEnregistrement');
+      where.dateReponse = { ...where.dateReponse, ...dateReponseRange };
     }
 
     if (filters.priorite) {
