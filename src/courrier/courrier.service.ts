@@ -262,19 +262,42 @@ export class CourrierService {
     const debutMois = new Date(now.getFullYear(), now.getMonth(), 1);
     const finMois = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-    const count = await this.prismaService.courrier.count({
-      where: {
-        createdAt: {
-          gte: debutMois,
-          lte: finMois,
+    // Boucle pour gérer les collisions de numéro (race condition)
+    let numeroReference = '';
+    let tentatives = 0;
+    const maxTentatives = 10;
+
+    while (tentatives < maxTentatives) {
+      const count = await this.prismaService.courrier.count({
+        where: {
+          createdAt: {
+            gte: debutMois,
+            lte: finMois,
+          },
         },
-      },
-    });
+      });
 
-    const sequence = count + 1;
-    const numeroFormate = sequence.toString().padStart(3, '0');
+      const sequence = count + 1 + tentatives;
+      const numeroFormate = sequence.toString().padStart(3, '0');
+      numeroReference = `${annee}-${mois}-${numeroFormate}`;
 
-    return `${annee}-${mois}-${numeroFormate}`;
+      // Vérifier si le numéro existe déjà
+      const existe = await this.prismaService.courrier.findUnique({
+        where: { numero: numeroReference },
+        select: { id: true },
+      });
+
+      if (!existe) {
+        // Numéro disponible
+        return numeroReference;
+      }
+
+      // Numéro existe déjà, réessayer avec le suivant
+      tentatives++;
+    }
+
+    // Si on arrive ici, ajouter un timestamp pour garantir l'unicité
+    return `${annee}-${mois}-${Date.now().toString().slice(-6)}`;
   }
 
   // 📝 Créer un courrier
