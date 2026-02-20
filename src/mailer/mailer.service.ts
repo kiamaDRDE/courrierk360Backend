@@ -16,7 +16,25 @@ export class MailerService {
         user: 'ppatnuc@gmail.com',
         pass: 'jyqkjhovvrdmujrs',
       },
+      // Logs détaillés pour debug en production
+      logger: true,
+      debug: process.env.NODE_ENV !== 'production',
     });
+
+    // Vérifier la connexion SMTP au démarrage
+    this.verifyConnection();
+  }
+
+  /**
+   * Vérifier la connexion SMTP
+   */
+  private async verifyConnection() {
+    try {
+      await this.transporter.verify();
+      this.logger.log('🟢 Connexion SMTP vérifiée avec succès');
+    } catch (error) {
+      this.logger.error('🔴 Erreur de connexion SMTP:', error);
+    }
   }
 
   /**
@@ -245,6 +263,8 @@ export class MailerService {
     serviceNom: string,
   ): Promise<boolean> {
     try {
+      this.logger.log(`🚀 Préparation email accusé de réception pour ${email}`);
+      
       // Lire le template HTML
       const templatePath = path.join(__dirname, 'templates', 'courrier-accuse-reception.html');
       let htmlContent = fs.readFileSync(templatePath, 'utf8');
@@ -276,11 +296,28 @@ export class MailerService {
         ],
       };
 
-      await this.transporter.sendMail(mailOptions);
-      this.logger.log(`Email accusé de réception envoyé à ${email} pour le courrier ${numero}`);
+      this.logger.log(`📧 Tentative d'envoi email à: ${email}`);
+      this.logger.log(`📋 Configuration SMTP: service=gmail, user=ppatnuc@gmail.com`);
+      
+      const info = await this.transporter.sendMail(mailOptions);
+      
+      this.logger.log(`✅ Email accusé de réception RÉELLEMENT envoyé à ${email} pour le courrier ${numero}`);
+      this.logger.log(`📨 MessageId: ${info.messageId}`);
+      this.logger.log(`📤 Réponse serveur: ${info.response || 'N/A'}`);
+      this.logger.log(`✉️ Accepted: ${JSON.stringify(info.accepted || [])}`);
+      this.logger.log(`❌ Rejected: ${JSON.stringify(info.rejected || [])}`);
+      
       return true;
     } catch (error) {
-      this.logger.error(`Erreur lors de l'envoi de l'accusé de réception à ${email}:`, error);
+      this.logger.error(`🔴 ERREUR DÉTAILLÉE lors de l'envoi de l'accusé de réception à ${email}:`);
+      this.logger.error(`🚫 Erreur complète:`, error);
+      this.logger.error(`🎯 Code erreur: ${error.code || 'N/A'}`);
+      this.logger.error(`⚡ Message: ${error.message || 'N/A'}`);
+      
+      if (error.response) {
+        this.logger.error(`📧 Réponse serveur: ${error.response}`);
+      }
+      
       return false;
     }
   }
@@ -306,6 +343,8 @@ export class MailerService {
     },
   ): Promise<boolean> {
     try {
+      this.logger.log(`🚀 Préparation email notification service pour ${userEmail}`);
+      
       // Lire le template HTML
       const templatePath = path.join(__dirname, 'templates', 'courrier-notification-service.html');
       let htmlContent = fs.readFileSync(templatePath, 'utf8');
@@ -360,11 +399,27 @@ export class MailerService {
         ],
       };
 
-      await this.transporter.sendMail(mailOptions);
-      this.logger.log(`Email notification service envoyé à ${userEmail} pour le courrier ${courrier.numero}`);
+      this.logger.log(`📧 Tentative d'envoi email de notification service à: ${userEmail}`);
+      
+      const info = await this.transporter.sendMail(mailOptions);
+      
+      this.logger.log(`✅ Email notification service RÉELLEMENT envoyé à ${userEmail} pour le courrier ${courrier.numero}`);
+      this.logger.log(`📨 MessageId: ${info.messageId}`);
+      this.logger.log(`📤 Réponse serveur: ${info.response || 'N/A'}`);
+      this.logger.log(`✉️ Accepted: ${JSON.stringify(info.accepted || [])}`);
+      this.logger.log(`❌ Rejected: ${JSON.stringify(info.rejected || [])}`);
+      
       return true;
     } catch (error) {
-      this.logger.error(`Erreur lors de l'envoi de la notification au service ${userEmail}:`, error);
+      this.logger.error(`🔴 ERREUR DÉTAILLÉE lors de l'envoi de la notification au service ${userEmail}:`);
+      this.logger.error(`🚫 Erreur complète:`, error);
+      this.logger.error(`🎯 Code erreur: ${error.code || 'N/A'}`);
+      this.logger.error(`⚡ Message: ${error.message || 'N/A'}`);
+      
+      if (error.response) {
+        this.logger.error(`📧 Réponse serveur: ${error.response}`);
+      }
+      
       return false;
     }
   }
