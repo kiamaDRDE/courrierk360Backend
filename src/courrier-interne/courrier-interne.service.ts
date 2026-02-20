@@ -470,6 +470,7 @@ export class CourrierInterneService {
       take: limit,
       orderBy: { createdAt: 'desc' },
       include: {
+        service: { select: { id: true, nom: true, sigle: true } },
         serviceDestinataire: { select: { id: true, nom: true, sigle: true } },
         redacteur: { select: { id: true, username: true, firstName: true, lastName: true, email: true } },
         piecesJointes: { select: { id: true, nom: true, intitule: true, chemin: true, type: true } },
@@ -542,14 +543,97 @@ export class CourrierInterneService {
       }
     }
 
+    // Récupérer les courriers à partir des idTransmission
+    const allTransmissionIds = reponses
+      .flatMap((r) => (Array.isArray(r.idTransmission) ? r.idTransmission : []))
+      .map((id) => Number(id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+
+    const transmissionsMap = new Map<number, number>(); // transmissionId -> courrierId
+    if (allTransmissionIds.length > 0) {
+      const transmissions = await this.prismaService.transmission.findMany({
+        where: { id: { in: allTransmissionIds }, isDelete: false },
+        select: { id: true, idCourrier: true },
+      });
+
+      for (const t of transmissions) {
+        if (t.idCourrier) {
+          transmissionsMap.set(t.id, t.idCourrier);
+        }
+      }
+    }
+
+    // Récupérer tous les courriers liés aux transmissions
+    const courrierIdsFromTransmissions = Array.from(new Set(transmissionsMap.values()));
+    const courriersFromTransmissions = new Map();
+    if (courrierIdsFromTransmissions.length > 0) {
+      const courriers = await this.prismaService.courrier.findMany({
+        where: { id: { in: courrierIdsFromTransmissions }, isDelete: false },
+        include: {
+          provenance: true,
+          typeCourrier: true,
+          service: true,
+          user: true,
+          piecesJointes: true,
+        },
+      });
+
+      for (const c of courriers) {
+        courriersFromTransmissions.set(c.id, c);
+      }
+    }
+
     let data = reponses.map((reponse) => {
       const redacteurFullName = reponse.redacteur
         ? `${reponse.redacteur.firstName || ''} ${reponse.redacteur.lastName || ''}`.trim() || reponse.redacteur.username
         : null;
 
-      const courriers = reponse.courriers
+      // Courriers de la table de jonction courrier_reponse
+      const courriersFromRelation = reponse.courriers
         .map((item) => item.courrier)
         .filter((c): c is NonNullable<typeof reponse.courriers[number]['courrier']> => Boolean(c));
+
+      // Courriers des transmissions
+      const transmissionIds = Array.isArray(reponse.idTransmission) ? reponse.idTransmission : [];
+      const courriersFromTransmissionsForThisReponse = transmissionIds
+        .map((tId) => transmissionsMap.get(Number(tId)))
+        .filter((cId): cId is number => cId !== undefined)
+        .map((cId) => courriersFromTransmissions.get(cId))
+        .filter(Boolean);
+
+      // Fusionner les deux sources de courriers et éliminer les doublons
+      const allCourriers = [...courriersFromRelation];
+      const existingCourrierIds = new Set(courriersFromRelation.map((c) => c.id));
+      for (const c of courriersFromTransmissionsForThisReponse) {
+        if (!existingCourrierIds.has(c.id)) {
+          allCourriers.push(c);
+        }
+      }
+
+      // Formater les courriers pour retourner uniquement les champs nécessaires
+      const courriersFormates = allCourriers.map((c) => ({
+        id: c.id,
+        numero: c.numero,
+        reference: c.reference,
+        objet: c.objet,
+        dateArrivee: c.dateArrivee,
+        dateEnregistrement: c.dateEnregistrement,
+        categorie: c.categorie,
+        priorite: c.priorite,
+        typeCourrier: c.typeCourrier ? {
+          id: c.typeCourrier.id,
+          nom: c.typeCourrier.nom,
+          type: c.typeCourrier.type,
+          classeCourrier: c.typeCourrier.classeCourrier,
+        } : null,
+        provenance: c.provenance ? {
+          id: c.provenance.id,
+          nom: c.provenance.nom,
+          telephone: c.provenance.telephone,
+          email: c.provenance.email,
+          type: c.provenance.type,
+        } : null,
+      }));
 
       const typesCourrier = (Array.isArray(reponse.typesCourrierIds) ? reponse.typesCourrierIds : [])
         .map((id) => typeCourrierMap.get(Number(id)))
@@ -563,9 +647,10 @@ export class CourrierInterneService {
         typeTransmission: reponse.typeTransmission,
         dateReponse: reponse.dateReponse,
         createdAt: reponse.createdAt,
-        courriers,
+        courriers: courriersFormates,
         typesCourrier,
         idTransmission: reponse.idTransmission || [],
+        service: reponse.service || null,
         serviceDestinataire: reponse.serviceDestinataire || null,
         redacteur: reponse.redacteur
           ? {
@@ -748,10 +833,96 @@ export class CourrierInterneService {
       },
     });
 
-    let data = reponses.map((r) => ({
-      ...r,
-      courriers: r.courriers.map((cr) => cr.courrier),
-    }));
+    // Récupérer les courriers à partir des idTransmission
+    const allTransmissionIdsRecus = reponses
+      .flatMap((r) => (Array.isArray(r.idTransmission) ? r.idTransmission : []))
+      .map((id) => Number(id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+
+    const transmissionsMapRecus = new Map<number, number>(); // transmissionId -> courrierId
+    if (allTransmissionIdsRecus.length > 0) {
+      const transmissions = await this.prismaService.transmission.findMany({
+        where: { id: { in: allTransmissionIdsRecus }, isDelete: false },
+        select: { id: true, idCourrier: true },
+      });
+
+      for (const t of transmissions) {
+        if (t.idCourrier) {
+          transmissionsMapRecus.set(t.id, t.idCourrier);
+        }
+      }
+    }
+
+    // Récupérer tous les courriers liés aux transmissions
+    const courrierIdsFromTransmissionsRecus = Array.from(new Set(transmissionsMapRecus.values()));
+    const courriersFromTransmissionsRecus = new Map();
+    if (courrierIdsFromTransmissionsRecus.length > 0) {
+      const courriers = await this.prismaService.courrier.findMany({
+        where: { id: { in: courrierIdsFromTransmissionsRecus }, isDelete: false },
+        include: {
+          provenance: true,
+          typeCourrier: true,
+        },
+      });
+
+      for (const c of courriers) {
+        courriersFromTransmissionsRecus.set(c.id, c);
+      }
+    }
+
+    let data = reponses.map((r) => {
+      // Courriers de la table de jonction courrier_reponse
+      const courriersFromRelation = r.courriers.map((cr) => cr.courrier).filter(Boolean);
+
+      // Courriers des transmissions
+      const transmissionIds = Array.isArray(r.idTransmission) ? r.idTransmission : [];
+      const courriersFromTransmissionsForThisReponse = transmissionIds
+        .map((tId) => transmissionsMapRecus.get(Number(tId)))
+        .filter((cId): cId is number => cId !== undefined)
+        .map((cId) => courriersFromTransmissionsRecus.get(cId))
+        .filter(Boolean);
+
+      // Fusionner les deux sources de courriers et éliminer les doublons
+      const allCourriers = [...courriersFromRelation];
+      const existingCourrierIds = new Set(courriersFromRelation.map((c) => c?.id).filter(Boolean));
+      for (const c of courriersFromTransmissionsForThisReponse) {
+        if (!existingCourrierIds.has(c.id)) {
+          allCourriers.push(c);
+        }
+      }
+
+      // Formater les courriers pour retourner uniquement les champs nécessaires
+      const courriersFormates = allCourriers
+        .filter((c) => c !== null && c !== undefined)
+        .map((c) => ({
+          id: c.id,
+          numero: c.numero,
+          reference: c.reference,
+          objet: c.objet,
+          dateArrivee: c.dateArrivee,
+          dateEnregistrement: c.dateEnregistrement,
+          categorie: c.categorie,
+          priorite: c.priorite,
+          typeCourrier: c.typeCourrier ? {
+            id: c.typeCourrier.id,
+            nom: c.typeCourrier.nom,
+            type: c.typeCourrier.type,
+            classeCourrier: c.typeCourrier.classeCourrier,
+          } : null,
+          provenance: c.provenance ? {
+            id: c.provenance.id,
+            nom: c.provenance.nom,
+            telephone: c.provenance.telephone,
+            email: c.provenance.email,
+            type: c.provenance.type,
+          } : null,
+        }));
+
+      return {
+        ...r,
+        courriers: courriersFormates,
+      };
+    });
 
     if (filters.dernierStatut || filters.dernierServiceId) {
       const courrierIds = data.flatMap((r) => r.courriers.map((c) => c.id));
