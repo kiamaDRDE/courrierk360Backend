@@ -147,7 +147,7 @@ export class CourrierInterneService {
           transmissions
             .map(t => t.idCourrier)
             .filter((id): id is number => id !== null)
-        )];
+        )] as number[];
       }
 
       const reponse = await prisma.reponse.create({
@@ -602,7 +602,7 @@ export class CourrierInterneService {
         .filter((c): c is NonNullable<typeof reponse.courriers[number]['courrier']> => Boolean(c));
 
       // Courriers des transmissions
-      const transmissionIds = Array.isArray(reponse.idTransmission) ? reponse.idTransmission : [];
+      const transmissionIds = Array.isArray(reponse.idTransmission) ? (reponse.idTransmission as number[]) : [];
       const courriersFromTransmissionsForThisReponse = transmissionIds
         .map((tId) => transmissionsMap.get(Number(tId)))
         .filter((cId): cId is number => cId !== undefined)
@@ -657,7 +657,7 @@ export class CourrierInterneService {
         createdAt: reponse.createdAt,
         courriers: courriersFormates,
         typesCourrier,
-        idTransmission: reponse.idTransmission || [],
+        idTransmission: (Array.isArray(reponse.idTransmission) ? reponse.idTransmission : []) as number[],
         service: reponse.service || null,
         serviceDestinataire: reponse.serviceDestinataire || null,
         redacteur: reponse.redacteur
@@ -891,7 +891,7 @@ export class CourrierInterneService {
       const courriersFromRelation = r.courriers.map((cr) => cr.courrier).filter(Boolean);
 
       // Courriers des transmissions
-      const transmissionIds = Array.isArray(r.idTransmission) ? r.idTransmission : [];
+      const transmissionIds = Array.isArray(r.idTransmission) ? (r.idTransmission as number[]) : [];
       const courriersFromTransmissionsForThisReponse = transmissionIds
         .map((tId) => transmissionsMapRecus.get(Number(tId)))
         .filter((cId): cId is number => cId !== undefined)
@@ -1055,7 +1055,7 @@ export class CourrierInterneService {
       .filter((c): c is NonNullable<typeof reponse.courriers[number]['courrier']> => Boolean(c));
 
     // Récupérer les courriers à partir des idTransmission
-    const transmissionIds = Array.isArray(reponse.idTransmission) ? reponse.idTransmission : [];
+    const transmissionIds = Array.isArray(reponse.idTransmission) ? (reponse.idTransmission as number[]) : [];
     const transmissionsMap = new Map<number, number>();
     const courriersFromTransmissions = new Map();
 
@@ -1138,7 +1138,7 @@ export class CourrierInterneService {
       createdAt: reponse.createdAt,
       courriers: courriersFormates,
       typesCourrier,
-      idTransmission: reponse.idTransmission || [],
+      idTransmission: (Array.isArray(reponse.idTransmission) ? reponse.idTransmission : []) as number[],
       service: reponse.service || null,
       serviceDestinataire: reponse.serviceDestinataire || null,
       redacteur: reponse.redacteur
