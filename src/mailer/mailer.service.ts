@@ -18,8 +18,12 @@ export class MailerService {
       },
       // Logs détaillés pour debug en production
       logger: true,
-      debug: process.env.NODE_ENV !== 'production',
-    });
+      debug: process.env.NODE_ENV !== 'production',      // Options anti-spam
+      secure: true,
+      port: 465,
+      tls: {
+        rejectUnauthorized: false
+      }    });
 
     // Vérifier la connexion SMTP au démarrage
     this.verifyConnection();
@@ -48,6 +52,12 @@ export class MailerService {
           address: 'ppatnuc@gmail.com',
         },
         to: email,
+        headers: {
+          'X-Mailer': 'KIAMA RegTar v1.0',
+          'X-Priority': '3',
+          'X-MSMail-Priority': 'Normal',
+          'Importance': 'Normal'
+        },
         subject: '🎉 Bienvenue sur KIAMA RegTar - Votre compte a été créé !',
         html: `
           <!DOCTYPE html>
@@ -287,6 +297,13 @@ export class MailerService {
         to: email,
         subject: '✅ Accusé de Réception - Votre courrier a été enregistré',
         html: htmlContent,
+        headers: {
+          'X-Mailer': 'KIAMA CourriÈrK360 v1.0',
+          'X-Priority': '3',
+          'X-MSMail-Priority': 'Normal',
+          'Importance': 'Normal',
+          'Content-Type': 'text/html; charset=UTF-8'
+        },
         attachments: [
           {
             filename: 'logo.png',
@@ -390,6 +407,13 @@ export class MailerService {
         to: userEmail,
         subject: `📥 Nouveau Courrier - ${courrier.numero} - ${serviceNom}`,
         html: htmlContent,
+        headers: {
+          'X-Mailer': 'KIAMA CourriÈrK360 v1.0',
+          'X-Priority': '3',
+          'X-MSMail-Priority': 'Normal',
+          'Importance': 'Normal',
+          'Content-Type': 'text/html; charset=UTF-8'
+        },
         attachments: [
           {
             filename: 'logo.png',
