@@ -106,6 +106,24 @@ export class CourrierInterneService {
         'Les champs classeCourrier, typesCourrierIds, objet et idService sont obligatoires.',
       );
     }
+
+    // Récupérer le service de l'utilisateur connecté
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { idService: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Utilisateur introuvable.');
+    }
+
+    // Vérifier que le service destinataire n'est pas le service de l'utilisateur
+    if (dto.idService === user.idService) {
+      throw new BadRequestException(
+        'Vous ne pouvez pas créer un courrier interne à destination de votre propre service.',
+      );
+    }
+
     const typesCourrierIds = this.parseJsonIds(dto.typesCourrierIds);
     const idTransmissions = this.parseJsonIds(dto.idTransmissions);
     const piecesJointesInfo = this.parsePiecesJointesData(dto.piecesJointesData);
@@ -113,6 +131,25 @@ export class CourrierInterneService {
     const uploadDir = this.ensureUploadDir();
 
     const result = await this.prismaService.$transaction(async (prisma) => {
+      // Récupérer les idCourrier depuis les transmissions si idTransmissions est fourni
+      let courrierIds: number[] = [];
+      if (idTransmissions.length > 0) {
+        const transmissions = await prisma.transmission.findMany({
+          where: {
+            id: { in: idTransmissions },
+            isDelete: false,
+          },
+          select: { idCourrier: true },
+        });
+
+        // Extraire les idCourrier non-null et uniques
+        courrierIds = [...new Set(
+          transmissions
+            .map(t => t.idCourrier)
+            .filter((id): id is number => id !== null)
+        )];
+      }
+
       const reponse = await prisma.reponse.create({
         data: {
           classeCourrier: dto.classeCourrier || null,
@@ -126,6 +163,17 @@ export class CourrierInterneService {
           idRedacteur: userId,
         },
       });
+
+      // Créer les liaisons courrier-reponse automatiquement
+      if (courrierIds.length > 0) {
+        await prisma.courrierReponse.createMany({
+          data: courrierIds.map(courrierId => ({
+            courrierId: courrierId,
+            reponseId: reponse.id,
+          })),
+          skipDuplicates: true, // Éviter les doublons
+        });
+      }
 
       const piecesJointesCreees: any[] = [];
       if (piecesJointes && piecesJointes.length > 0) {
@@ -225,9 +273,22 @@ export class CourrierInterneService {
     dto: UpdateCourrierInterneDto,
     piecesJointes?: Express.Multer.File[],
   ) {
-    const existing = await this.prismaService.reponse.findUnique({ where: { id } });
+    const existing = await this.prismaService.reponse.findUnique({
+      where: { id },
+      include: { redacteur: { select: { idService: true } } },
+    });
+    
     if (!existing || existing.isDelete) {
       throw new NotFoundException(`Réponse avec l'ID ${id} introuvable.`);
+    }
+
+    // Si on met à jour le idService, vérifier qu'il n'est pas égal au service de l'utilisateur
+    if (dto.idService !== undefined && existing.redacteur?.idService) {
+      if (dto.idService === existing.redacteur.idService) {
+        throw new BadRequestException(
+          'Vous ne pouvez pas modifier le service destinataire pour qu\'il soit votre propre service.',
+        );
+      }
     }
 
     const typesCourrierIds = dto.typesCourrierIds !== undefined ? this.parseJsonIds(dto.typesCourrierIds) : undefined;
@@ -395,8 +456,18 @@ export class CourrierInterneService {
       where.OR = orFilters;
     }
 
+    // Compter le total avant pagination
+    const total = await this.prismaService.reponse.count({ where });
+
+    // Pagination
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+    const skip = (page - 1) * limit;
+
     const reponses = await this.prismaService.reponse.findMany({
       where,
+      skip,
+      take: limit,
       orderBy: { createdAt: 'desc' },
       include: {
         serviceDestinataire: { select: { id: true, nom: true, sigle: true } },
@@ -529,7 +600,223 @@ export class CourrierInterneService {
       });
     }
 
-    return this.responseFormatter.success(data, 'Liste réponses', 'Réponses récupérées avec succès.');
+    const totalPages = Math.ceil(total / limit);
+
+    return this.responseFormatter.success(
+      {
+        items: data,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages,
+        },
+      },
+      'Courriers internes envoyés', 
+      `${data.length} courrier(s) interne(s) sur ${total} envoyé(s) par vous récupéré(s) avec succès (page ${page}/${totalPages}).`
+    );
+  }
+
+  async findRecusByService(userId: number, query?: ListCourrierInterneQueryDto) {
+    // Récupérer le service de l'utilisateur
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { idService: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Utilisateur introuvable.');
+    }
+
+    if (!user.idService) {
+      throw new BadRequestException('L\'utilisateur connecté doit avoir un service assigné.');
+    }
+
+    const serviceId = user.idService;
+    const filters = query || {};
+    const where: any = { isDelete: false, idService: serviceId };
+    const courrierWhere: any = {};
+
+    const dateArriveeRange = this.parseDateRange(
+      filters.dateArriveeDebut,
+      filters.dateArriveeFin,
+      'dateArrivee',
+    );
+    if (dateArriveeRange) {
+      courrierWhere.dateArrivee = dateArriveeRange;
+    }
+
+    if (filters.dateEnregistrement) {
+      courrierWhere.dateEnregistrement = this.parseSingleDate(filters.dateEnregistrement, 'dateEnregistrement');
+    }
+
+    if (filters.priorite) {
+      courrierWhere.priorite = filters.priorite;
+    }
+
+    if (filters.categorie) {
+      courrierWhere.categorie = filters.categorie;
+    } else if (filters.categorieId) {
+      const categorie = await this.prismaService.categories.findUnique({
+        where: { id: filters.categorieId },
+        select: { nom: true },
+      });
+
+      if (!categorie) {
+        throw new NotFoundException(`La catégorie avec l'ID ${filters.categorieId} n'existe pas.`);
+      }
+
+      courrierWhere.categorie = categorie.nom;
+    }
+
+    if (filters.typeCourrierId) {
+      courrierWhere.idTypeCourrier = filters.typeCourrierId;
+    }
+
+    if (filters.statut) {
+      courrierWhere.statut = filters.statut;
+    }
+
+    if (filters.serviceId) {
+      courrierWhere.idService = filters.serviceId;
+    }
+
+    if (Object.keys(courrierWhere).length > 0) {
+      where.courriers = { some: { courrier: courrierWhere } };
+    }
+
+    const search = filters.search?.trim();
+    if (search) {
+      const numericSearch = Number(search);
+      const orFilters: any[] = [
+        { objet: { contains: search } },
+        { commentairePublic: { contains: search } },
+        { commentaireInterne: { contains: search } },
+        { classeCourrier: { contains: search } },
+        { typeTransmission: { contains: search } },
+        { courriers: { some: { courrier: { numero: { contains: search } } } } },
+        { courriers: { some: { courrier: { reference: { contains: search } } } } },
+        { courriers: { some: { courrier: { objet: { contains: search } } } } },
+        { courriers: { some: { courrier: { categorie: { contains: search } } } } },
+        { courriers: { some: { courrier: { priorite: { contains: search } } } } },
+        { courriers: { some: { courrier: { provenance: { is: { nom: { contains: search } } } } } } },
+      ];
+
+      if (!Number.isNaN(numericSearch)) {
+        orFilters.push(
+          { id: numericSearch },
+          { idService: numericSearch },
+          { idServiceDestinataire: numericSearch },
+          { courriers: { some: { courrier: { id: numericSearch } } } },
+          { courriers: { some: { courrier: { idService: numericSearch } } } },
+          { courriers: { some: { courrier: { idProvenance: numericSearch } } } },
+          { courriers: { some: { courrier: { idTypeCourrier: numericSearch } } } },
+        );
+      }
+
+      where.OR = orFilters;
+    }
+
+    // Compter le total avant pagination
+    const totalRecus = await this.prismaService.reponse.count({ where });
+
+    // Pagination
+    const pageRecus = filters.page || 1;
+    const limitRecus = filters.limit || 10;
+    const skipRecus = (pageRecus - 1) * limitRecus;
+
+    const reponses = await this.prismaService.reponse.findMany({
+      where,
+      skip: skipRecus,
+      take: limitRecus,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        service: { select: { id: true, nom: true, sigle: true } },
+        serviceDestinataire: { select: { id: true, nom: true, sigle: true } },
+        redacteur: { select: { id: true, username: true, firstName: true, lastName: true, email: true } },
+        piecesJointes: { select: { id: true, nom: true, intitule: true, chemin: true, type: true } },
+        courriers: {
+          select: {
+            courrier: {
+              include: {
+                provenance: true,
+                typeCourrier: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    let data = reponses.map((r) => ({
+      ...r,
+      courriers: r.courriers.map((cr) => cr.courrier),
+    }));
+
+    if (filters.dernierStatut || filters.dernierServiceId) {
+      const courrierIds = data.flatMap((r) => r.courriers.map((c) => c.id));
+      const latestByCourrier = new Map<number, { statut: string | null; service: any }>();
+
+      const latestAll = await this.prismaService.transmission.findMany({
+        where: {
+          idCourrier: { in: courrierIds },
+          isDelete: false,
+        },
+        orderBy: { dateReception: 'desc' },
+        select: {
+          idCourrier: true,
+          statut: true,
+          service: { select: { id: true, nom: true, sigle: true } },
+        },
+      });
+
+      for (const t of latestAll) {
+        if (typeof t.idCourrier === 'number' && !latestByCourrier.has(t.idCourrier)) {
+          latestByCourrier.set(t.idCourrier, {
+            statut: t.statut || null,
+            service: t.service
+              ? { id: t.service.id, nom: t.service.nom, sigle: t.service.sigle }
+              : null,
+          });
+        }
+      }
+
+      data = data.filter((item) => {
+        if (!item.courriers || item.courriers.length === 0) return false;
+
+        return item.courriers.some((courrier) => {
+          if (!courrier?.id) return false;
+          const last = latestByCourrier.get(courrier.id);
+          if (!last) return false;
+
+          if (filters.dernierStatut && last.statut !== filters.dernierStatut) {
+            return false;
+          }
+
+          if (filters.dernierServiceId && last.service?.id !== filters.dernierServiceId) {
+            return false;
+          }
+
+          return true;
+        });
+      });
+    }
+
+    const totalPagesRecus = Math.ceil(totalRecus / limitRecus);
+
+    return this.responseFormatter.success(
+      {
+        items: data,
+        pagination: {
+          total: totalRecus,
+          page: pageRecus,
+          limit: limitRecus,
+          totalPages: totalPagesRecus,
+        },
+      },
+      'Courriers internes reçus', 
+      `${data.length} courrier(s) interne(s) sur ${totalRecus} reçu(s) par votre service récupéré(s) avec succès (page ${pageRecus}/${totalPagesRecus}).`
+    );
   }
 
   async findOne(id: number) {
