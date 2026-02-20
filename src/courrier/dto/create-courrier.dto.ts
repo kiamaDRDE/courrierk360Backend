@@ -156,12 +156,31 @@ export class CreateCourrierDto {
   })
   @IsOptional()
   @Transform(({ value }) => {
-    if (typeof value === 'boolean') return value;
-    if (typeof value === 'number') return value === 1;
+    console.log('🔍 Transform isConfidentiel - Valeur reçue:', { value, type: typeof value });
+    if (typeof value === 'boolean') {
+      console.log('✅ Déjà boolean, retour:', value);
+      return value;
+    }
+    if (typeof value === 'number') {
+      const result = value === 1;
+      console.log('🔢 Number, retour:', result);
+      return result;
+    }
     if (typeof value === 'string') {
       const v = value.trim().toLowerCase();
-      return v === 'true' || v === '1';
+      console.log('📝 String après trim/lower:', v);
+      if (v === 'false' || v === '0' || v === '') {
+        console.log('❌ Détecté comme FALSE');
+        return false;
+      }
+      if (v === 'true' || v === '1') {
+        console.log('✅ Détecté comme TRUE');
+        return true;
+      }
+      console.log('⚠️ String non reconnu, retour false par défaut');
+      return false;
     }
+    console.log('⚠️ Type non géré, retour false par défaut');
     return false;
   })
   @IsBoolean({ message: 'isConfidentiel doit être un booléen' })
@@ -198,12 +217,31 @@ export class CreateCourrierDto {
   })
   @IsOptional()
   @Transform(({ value }) => {
-    if (typeof value === 'boolean') return value;
-    if (typeof value === 'number') return value === 1;
+    console.log('🔍 Transform sendNotification - Valeur reçue:', { value, type: typeof value });
+    if (typeof value === 'boolean') {
+      console.log('✅ Déjà boolean, retour:', value);
+      return value;
+    }
+    if (typeof value === 'number') {
+      const result = value === 1;
+      console.log('🔢 Number, retour:', result);
+      return result;
+    }
     if (typeof value === 'string') {
       const v = value.trim().toLowerCase();
-      return v === 'true' || v === '1';
+      console.log('📝 String après trim/lower:', v);
+      if (v === 'false' || v === '0' || v === '') {
+        console.log('❌ Détecté comme FALSE');
+        return false;
+      }
+      if (v === 'true' || v === '1') {
+        console.log('✅ Détecté comme TRUE');
+        return true;
+      }
+      console.log('⚠️ String non reconnu, retour false par défaut');
+      return false;
     }
+    console.log('⚠️ Type non géré, retour false par défaut');
     return false;
   })
   @IsBoolean({ message: 'sendNotification doit être un booléen' })

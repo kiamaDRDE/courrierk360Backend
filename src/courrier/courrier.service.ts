@@ -329,13 +329,18 @@ export class CourrierService {
       sendNotification = false,
     } = createCourrierDto;
 
-    // Convertir sendNotification en boolean (car il peut arriver en string depuis multipart/form-data)
-    const shouldSendNotification = sendNotification === true || (sendNotification as any) === 'true';
+    // Les conversions boolean sont déjà gérées par les @Transform dans le DTO
+    // Pas besoin de les reconvertir ici
     
-    console.log('📧 Paramètre sendNotification:', {
-      original: sendNotification,
-      type: typeof sendNotification,
-      converted: shouldSendNotification,
+    console.log('📧 Paramètres reçus après transformation DTO:', {
+      sendNotification: {
+        value: sendNotification,
+        type: typeof sendNotification,
+      },
+      isConfidentiel: {
+        value: isConfidentiel,
+        type: typeof isConfidentiel,
+      },
     });
 
     // Vérifier que le service existe si renseigné
@@ -432,7 +437,7 @@ export class CourrierService {
           idService: idService || null,
           idUser: userId,
           typeTransfert: typeTransfert || null,
-          isConfidentiel,
+          isConfidentiel: isConfidentiel ?? false,
           document: documentPath,
           nombrePieceJointe,
           statut: 'Transmis',
@@ -492,9 +497,9 @@ export class CourrierService {
       return { courrier, piecesJointes: piecesJointesCreees, transmission: transmissionCreee };
     });
 
-    // Envoyer l'email d'accusé de réception au correspondant si email fourni ET shouldSendNotification = true
+    // Envoyer l'email d'accusé de réception au correspondant si email fourni ET sendNotification = true
     // Envoi asynchrone (non-bloquant) pour ne pas ralentir la création du courrier
-    if (shouldSendNotification && email) {
+    if (sendNotification && email) {
       this.prismaService.service.findUnique({ 
         where: { id: idService }, 
         select: { nom: true } 
@@ -520,9 +525,9 @@ export class CourrierService {
       });
     }
 
-    // Envoyer les notifications aux utilisateurs du service destinataire si shouldSendNotification = true
+    // Envoyer les notifications aux utilisateurs du service destinataire si sendNotification = true
     // Envoi asynchrone (non-bloquant) pour ne pas ralentir la création du courrier
-    if (shouldSendNotification && idService) {
+    if (sendNotification && idService) {
       Promise.all([
         this.prismaService.user.findMany({
           where: {
@@ -577,9 +582,9 @@ export class CourrierService {
       });
     }
 
-    // 📱 Envoyer les SMS de notification si shouldSendNotification = true
+    // 📱 Envoyer les SMS de notification si sendNotification = true
     // Envoi asynchrone (non-bloquant) pour ne pas ralentir la création du courrier
-    if (shouldSendNotification) {
+    if (sendNotification) {
       // Récupérer les informations du service et envoyer les SMS de manière asynchrone
       const smsPromise = this.prismaService.service.findUnique({ 
         where: { id: idService }, 

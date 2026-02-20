@@ -664,7 +664,7 @@ async function bootstrap() {
     new ValidationPipe({
       transform: true, // Active la transformation automatique des types
       transformOptions: {
-        enableImplicitConversion: true, // Conversion implicite des types
+        enableImplicitConversion: false, // ❌ Désactivé car convertit "false" en true
       },
       whitelist: true, // Supprime les propriétés non déclarées dans le DTO
     }),
