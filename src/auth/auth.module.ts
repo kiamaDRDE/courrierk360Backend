@@ -38,24 +38,21 @@ const jwtPrivateKey = loadJwtKey('JWT_PRIVATE_KEY', 'JWT_PRIVATE_KEY_PATH');
 const jwtPublicKey = loadJwtKey('JWT_PUBLIC_KEY', 'JWT_PUBLIC_KEY_PATH');
 const jwtPassphrase = process.env.JWT_PRIVATE_KEY_PASSPHRASE;
 
+// Déterminer si on peut utiliser la clé privée pour signer
+// Si la clé privée est chiffrée mais pas de passphrase, on ne peut pas l'utiliser
+const canUsePrivateKey = jwtPrivateKey && (!jwtPrivateKey.includes('ENCRYPTED') || jwtPassphrase);
+
 @Module({
   imports: [
     PrismaModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
-      ...(jwtPrivateKey
-        ? {
-            privateKey: jwtPassphrase
-              ? { key: jwtPrivateKey, passphrase: jwtPassphrase }
-              : jwtPrivateKey,
-          }
-        : {
-            secret: process.env.JWT_SECRET || 'patnuc-segmentation-secret-key-2025',
-          }),
-      ...(jwtPublicKey ? { publicKey: jwtPublicKey } : {}),
+      // Utiliser HS256 avec JWT_SECRET pour signer nos propres tokens
+      // (la clé privée Symfony est chiffrée et nécessite un mot de passe)
+      secret: process.env.JWT_SECRET || 'patnuc-segmentation-secret-key-2025',
       signOptions: {
         expiresIn: '24h',
-        algorithm: jwtPrivateKey ? 'RS256' : 'HS256',
+        algorithm: 'HS256', // Toujours utiliser HS256 pour la signature
       },
     }),
   ],
