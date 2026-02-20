@@ -275,9 +275,22 @@ export class MailerService {
     try {
       this.logger.log(`🚀 Préparation email accusé de réception pour ${email}`);
       
-      // Lire le template HTML
+      // Lire le template HTML avec vérification
       const templatePath = path.join(__dirname, 'templates', 'courrier-accuse-reception.html');
-      let htmlContent = fs.readFileSync(templatePath, 'utf8');
+      let htmlContent: string;
+      
+      try {
+        if (!fs.existsSync(templatePath)) {
+          this.logger.error(`❌ Template manquant: ${templatePath}`);
+          // Template de fallback simple
+          htmlContent = this.getFallbackAccuseReceptionTemplate();
+        } else {
+          htmlContent = fs.readFileSync(templatePath, 'utf8');
+        }
+      } catch (error) {
+        this.logger.error(`❌ Erreur lecture template: ${error.message}`);
+        htmlContent = this.getFallbackAccuseReceptionTemplate();
+      }
 
       // Remplacer les placeholders
       htmlContent = htmlContent
@@ -288,6 +301,25 @@ export class MailerService {
         .replace(/{{objet}}/g, objet || 'N/A')
         .replace(/{{dateEnregistrement}}/g, dateEnregistrement)
         .replace(/{{serviceNom}}/g, serviceNom || 'Service compétent');
+
+      // Vérifier si le logo existe avant de l'attacher
+      const logoPath = path.join(process.cwd(), 'public', 'logo.png');
+      const attachments: Array<{filename: string; path: string; cid: string}> = [];
+      
+      try {
+        if (fs.existsSync(logoPath)) {
+          attachments.push({
+            filename: 'logo.png',
+            path: logoPath,
+            cid: 'logo',
+          });
+          this.logger.log(`✅ Logo trouvé: ${logoPath}`);
+        } else {
+          this.logger.warn(`⚠️  Logo manquant: ${logoPath}`);
+        }
+      } catch (error) {
+        this.logger.error(`❌ Erreur vérification logo: ${error.message}`);
+      }
 
       const mailOptions = {
         from: {
@@ -304,13 +336,7 @@ export class MailerService {
           'Importance': 'Normal',
           'Content-Type': 'text/html; charset=UTF-8'
         },
-        attachments: [
-          {
-            filename: 'logo.png',
-            path: path.join(process.cwd(), 'public', 'logo.png'),
-            cid: 'logo', // Content-ID pour référencer dans le HTML avec src="cid:logo"
-          },
-        ],
+        attachments,
       };
 
       this.logger.log(`📧 Tentative d'envoi email à: ${email}`);
@@ -362,9 +388,21 @@ export class MailerService {
     try {
       this.logger.log(`🚀 Préparation email notification service pour ${userEmail}`);
       
-      // Lire le template HTML
+      // Lire le template HTML avec vérification
       const templatePath = path.join(__dirname, 'templates', 'courrier-notification-service.html');
-      let htmlContent = fs.readFileSync(templatePath, 'utf8');
+      let htmlContent: string;
+      
+      try {
+        if (!fs.existsSync(templatePath)) {
+          this.logger.error(`❌ Template manquant: ${templatePath}`);
+          htmlContent = this.getFallbackServiceNotificationTemplate();
+        } else {
+          htmlContent = fs.readFileSync(templatePath, 'utf8');
+        }
+      } catch (error) {
+        this.logger.error(`❌ Erreur lecture template: ${error.message}`);
+        htmlContent = this.getFallbackServiceNotificationTemplate();
+      }
 
       // Déterminer l'icône de priorité
       let prioriteIcon = '🟡';
@@ -650,5 +688,97 @@ export class MailerService {
       this.logger.error(`Erreur lors de l'envoi email courrier départ à ${destinataireEmail}:`, error);
       return false;
     }
+  }
+
+  /**
+   * Template de fallback pour accusé de réception si le fichier HTML manque
+   */
+  private getFallbackAccuseReceptionTemplate(): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Accusé de Réception - KIAMA S.A.</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #2c3e50; color: white; padding: 20px; text-align: center; }
+        .content { padding: 30px; background: #f9f9f9; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>KIAMA S.A. - Gestion du Courrier</h1>
+        </div>
+        <div class="content">
+            <h2>✅ Accusé de Réception</h2>
+            <p>{{civilite}} {{nom}},</p>
+            <p>Nous avons bien reçu votre courrier et l'avons enregistré dans notre système.</p>
+            <p><strong>Détails :</strong></p>
+            <ul>
+                <li>Numéro : {{numero}}</li>
+                <li>Référence : {{reference}}</li>
+                <li>Objet : {{objet}}</li>
+                <li>Date d'enregistrement : {{dateEnregistrement}}</li>
+                <li>Service responsable : {{serviceNom}}</li>
+            </ul>
+            <p>Votre courrier sera traité dans les meilleurs délais.</p>
+        </div>
+        <div class="footer">
+            <p>KIAMA S.A. - Système de Gestion du Courrier</p>
+        </div>
+    </div>
+</body>
+</html>`;
+  }
+
+  /**
+   * Template de fallback pour notification service si le fichier HTML manque
+   */
+  private getFallbackServiceNotificationTemplate(): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Nouveau Courrier - KIAMA S.A.</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #3498db; color: white; padding: 20px; text-align: center; }
+        .content { padding: 30px; background: #f9f9f9; }
+        .priority { padding: 10px; margin: 10px 0; border-left: 4px solid #e74c3c; background: #ffebee; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📥 Nouveau Courrier Assigné</h1>
+        </div>
+        <div class="content">
+            <p>Bonjour {{userFirstName}} {{userLastName}},</p>
+            <p>Un nouveau courrier a été assigné à votre service <strong>{{serviceNom}}</strong>.</p>
+            <div class="priority">
+                <h3>{{prioriteIcon}} Détails du courrier :</h3>
+                <ul>
+                    <li><strong>Numéro :</strong> {{numero}}</li>
+                    <li><strong>Référence :</strong> {{reference}}</li>
+                    <li><strong>Expéditeur :</strong> {{civilite}} {{nom}}</li>
+                    <li><strong>Objet :</strong> {{objet}}</li>
+                    <li><strong>Priorité :</strong> {{priorite}}</li>
+                    <li><strong>Catégorie :</strong> {{categorie}}</li>
+                    <li><strong>Date d'arrivée :</strong> {{dateArrivee}}</li>
+                </ul>
+                {{#if commentaire}}
+                <p><strong>Commentaire :</strong> {{commentaire}}</p>
+                {{/if}}
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
   }
 }

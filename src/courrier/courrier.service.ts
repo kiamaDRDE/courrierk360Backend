@@ -576,54 +576,59 @@ export class CourrierService {
         }),
       ])
       .then(([serviceUsers, serviceInfo]) => {
-        // Envoyer tous les emails en parallèle
+        // Envoyer les emails avec délai pour éviter le rate limiting
         const emailPromises = serviceUsers
           .filter(user => user.email)
-          .map(user => 
-            this.mailerService.sendCourrierNotificationService(
-              user.email,
-              user.firstName || '',
-              user.lastName || '',
-              serviceInfo?.nom || 'Service',
-              {
-                numero: result.courrier.numero,
-                reference: result.courrier.reference || '',
-                objet: objet || 'N/A',
-                civilite: civilite || '',
-                nom: result.courrier.nom || 'Inconnu',
-                priorite: priorite,
-                categorie: categorie,
-                dateArrivee: new Date(dateArrivee).toLocaleDateString('fr-FR', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                }),
-                commentaire: commentaire || '',
-              },
-            ).catch(error => {
-              console.error('\n❌ ============================================');
-              console.error('❌ ERREUR ENVOI EMAIL NOTIFICATION SERVICE');
-              console.error('❌ ============================================');
-              console.error(`📧 Destinataire : ${user.email}`);
-              console.error(`👤 Utilisateur : ${user.firstName} ${user.lastName}`);
-              console.error(`📝 Courrier : ${result.courrier.numero}`);
-              console.error(`🏢 Service : ${serviceInfo?.nom || 'N/A'}`);
-              console.error(`⚠️  Type d'erreur : ${error.name || 'Erreur inconnue'}`);
-              console.error(`💥 Message : ${error.message}`);
-              
-              // Détecter les erreurs spécifiques
-              if (error.message?.includes('rate limit') || error.message?.includes('Too many')) {
-                console.error('🚫 Cause probable : LIMITE D\'ENVOI ATTEINTE');
-                console.error('💡 Solution : Le service SMTP limite le nombre d\'emails/heure');
-              } else if (error.message?.includes('ECONNREFUSED') || error.message?.includes('ETIMEDOUT')) {
-                console.error('🚫 Cause probable : SERVEUR SMTP INACCESSIBLE');
-              } else if (error.message?.includes('Invalid recipients')) {
-                console.error(`🚫 Cause probable : EMAIL INVALIDE (${user.email})`);
-              }
-              
-              console.error('❌ ============================================\n');
-              return null; // Continuer avec les autres emails
-            })
+          .map((user, index) => 
+            new Promise(resolve => setTimeout(() => {
+              console.log(`📧 Envoi ${index + 1}/${serviceUsers.length} : ${user.email}`);
+              resolve(
+                this.mailerService.sendCourrierNotificationService(
+                  user.email,
+                  user.firstName || '',
+                  user.lastName || '',
+                  serviceInfo?.nom || 'Service',
+                  {
+                    numero: result.courrier.numero,
+                    reference: result.courrier.reference || '',
+                    objet: objet || 'N/A',
+                    civilite: civilite || '',
+                    nom: result.courrier.nom || 'Inconnu',
+                    priorite: priorite,
+                    categorie: categorie,
+                    dateArrivee: new Date(dateArrivee).toLocaleDateString('fr-FR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                    }),
+                    commentaire: commentaire || '',
+                  },
+                ).catch(error => {
+                  console.error('\n❌ ============================================');
+                  console.error('❌ ERREUR ENVOI EMAIL NOTIFICATION SERVICE');
+                  console.error('❌ ============================================');
+                  console.error(`📧 Destinataire : ${user.email}`);
+                  console.error(`👤 Utilisateur : ${user.firstName} ${user.lastName}`);
+                  console.error(`📝 Courrier : ${result.courrier.numero}`);
+                  console.error(`🏢 Service : ${serviceInfo?.nom || 'N/A'}`);
+                  console.error(`⚠️  Type d'erreur : ${error.name || 'Erreur inconnue'}`);
+                  console.error(`💥 Message : ${error.message}`);
+                  
+                  // Détecter les erreurs spécifiques
+                  if (error.message?.includes('rate limit') || error.message?.includes('Too many')) {
+                    console.error('🚫 Cause probable : LIMITE D\'ENVOI ATTEINTE');
+                    console.error('💡 Solution : Le service SMTP limite le nombre d\'emails/heure');
+                  } else if (error.message?.includes('ECONNREFUSED') || error.message?.includes('ETIMEDOUT')) {
+                    console.error('🚫 Cause probable : SERVEUR SMTP INACCESSIBLE');
+                  } else if (error.message?.includes('Invalid recipients')) {
+                    console.error(`🚫 Cause probable : EMAIL INVALIDE (${user.email})`);
+                  }
+                  
+                  console.error('❌ ============================================\n');
+                  return null; // Continuer avec les autres emails
+                })
+              );
+            }, index * 3000)) // Délai de 3 secondes entre chaque email
           );
         return Promise.all(emailPromises).then(emailResults => ({ 
           emailResults, 
