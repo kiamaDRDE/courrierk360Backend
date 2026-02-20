@@ -520,8 +520,37 @@ export class CourrierService {
           serviceInfo?.nom || 'Service compétent',
         );
       })
+      .then(() => {
+        console.log(`✅ Email accusé de réception envoyé avec succès à ${email} pour le courrier ${result.courrier.numero}`);
+      })
       .catch((error) => {
-        console.error(`Erreur envoi email accusé réception à ${email}:`, error);
+        console.error('\n❌ ============================================');
+        console.error('❌ ERREUR ENVOI EMAIL ACCUSÉ DE RÉCEPTION');
+        console.error('❌ ============================================');
+        console.error(`📧 Destinataire : ${email}`);
+        console.error(`📝 Courrier : ${result.courrier.numero}`);
+        console.error(`⚠️  Type d'erreur : ${error.name || 'Erreur inconnue'}`);
+        console.error(`💥 Message : ${error.message}`);
+        
+        // Détecter les erreurs spécifiques
+        if (error.message?.includes('rate limit') || error.message?.includes('Too many')) {
+          console.error('🚫 Cause probable : LIMITE D\'ENVOI ATTEINTE');
+          console.error('💡 Solution : Attendez quelques minutes avant de réessayer');
+        } else if (error.message?.includes('ECONNREFUSED') || error.message?.includes('ETIMEDOUT')) {
+          console.error('🚫 Cause probable : SERVEUR SMTP INACCESSIBLE');
+          console.error('💡 Solution : Vérifiez la configuration SMTP dans .env');
+        } else if (error.message?.includes('Invalid login') || error.message?.includes('authentication')) {
+          console.error('🚫 Cause probable : AUTHENTIFICATION SMTP ÉCHOUÉE');
+          console.error('💡 Solution : Vérifiez SMTP_USER et SMTP_PASS dans .env');
+        } else if (error.message?.includes('Invalid recipients')) {
+          console.error(`🚫 Cause probable : ADRESSE EMAIL INVALIDE (${email})`);
+          console.error('💡 Solution : Vérifiez l\'adresse email du correspondant');
+        }
+        
+        if (error.stack) {
+          console.error(`🔍 Stack trace :\n${error.stack.split('\n').slice(0, 3).join('\n')}`);
+        }
+        console.error('❌ ============================================\n');
       });
     }
 
@@ -572,13 +601,53 @@ export class CourrierService {
                 commentaire: commentaire || '',
               },
             ).catch(error => {
-              console.error(`Erreur envoi email à ${user.email}:`, error);
+              console.error('\n❌ ============================================');
+              console.error('❌ ERREUR ENVOI EMAIL NOTIFICATION SERVICE');
+              console.error('❌ ============================================');
+              console.error(`📧 Destinataire : ${user.email}`);
+              console.error(`👤 Utilisateur : ${user.firstName} ${user.lastName}`);
+              console.error(`📝 Courrier : ${result.courrier.numero}`);
+              console.error(`🏢 Service : ${serviceInfo?.nom || 'N/A'}`);
+              console.error(`⚠️  Type d'erreur : ${error.name || 'Erreur inconnue'}`);
+              console.error(`💥 Message : ${error.message}`);
+              
+              // Détecter les erreurs spécifiques
+              if (error.message?.includes('rate limit') || error.message?.includes('Too many')) {
+                console.error('🚫 Cause probable : LIMITE D\'ENVOI ATTEINTE');
+                console.error('💡 Solution : Le service SMTP limite le nombre d\'emails/heure');
+              } else if (error.message?.includes('ECONNREFUSED') || error.message?.includes('ETIMEDOUT')) {
+                console.error('🚫 Cause probable : SERVEUR SMTP INACCESSIBLE');
+              } else if (error.message?.includes('Invalid recipients')) {
+                console.error(`🚫 Cause probable : EMAIL INVALIDE (${user.email})`);
+              }
+              
+              console.error('❌ ============================================\n');
+              return null; // Continuer avec les autres emails
             })
           );
-        return Promise.all(emailPromises);
+        return Promise.all(emailPromises).then(emailResults => ({ 
+          emailResults, 
+          totalCount: serviceUsers.length 
+        }));
+      })
+      .then(({ emailResults, totalCount }) => {
+        const successCount = emailResults?.filter(r => r !== null).length || 0;
+        if (successCount > 0) {
+          console.log(`✅ Emails envoyés avec succès : ${successCount}/${totalCount} utilisateurs du service`);
+        }
+        if (successCount < totalCount) {
+          console.warn(`⚠️  ${totalCount - successCount} email(s) n'ont pas pu être envoyé(s)`);
+        }
       })
       .catch((error) => {
-        console.error(`Erreur lors de l'envoi des emails au service:`, error);
+        console.error('\n❌ ============================================');
+        console.error('❌ ERREUR GLOBALE ENVOI EMAILS SERVICE');
+        console.error('❌ ============================================');
+        console.error(`📝 Courrier : ${result.courrier.numero}`);
+        console.error(`🏢 Service ID : ${idService}`);
+        console.error(`⚠️  Type d'erreur : ${error.name || 'Erreur inconnue'}`);
+        console.error(`💥 Message : ${error.message}`);
+        console.error('❌ ============================================\n');
       });
     }
 
