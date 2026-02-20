@@ -6,16 +6,15 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as jwt from 'jsonwebtoken';
 
-// Fonction pour charger la clé publique JWT
-function loadJwtPublicKey(): string {
-  // 1. Essayer depuis la variable d'environnement
+// Fonction pour charger la clé publique JWT Symfony (RS256)
+function loadJwtPublicKey(): string | undefined {
   const keyFromEnv = process.env.JWT_PUBLIC_KEY;
   if (keyFromEnv) {
     return keyFromEnv.replace(/\\n/g, '\n');
   }
 
-  // 2. Essayer depuis un fichier
   const keyFilePath = process.env.JWT_PUBLIC_KEY_PATH;
   if (keyFilePath) {
     try {
@@ -28,11 +27,11 @@ function loadJwtPublicKey(): string {
     }
   }
 
-  // 3. Fallback sur JWT_SECRET pour compatibilité HS256
-  return process.env.JWT_SECRET || 'patnuc-segmentation-secret-key-2025';
+  return undefined;
 }
 
-const jwtPublicKey: string = loadJwtPublicKey();
+const jwtPublicKey = loadJwtPublicKey();
+const jwtSecret = process.env.JWT_SECRET || 'patnuc-segmentation-secret-key-2025';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -40,8 +39,34 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: jwtPublicKey,
-      algorithms: ['RS256', 'HS256'], // Support des deux algorithmes
+      // Fonction callback pour gérer les deux types de clés (RS256 et HS256)
+      secretOrKeyProvider: (request, rawJwtToken, done) => {
+        try {
+          // Décoder le header pour déterminer l'algorithme
+          const decoded = jwt.decode(rawJwtToken, { complete: true });
+          
+          if (!decoded || !decoded.header) {
+            return done(new Error('Token invalide'));
+          }
+
+          const algorithm = decoded.header.alg;
+
+          // Si c'est RS256, utiliser la clé publique Symfony
+          if (algorithm === 'RS256' && jwtPublicKey) {
+            return done(null, jwtPublicKey);
+          }
+
+          // Si c'est HS256, utiliser JWT_SECRET
+          if (algorithm === 'HS256') {
+            return done(null, jwtSecret);
+          }
+
+          // Algorithme non supporté
+          return done(new Error(`Algorithme ${algorithm} non supporté`));
+        } catch (error) {
+          return done(error);
+        }
+      },
     });
   }
 
