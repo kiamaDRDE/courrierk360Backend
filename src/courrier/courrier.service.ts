@@ -641,33 +641,8 @@ export class CourrierService {
       });
     }
 
-    // 📨 Créer automatiquement la première transmission pour ce courrier
-    if (idService) {
-      const transmissionDto = {
-        idCourrier: result.courrier.id,
-        idService: idService,
-        dateInstruction: dateArrivee,
-        typeTransfert: typeTransfert || 'Pour traitement',
-        instruction: commentaire || 'Transmission initiale du courrier',
-        idEmetteur: userId,
-        nombrePieceJointe: 0,
-        sendNotification: shouldSendNotification,
-      };
-
-      // Créer la transmission de manière asynchrone pour ne pas bloquer
-      this.traitementService.create(
-        userId,
-        transmissionDto as any,
-        undefined, // Pas de document pour la transmission initiale
-        undefined, // Pas de pièces jointes
-      )
-      .then(() => {
-        console.log(`✅ Transmission initiale créée pour le courrier ${result.courrier.numero}`);
-      })
-      .catch((error) => {
-        console.error(`❌ Erreur création transmission initiale:`, error);
-      });
-    }
+    // ✅ La transmission initiale est déjà créée dans la transaction ci-dessus (ligne 494-502)
+    // Pas besoin de la créer une deuxième fois !
 
     return this.responseFormatter.success(
       {
