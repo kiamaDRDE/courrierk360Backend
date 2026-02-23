@@ -557,6 +557,8 @@ export class CourrierService {
     // Envoyer les notifications aux utilisateurs du service destinataire si sendNotification = true
     // Envoi asynchrone (non-bloquant) pour ne pas ralentir la création du courrier
     if (sendNotification && idService) {
+      console.log(`🔔 Notification activée pour le service ID: ${idService}, sendNotification: ${sendNotification}`);
+      
       Promise.all([
         this.prismaService.user.findMany({
           where: {
@@ -576,33 +578,54 @@ export class CourrierService {
         }),
       ])
       .then(([serviceUsers, serviceInfo]) => {
+        console.log(`🔍 Debug notification service:`);
+        console.log(`   - Service ID: ${idService}`);
+        console.log(`   - Service nom: ${serviceInfo?.nom}`);
+        console.log(`   - Utilisateurs trouvés: ${serviceUsers.length}`);
+        console.log(`   - Utilisateurs avec email:`, serviceUsers.map(u => ({ email: u.email, nom: `${u.firstName} ${u.lastName}` })));
+        
+        if (serviceUsers.length === 0) {
+          console.warn(`⚠️  Aucun utilisateur actif trouvé pour le service ID ${idService}`);
+          return { emailResults: [], totalCount: 0 };
+        }
+        
         // Envoyer les emails avec délai pour éviter le rate limiting
+        console.log(`📧 Préparation envoi notifications à ${serviceUsers.length} utilisateur(s) du service "${serviceInfo?.nom}"`);
+        
         const emailPromises = serviceUsers
           .filter(user => user.email)
           .map((user, index) => 
             new Promise(resolve => setTimeout(() => {
               console.log(`📧 Envoi ${index + 1}/${serviceUsers.length} : ${user.email}`);
+              
+              // Construire les données du courrier pour la notification
+              const courrierData = {
+                numero: result.courrier.numero,
+                reference: result.courrier.reference || result.courrier.numero,
+                objet: createCourrierDto.objet || 'N/A',
+                civilite: createCourrierDto.civilite || '',
+                nom: result.courrier.nom || 'Expéditeur inconnu',
+                priorite: createCourrierDto.priorite,
+                categorie: createCourrierDto.categorie || 'Non classé',
+                dateArrivee: new Intl.DateTimeFormat('fr-FR', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }).format(new Date(createCourrierDto.dateArrivee)),
+                commentaire: createCourrierDto.commentaire || '',
+              };
+              
+              console.log(`📋 Données courrier pour notification:`, JSON.stringify(courrierData, null, 2));
+              
               resolve(
                 this.mailerService.sendCourrierNotificationService(
                   user.email,
                   user.firstName || '',
                   user.lastName || '',
-                  serviceInfo?.nom || 'Service',
-                  {
-                    numero: result.courrier.numero,
-                    reference: result.courrier.reference || '',
-                    objet: objet || 'N/A',
-                    civilite: civilite || '',
-                    nom: result.courrier.nom || 'Inconnu',
-                    priorite: priorite,
-                    categorie: categorie,
-                    dateArrivee: new Date(dateArrivee).toLocaleDateString('fr-FR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                    }),
-                    commentaire: commentaire || '',
-                  },
+                  serviceInfo?.nom || 'Service non identifié',
+                  courrierData,
                 ).catch(error => {
                   console.error('\n❌ ============================================');
                   console.error('❌ ERREUR ENVOI EMAIL NOTIFICATION SERVICE');
@@ -628,7 +651,7 @@ export class CourrierService {
                   return null; // Continuer avec les autres emails
                 })
               );
-            }, index * 3000)) // Délai de 3 secondes entre chaque email
+            }, index * 10000)) // Délai de 10 secondes entre chaque email
           );
         return Promise.all(emailPromises).then(emailResults => ({ 
           emailResults, 
@@ -718,6 +741,8 @@ export class CourrierService {
       .catch((error) => {
         console.error(`Erreur lors de l'envoi des SMS:`, error);
       });
+    } else {
+      console.log(`📵 SMS désactivés ou aucun téléphone - sendNotification: ${sendNotification}, telephone: ${telephone || 'N/A'}, idService: ${idService || 'N/A'}`);
     }
 
     // ✅ La transmission initiale est déjà créée dans la transaction ci-dessus (ligne 494-502)
@@ -809,33 +834,59 @@ export class CourrierService {
       throw new BadRequestException('Ce courrier n\'est pas classé (gelé). Impossible de le déclasser.');
     }
 
-    // Récupérer la dernière transmission du courrier
-    const derniereTransmission = await this.prismaService.transmission.findFirst({
-      where: { idCourrier: id },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    // Déterminer le nouveau statut basé sur la dernière transmission
-    let nouveauStatut = 'Transmis'; // Statut par défaut
-
-    if (derniereTransmission) {
-      if (derniereTransmission.isArchive) {
-        nouveauStatut = 'Archivé';
-      } else if (derniereTransmission.isinstance) {
-        nouveauStatut = 'En instance';
-      } else if (derniereTransmission.accuseReception) {
-        nouveauStatut = 'Reçu';
-      } else if (derniereTransmission.statut) {
-        // Utiliser le statut de la dernière transmission si disponible
-        nouveauStatut = derniereTransmission.statut;
-      }
-    }
-
     // Effectuer les mises à jour en transaction
     const result = await this.prismaService.$transaction(async (prisma) => {
-      // Préparer les données de mise à jour
+      // Récupérer toutes les transmissions du courrier pour appliquer les règles de statut
+      const transmissions = await prisma.transmission.findMany({
+        where: { idCourrier: id },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      console.log(`📋 Déclassement courrier ${id} - ${transmissions.length} transmission(s) trouvée(s)`);
+
+      // Déclasser toutes les transmissions et appliquer les règles de statut
+      for (const transmission of transmissions) {
+        // **Règles de détermination du statut** selon la priorité :
+        let nouveauStatutTransmission = 'Transmis'; // Par défaut
+        
+        if (transmission.isArchive) {
+          nouveauStatutTransmission = 'Archivé';
+        } else if (transmission.isinstance) {
+          nouveauStatutTransmission = 'Instancié';
+        } else if (transmission.accuseReception) {
+          nouveauStatutTransmission = 'Reçu';
+        }
+
+        await prisma.transmission.update({
+          where: { id: transmission.id },
+          data: {
+            statut: nouveauStatutTransmission,
+            isGeled: false, // Déclasser = dégeléer
+          },
+        });
+
+        console.log(`📤 Transmission ${transmission.id} déclassée: ${transmission.statut} → ${nouveauStatutTransmission}`);
+      }
+
+      // Déterminer le statut du courrier basé sur la dernière transmission
+      let nouveauStatutCourrier = 'Transmis'; // Statut par défaut
+      
+      if (transmissions.length > 0) {
+        const derniereTransmission = transmissions[0]; // Déjà triée par createdAt desc
+        
+        // Appliquer les mêmes règles que pour les transmissions
+        if (derniereTransmission.isArchive) {
+          nouveauStatutCourrier = 'Archivé';
+        } else if (derniereTransmission.isinstance) {
+          nouveauStatutCourrier = 'Instancié';
+        } else if (derniereTransmission.accuseReception) {
+          nouveauStatutCourrier = 'Reçu';
+        }
+      }
+
+      // Préparer les données de mise à jour du courrier
       const updateData: any = {
-        statut: nouveauStatut,
+        statut: nouveauStatutCourrier,
         isGeled: false,
       };
 
@@ -853,25 +904,15 @@ export class CourrierService {
         data: updateData,
       });
 
-      // Déclasser toutes les transmissions liées
-      await prisma.transmission.updateMany({
-        where: { 
-          idCourrier: id,
-          isGeled: true // Seulement les transmissions actuellement gelées
-        },
-        data: {
-          statut: nouveauStatut,
-          isGeled: false,
-        },
-      });
-
+      console.log(`📄 Courrier ${id} déclassé: statut → ${nouveauStatutCourrier}`);
+      
       return courrierDeclasse;
     });
 
     return this.responseFormatter.success(
       result,
       'Déclassement courrier',
-      `Courrier ${result.numero} et toutes ses transmissions déclassés avec succès. Nouveau statut : ${nouveauStatut}.`,
+      `Courrier ${result.numero} et toutes ses transmissions déclassés avec succès. Nouveau statut : ${result.statut}.`,
     );
   }
 
@@ -1531,6 +1572,14 @@ export class CourrierService {
       idCreateur: courrier.user ? { id: courrier.user.id, nomComplet: createurFullName } : null,
       document: courrier.document,
       piecesJointes: courrier.piecesJointes || [],
+      dernierStatutService: lastTransmission && lastTransmission.service ? {
+        statut: lastTransmission.statut,
+        service: {
+          id: lastTransmission.service.id,
+          nom: lastTransmission.service.nom,
+          sigle: lastTransmission.service.sigle
+        }
+      } : null,
       dernieretransmissions: lastTransmission
         ? [
             {
@@ -1566,6 +1615,7 @@ export class CourrierService {
         service: { include: { parent: true } },
         user: { include: { service: { include: { parent: true } } } },
         provenance: { select: { nom: true, type: true } },
+        piecesJointes: true,
       },
     });
 
@@ -1579,6 +1629,7 @@ export class CourrierService {
       include: {
         service: { include: { parent: true } },
         emetteur: { include: { service: { include: { parent: true } } } },
+        piecesJointes: true,
       },
     });
 
@@ -1651,6 +1702,8 @@ export class CourrierService {
         priorite: courrier.priorite,
         reference: courrier.reference,
         isConfidentiel: courrier.isConfidentiel,
+        document: courrier.document || null,
+        piecesJointes: courrier.piecesJointes || [],
       },
     });
 
@@ -1685,6 +1738,8 @@ export class CourrierService {
           statut: transmission.statut,
           accuseReception: transmission.accuseReception,
           structuresCopie: transmission.structuresCopie || null,
+          document: transmission.document || null,
+          piecesJointes: transmission.piecesJointes || [],
         },
       });
     }

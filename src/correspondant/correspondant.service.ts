@@ -19,33 +19,59 @@ export class CorrespondantService {
   ) {}
 
   async create(createDto: CreateCorrespondantDto) {
-    // Vérifier que toutes les catégories existent
-    const categories = await this.prisma.categories.findMany({
-      where: {
-        id: { in: createDto.categories },
-        isDelete: false,
-      },
-    });
-
-    if (categories.length !== createDto.categories.length) {
-      return this.responseFormatter.validationError(
-        'Catégories invalides',
-        'Une ou plusieurs catégories sélectionnées n\'existent pas ou ont été supprimées.',
-      );
+        // Vérifier unicité du nom
+        const existing = await this.prisma.correspondant.findFirst({
+          where: { nom: createDto.nom }
+        });
+        if (existing) {
+          return this.responseFormatter.validationError(
+            'Nom déjà utilisé',
+            'Un correspondant avec ce nom existe déjà.'
+          );
+        }
+    // Vérifier les catégories uniquement si elles sont fournies
+    let categories: any[] = [];
+    if (createDto.categories && createDto.categories.length > 0) {
+      categories = await this.prisma.categories.findMany({
+        where: {
+          id: { in: createDto.categories },
+          isDelete: false,
+        },
+      });
+      if (categories.length !== createDto.categories.length) {
+        return this.responseFormatter.validationError(
+          'Catégories invalides',
+          'Une ou plusieurs catégories sélectionnées n\'existent pas ou ont été supprimées.',
+        );
+      }
     }
 
-    // Créer le correspondant avec ses catégories
+    // Préparer les données pour Prisma
     const { categories: categoryIds, ...correspondantData } = createDto;
 
+    // Gérer les champs obligatoires du modèle Prisma
+    // telephone et type sont obligatoires dans le modèle
+    // Si absents, leur donner une valeur par défaut
+    if (!correspondantData.telephone) {
+      correspondantData.telephone = '';
+    }
+    if (!correspondantData.type) {
+      correspondantData.type = '';
+    }
+
+    const prismaData: any = {
+      ...correspondantData,
+    };
+    if (categoryIds && categoryIds.length > 0) {
+      prismaData.categories = {
+        create: categoryIds.map((categorieId: number) => ({
+          categorie: { connect: { id: categorieId } },
+        })),
+      };
+    }
+
     const correspondant = await this.prisma.correspondant.create({
-      data: {
-        ...correspondantData,
-        categories: {
-          create: categoryIds.map((categorieId) => ({
-            categorie: { connect: { id: categorieId } },
-          })),
-        },
-      },
+      data: prismaData,
       include: {
         categories: {
           include: {

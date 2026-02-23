@@ -42,10 +42,10 @@ export class CreateCorrespondantDto {
     example: '+33 1 23 45 67 89',
     maxLength: 50,
   })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(50)
-  telephone: string;
+    @IsString()
+    @IsOptional()
+    @MaxLength(50)
+    telephone?: string;
 
   @ApiProperty({
     description: 'Adresse du correspondant',
@@ -64,21 +64,21 @@ export class CreateCorrespondantDto {
     type: [Number],
     isArray: true,
   })
-  @IsArray()
-  @ArrayMinSize(1, { message: 'Au moins une catégorie doit être sélectionnée' })
-  @IsInt({ each: true })
-  @Type(() => Number)
-  categories: number[];
+    @IsArray()
+    @IsOptional()
+    @IsInt({ each: true })
+    @Type(() => Number)
+    categories?: number[];
 
   @ApiProperty({
     description: 'Type du correspondant',
     example: 'ENTREPRISE',
     maxLength: 100,
   })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(100)
-  type: string;
+    @IsString()
+    @IsOptional()
+    @MaxLength(100)
+    type?: string;
 
   @ApiProperty({
     description: 'Matricule du correspondant',

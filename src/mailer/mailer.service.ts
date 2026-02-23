@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import * as SMTPTransport from 'nodemailer/lib/smtp-transport';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -10,20 +11,24 @@ export class MailerService {
 
   constructor() {
     // Configuration du transporteur d'email
-    this.transporter = nodemailer.createTransport({
-      service: 'gmail',
+    const smtpOptions: SMTPTransport.Options = {
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user: 'ppatnuc@gmail.com',
         pass: 'jyqkjhovvrdmujrs',
       },
       // Logs détaillés pour debug en production
       logger: true,
-      debug: process.env.NODE_ENV !== 'production',      // Options anti-spam
-      secure: true,
-      port: 465,
+      debug: process.env.NODE_ENV !== 'production',
+      // Options TLS
       tls: {
         rejectUnauthorized: false
-      }    });
+      }
+    };
+    
+    this.transporter = nodemailer.createTransport(smtpOptions);
 
     // Vérifier la connexion SMTP au démarrage
     this.verifyConnection();
@@ -463,15 +468,37 @@ export class MailerService {
 
       this.logger.log(`📧 Tentative d'envoi email de notification service à: ${userEmail}`);
       
-      const info = await this.transporter.sendMail(mailOptions);
+      // Retry logic pour les erreurs de connexion Gmail
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const info = await this.transporter.sendMail(mailOptions);
+          
+          this.logger.log(`✅ Email notification service RÉELLEMENT envoyé à ${userEmail} pour le courrier ${courrier.numero} (tentative ${attempt})`);
+          this.logger.log(`📨 MessageId: ${info.messageId}`);
+          this.logger.log(`📤 Réponse serveur: ${info.response || 'N/A'}`);
+          this.logger.log(`✉️ Accepted: ${JSON.stringify(info.accepted || [])}`);
+          this.logger.log(`❌ Rejected: ${JSON.stringify(info.rejected || [])}`);
+          
+          return true;
+        } catch (sendError) {
+          this.logger.warn(`🔄 Tentative ${attempt}/3 échouée pour ${userEmail}: ${sendError.code} - ${sendError.message}`);
+          
+          // Si c'est une erreur de connexion et qu'il reste des tentatives
+          if ((sendError.code === 'ESOCKET' || sendError.message?.includes('ECONNRESET')) && attempt < 3) {
+            const delay = attempt * 3000; // 3s, 6s pour les retry
+            this.logger.log(`⏳ Attente ${delay}ms avant nouvelle tentative...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+          
+          // Dernière tentative ou erreur non-retryable
+          throw sendError;
+        }
+      }
       
-      this.logger.log(`✅ Email notification service RÉELLEMENT envoyé à ${userEmail} pour le courrier ${courrier.numero}`);
-      this.logger.log(`📨 MessageId: ${info.messageId}`);
-      this.logger.log(`📤 Réponse serveur: ${info.response || 'N/A'}`);
-      this.logger.log(`✉️ Accepted: ${JSON.stringify(info.accepted || [])}`);
-      this.logger.log(`❌ Rejected: ${JSON.stringify(info.rejected || [])}`);
+      // Si on arrive ici, toutes les tentatives ont échoué
+      return false;
       
-      return true;
     } catch (error) {
       this.logger.error(`🔴 ERREUR DÉTAILLÉE lors de l'envoi de la notification au service ${userEmail}:`);
       this.logger.error(`🚫 Erreur complète:`, error);

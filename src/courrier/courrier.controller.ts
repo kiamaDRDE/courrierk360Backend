@@ -610,6 +610,8 @@ Retourne toutes les informations détaillées d'un courrier incluant tous ses ch
                 priorite: 'Haute',
                 reference: '2025-09-001',
                 isConfidentiel: false,
+                document: null,
+                piecesJointes: [],
               },
             },
             {
@@ -634,6 +636,8 @@ Retourne toutes les informations détaillées d'un courrier incluant tous ses ch
                 statut: 'Reçu',
                 accuseReception: true,
                 structuresCopie: [2, 5],
+                document: null,
+                piecesJointes: [],
               },
             },
           ],
