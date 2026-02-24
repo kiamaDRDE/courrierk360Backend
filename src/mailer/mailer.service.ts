@@ -35,6 +35,23 @@ export class MailerService {
   }
 
   /**
+   * Convertit rapidement un contenu HTML en plain-text simple
+   */
+  private htmlToText(html: string): string {
+    if (!html) return '';
+    try {
+      return html.replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;|&amp;|&lt;|&gt;|&quot;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    } catch (e) {
+      return '';
+    }
+  }
+
+  /**
    * Vérifier la connexion SMTP
    */
   private async verifyConnection() {
@@ -334,12 +351,13 @@ export class MailerService {
         to: email,
         subject: '✅ Accusé de Réception - Votre courrier a été enregistré',
         html: htmlContent,
+        text: this.htmlToText(htmlContent),
         headers: {
           'X-Mailer': 'KIAMA CourriÈrK360 v1.0',
           'X-Priority': '3',
           'X-MSMail-Priority': 'Normal',
           'Importance': 'Normal',
-          'Content-Type': 'text/html; charset=UTF-8'
+          'Content-Language': 'fr-FR'
         },
         attachments,
       };
@@ -450,12 +468,13 @@ export class MailerService {
         to: userEmail,
         subject: `📥 Nouveau Courrier - ${courrier.numero} - ${serviceNom}`,
         html: htmlContent,
+        text: this.htmlToText(htmlContent),
         headers: {
           'X-Mailer': 'KIAMA CourriÈrK360 v1.0',
           'X-Priority': '3',
           'X-MSMail-Priority': 'Normal',
           'Importance': 'Normal',
-          'Content-Type': 'text/html; charset=UTF-8'
+          'Content-Language': 'fr-FR'
         },
         attachments: [
           {
@@ -565,6 +584,10 @@ export class MailerService {
         to: userEmail,
         subject: `📎 Transmission en copie - ${courrier.numero} - ${serviceNom}`,
         html: htmlContent,
+        text: this.htmlToText(htmlContent),
+        headers: {
+          'Content-Language': 'fr-FR'
+        },
         attachments: [
           {
             filename: 'logo.png',
@@ -621,6 +644,10 @@ export class MailerService {
         to: userEmail,
         subject: `📄 Courrier interne - ${serviceNom}`,
         html: htmlContent,
+        text: this.htmlToText(htmlContent),
+        headers: {
+          'Content-Language': 'fr-FR'
+        },
         attachments: [
           {
             filename: 'logo.png',
@@ -699,6 +726,10 @@ export class MailerService {
         to: destinataireEmail,
         subject: `📤 Courrier Départ - ${courrierDepart.numeroReference || 'Notification'}`,
         html: htmlContent,
+        text: this.htmlToText(htmlContent),
+        headers: {
+          'Content-Language': 'fr-FR'
+        },
         attachments: [
           {
             filename: 'logo.png',
@@ -708,9 +739,16 @@ export class MailerService {
         ],
       };
 
-      await this.transporter.sendMail(mailOptions);
+      const info = await this.transporter.sendMail(mailOptions);
       this.logger.log(`Email courrier départ envoyé à ${destinataireEmail}`);
-      return true;
+      this.logger.log(`📨 MessageId: ${info.messageId}`);
+      this.logger.log(`📤 Réponse serveur: ${info.response || 'N/A'}`);
+      this.logger.log(`✉️ Accepted: ${JSON.stringify(info.accepted || [])}`);
+      this.logger.log(`❌ Rejected: ${JSON.stringify(info.rejected || [])}`);
+
+      // Si aucun destinataire n'a été accepté (rare), considérer l'envoi comme échoué
+      const accepted = (info.accepted || []).length;
+      return accepted > 0;
     } catch (error) {
       this.logger.error(`Erreur lors de l'envoi email courrier départ à ${destinataireEmail}:`, error);
       return false;

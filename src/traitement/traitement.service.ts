@@ -1,6 +1,6 @@
 // src/traitement/traitement.service.ts
 
-import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTraitementDto } from './dto/create-traitement.dto';
 import { UpdateTraitementDto } from './dto/update-traitement.dto';
@@ -18,6 +18,7 @@ import * as path from 'path';
 
 @Injectable()
 export class TraitementService {
+  private readonly logger = new Logger(TraitementService.name);
   constructor(
     private readonly prismaService: PrismaService,
     private readonly responseFormatter: ResponseFormatterService,
@@ -350,75 +351,85 @@ export class TraitementService {
 
     // 📧 Envoyer les notifications aux utilisateurs du service si shouldSendNotification = true
     if (shouldSendNotification && idService) {
-      Promise.all([
-        this.prismaService.user.findMany({
-          where: {
-            idService: idService,
-            isActive: true,
-            isDelete: false,
-          },
-          select: {
-            email: true,
-            phone: true,
-            firstName: true,
-            lastName: true,
-          },
-        }),
-        this.prismaService.service.findUnique({
-          where: { id: idService },
-          select: { nom: true },
-        }),
-        this.prismaService.courrier.findUnique({
-          where: { id: idCourrier },
-          select: { numero: true, objet: true, priorite: true },
-        }),
-      ])
-      .then(([serviceUsers, serviceInfo, courrierInfo]) => {
+      try {
+        const [serviceUsers, serviceInfo, courrierInfo] = await Promise.all([
+          this.prismaService.user.findMany({
+            where: {
+              idService: idService,
+              isActive: true,
+              isDelete: false,
+            },
+            select: {
+              email: true,
+              phone: true,
+              firstName: true,
+              lastName: true,
+            },
+          }),
+          this.prismaService.service.findUnique({
+            where: { id: idService },
+            select: { nom: true },
+          }),
+          this.prismaService.courrier.findUnique({
+            where: { id: idCourrier },
+            select: { numero: true, objet: true, priorite: true },
+          }),
+        ]);
+
         const emailPromises = serviceUsers
-          .filter(user => user.email)
-          .map(user => 
-            this.mailerService.sendCourrierNotificationService(
-              user.email,
-              user.firstName || '',
-              user.lastName || '',
-              serviceInfo?.nom || 'Service',
-              {
-                numero: courrierInfo?.numero || 'N/A',
-                reference: result.transmission.id.toString(),
-                objet: courrierInfo?.objet || instruction || 'Nouvelle transmission',
-                civilite: '',
-                nom: emetteur.username,
-                priorite: courrierInfo?.priorite || 'Normal',
-                categorie: 'Transmission',
-                dateArrivee: new Date(dateInstruction).toLocaleDateString('fr-FR', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                }),
-                commentaire: instruction || '',
-              },
-            ).catch(error => {
+          .filter((user) => user.email)
+          .map(async (user) => {
+            try {
+              const ok = await this.mailerService.sendCourrierNotificationService(
+                user.email as string,
+                user.firstName || '',
+                user.lastName || '',
+                serviceInfo?.nom || 'Service',
+                {
+                  numero: courrierInfo?.numero || 'N/A',
+                  reference: result.transmission.id.toString(),
+                  objet: courrierInfo?.objet || instruction || 'Nouvelle transmission',
+                  civilite: '',
+                  nom: emetteur.username,
+                  priorite: courrierInfo?.priorite || 'Normal',
+                  categorie: 'Transmission',
+                  dateArrivee: new Date(dateInstruction).toLocaleDateString('fr-FR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                  }),
+                  commentaire: instruction || '',
+                },
+              );
+              if (!ok) {
+                console.error(`Envoi email échoué pour ${user.email}`);
+                return false;
+              }
+              return true;
+            } catch (error) {
               console.error(`Erreur envoi email à ${user.email}:`, error);
-            })
-          );
+              return false;
+            }
+          });
+
+        const emailResults = await Promise.all(emailPromises);
+        const sentCount = emailResults.filter((r) => r).length;
+        this.logger && this.logger.log && this.logger.log(`Notifications envoyées par email: ${sentCount}/${emailResults.length}`);
 
         const phoneNumbers = serviceUsers
-          .filter(user => user.phone)
-          .map(user => user.phone) as string[];
+          .filter((user) => user.phone)
+          .map((user) => user.phone) as string[];
 
         if (phoneNumbers.length > 0) {
           const messageSMS = `KIAMA S.A: Nouvelle transmission ${result.transmission.id} pour le courrier ${courrierInfo?.numero || 'N/A'}. Service: ${serviceInfo?.nom || ''}. Veuillez consulter.`;
-          
-          this.smsService.sendSameSmsToMultiple(phoneNumbers, messageSMS, false, true).catch(error => {
+
+          this.smsService.sendSameSmsToMultiple(phoneNumbers, messageSMS, false, true).catch((error) => {
             console.error(`Erreur envoi SMS aux utilisateurs du service:`, error);
           });
         }
-
-        return Promise.all(emailPromises);
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error(`Erreur lors de l'envoi des notifications:`, error);
-      });
+      }
     }
 
     // 📧 Notifications aux services en copie
