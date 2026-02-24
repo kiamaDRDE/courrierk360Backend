@@ -148,9 +148,9 @@ export class CorrespondantService {
 
     // Créer les métadonnées de pagination
     const paginationMeta = this.paginationService.createPaginationMeta(
-      totalItems,
       page,
       limit,
+      totalItems,
     );
 
     // Créer le résultat paginé

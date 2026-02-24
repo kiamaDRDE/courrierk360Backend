@@ -16,8 +16,8 @@ export class MailerService {
       port: 465,
       secure: true,
       auth: {
-        user: 'ppatnuc@gmail.com',
-        pass: 'jyqkjhovvrdmujrs',
+        user: 'kiamadrde@gmail.com',
+        pass: 'ytykclixlzulxawj',
       },
       // Logs détaillés pour debug en production
       logger: true,
@@ -70,8 +70,8 @@ export class MailerService {
     try {
       const mailOptions = {
         from: {
-          name: 'KIAMA RegTar',
-          address: 'ppatnuc@gmail.com',
+          name: 'KIAMA SA',
+          address: 'kiamadrde@gmail.com',
         },
         to: email,
         headers: {
@@ -80,14 +80,14 @@ export class MailerService {
           'X-MSMail-Priority': 'Normal',
           'Importance': 'Normal'
         },
-        subject: '🎉 Bienvenue sur KIAMA RegTar - Votre compte a été créé !',
+        subject: '🎉 Bienvenue sur KIAMA SA - Votre compte a été créé !',
         html: `
           <!DOCTYPE html>
           <html>
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Bienvenue sur KIAMA RegTar</title>
+            <title>Bienvenue sur KIAMA SA</title>
             <style>
               body {
                 font-family: 'Arial', sans-serif;
@@ -198,21 +198,7 @@ export class MailerService {
               <div class="content">
                 <div class="welcome-message">
                   <h2>Bonjour <strong>${nom}</strong>,</h2>
-                  <p>Félicitations ! Votre compte a été créé avec succès sur la plateforme <strong>KIAMA RegTar</strong>.</p>
-                </div>
-
-                <div class="platform-info">
-                  <h3><span class="emoji">🚀</span> À propos de KIAMA RegTar</h3>
-                  <p>KIAMA RegTar est votre plateforme de régulation tarifaire qui vous permet de :</p>
-                  
-                  <ul class="features">
-                    <li>Gérer les opérateurs de télécommunications</li>
-                    <li>Analyser les structures tarifaires</li>
-                    <li>Calculer les effets club</li>
-                    <li>Suivre les tarifs d'interconnexion</li>
-                    <li>Générer des rapports détaillés</li>
-                    <li>Accéder aux données en temps réel</li>
-                  </ul>
+                  <p>Félicitations ! Votre compte a été créé avec succès sur la plateforme <strong>KIAMA SA</strong>.</p>
                 </div>
 
                 <div class="cta">
@@ -220,28 +206,6 @@ export class MailerService {
                   <p>Connectez-vous dès maintenant pour découvrir toutes les fonctionnalités.</p>
                 </div>
 
-                <div style="background-color: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                  <h4 style="color: #28a745; margin-top: 0;">📧 Informations de connexion</h4>
-                  <p><strong>Email :</strong> ${email}</p>
-                  <p><strong>Plateforme :</strong> KIAMA RegTar</p>
-                  <p style="margin-bottom: 0;"><em>Utilisez ces informations pour vous connecter à votre compte.</em></p>
-                </div>
-
-                <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                  <strong>Besoin d'aide ?</strong><br>
-                  Notre équipe support est à votre disposition pour vous accompagner dans la prise en main de la plateforme.
-                </p>
-              </div>
-
-              <div class="footer">
-                <p><strong>KIAMA RegTar</strong> - Plateforme de Régulation Tarifaire</p>
-                <p style="margin: 5px 0;">
-                  Email: <a href="mailto:ppatnuc@gmail.com">ppatnuc@gmail.com</a>
-                </p>
-                <p style="margin-top: 15px; font-size: 12px; color: #95a5a6;">
-                  Cet email a été envoyé automatiquement, merci de ne pas y répondre directement.
-                </p>
-              </div>
             </div>
           </body>
           </html>
@@ -264,8 +228,8 @@ export class MailerService {
     try {
       const mailOptions = {
         from: {
-          name: 'KIAMA RegTar',
-          address: 'ppatnuc@gmail.com',
+          name: 'KIAMA S.A.',
+          address: 'kiamadrde@gmail.com',
         },
         to,
         subject,
@@ -346,7 +310,7 @@ export class MailerService {
       const mailOptions = {
         from: {
           name: 'KIAMA S.A. - Gestion du Courrier',
-          address: 'ppatnuc@gmail.com',
+          address: 'kiamadrde@gmail.com',
         },
         to: email,
         subject: '✅ Accusé de Réception - Votre courrier a été enregistré',
@@ -363,7 +327,7 @@ export class MailerService {
       };
 
       this.logger.log(`📧 Tentative d'envoi email à: ${email}`);
-      this.logger.log(`📋 Configuration SMTP: service=gmail, user=ppatnuc@gmail.com`);
+      this.logger.log(`📋 Configuration SMTP: service=gmail, user=kiamadrde@gmail.com`);
       
       const info = await this.transporter.sendMail(mailOptions);
       
@@ -463,14 +427,14 @@ export class MailerService {
       const mailOptions = {
         from: {
           name: 'KIAMA S.A. - Gestion du Courrier',
-          address: 'ppatnuc@gmail.com',
+          address: 'kiamadrde@gmail.com',
         },
         to: userEmail,
         subject: `📥 Nouveau Courrier - ${courrier.numero} - ${serviceNom}`,
         html: htmlContent,
         text: this.htmlToText(htmlContent),
         headers: {
-          'X-Mailer': 'KIAMA CourriÈrK360 v1.0',
+          'X-Mailer': 'KIAMA CourrierK360 v1.0',
           'X-Priority': '3',
           'X-MSMail-Priority': 'Normal',
           'Importance': 'Normal',
@@ -579,7 +543,7 @@ export class MailerService {
       const mailOptions = {
         from: {
           name: 'KIAMA S.A. - Gestion du Courrier',
-          address: 'ppatnuc@gmail.com',
+          address: 'kiamadrde@gmail.com',
         },
         to: userEmail,
         subject: `📎 Transmission en copie - ${courrier.numero} - ${serviceNom}`,
@@ -639,7 +603,7 @@ export class MailerService {
       const mailOptions = {
         from: {
           name: 'KIAMA S.A. - Gestion du Courrier',
-          address: 'ppatnuc@gmail.com',
+          address: 'kiamadrde@gmail.com',
         },
         to: userEmail,
         subject: `📄 Courrier interne - ${serviceNom}`,
@@ -721,7 +685,7 @@ export class MailerService {
       const mailOptions = {
         from: {
           name: 'KIAMA S.A. - Gestion du Courrier',
-          address: 'ppatnuc@gmail.com',
+          address: 'kiamadrde@gmail.com',
         },
         to: destinataireEmail,
         subject: `📤 Courrier Départ - ${courrierDepart.numeroReference || 'Notification'}`,

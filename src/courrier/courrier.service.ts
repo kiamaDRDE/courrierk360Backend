@@ -679,68 +679,10 @@ export class CourrierService {
       });
     }
 
-    // 📱 Envoyer les SMS de notification si sendNotification = true
-    // Envoi asynchrone (non-bloquant) pour ne pas ralentir la création du courrier
+    // 📱 SMS: Ne pas envoyer de SMS lors de la création d'un courrier d'arrivée.
+    // Quand `sendNotification=true` ici (création courrier arrivé), on envoie uniquement l'email.
     if (sendNotification) {
-      // Récupérer les informations du service et envoyer les SMS de manière asynchrone
-      const smsPromise = this.prismaService.service.findUnique({ 
-        where: { id: idService }, 
-        select: { nom: true } 
-      })
-      .then((serviceInfoForSms) => {
-        const smsPromises: Promise<any>[] = [];
-
-        // 1. Envoyer SMS au téléphone du courrier (correspondant) si fourni
-        if (telephone) {
-          const messageSMS = `KIAMA S.A: Votre courrier ${result.courrier.numero} a ete enregistre et transmis au service ${serviceInfoForSms?.nom || 'competent'}. Merci.`;
-          
-          smsPromises.push(
-            this.smsService.sendSms(telephone, messageSMS, true).catch((error) => {
-              console.error(`Erreur envoi SMS au correspondant ${telephone}:`, error);
-            })
-          );
-        }
-
-        // 2. Envoyer SMS aux utilisateurs du service destinataire
-        if (idService) {
-          const serviceUsersPromise = this.prismaService.user.findMany({
-            where: {
-              idService: idService,
-              isActive: true,
-              isDelete: false,
-            },
-            select: {
-              phone: true,
-              firstName: true,
-            },
-          })
-          .then((serviceUsersWithPhones) => {
-            const prioriteLabel = priorite === 'urgent' || priorite === 'haute' ? 'URGENT' : 
-                                 priorite === 'normal' ? 'Normal' : 'Basse';
-
-            const messageSMS = `KIAMA S.A: Nouveau courrier ${result.courrier.numero} transmis a votre service ${serviceInfoForSms?.nom || ''}. Priorite: ${prioriteLabel}. Veuillez consulter.`;
-
-            // Envoyer SMS à chaque utilisateur du service
-            const phoneNumbers = serviceUsersWithPhones
-              .filter((user) => user.phone)
-              .map((user) => user.phone) as string[];
-
-            if (phoneNumbers.length > 0) {
-              return this.smsService.sendSameSmsToMultiple(phoneNumbers, messageSMS, false, true);
-            }
-          })
-          .catch((error) => {
-            console.error(`Erreur envoi SMS aux utilisateurs du service:`, error);
-          });
-
-          smsPromises.push(serviceUsersPromise);
-        }
-
-        return Promise.all(smsPromises);
-      })
-      .catch((error) => {
-        console.error(`Erreur lors de l'envoi des SMS:`, error);
-      });
+      console.log(`📵 SMS volontairement ignorés pour courrier d'arrivée (sendNotification: ${sendNotification}) - seuls les emails sont envoyés.`);
     } else {
       console.log(`📵 SMS désactivés ou aucun téléphone - sendNotification: ${sendNotification}, telephone: ${telephone || 'N/A'}, idService: ${idService || 'N/A'}`);
     }
@@ -2129,65 +2071,12 @@ export class CourrierService {
       });
     }
 
+    // 📱 SMS volontairement ignorés pour la mise à jour d'un courrier d'arrivée.
+    // Lorsque `shouldSendNotification` est vrai pour une mise à jour, on n'envoie que les emails.
     if (shouldSendNotification) {
-      this.prismaService.service.findUnique({
-        where: { id: idServiceFinal ?? undefined },
-        select: { nom: true },
-      })
-      .then((serviceInfoForSms) => {
-        const smsPromises: Promise<any>[] = [];
-
-        if (updateCourrierDto.telephone) {
-          const messageSMS = `KIAMA S.A: Votre courrier ${result.courrier.numero} a ete mis a jour et transmis au service ${serviceInfoForSms?.nom || 'competent'}. Merci.`;
-
-          smsPromises.push(
-            this.smsService.sendSms(updateCourrierDto.telephone, messageSMS, true).catch((error) => {
-              console.error(`Erreur envoi SMS au correspondant ${updateCourrierDto.telephone}:`, error);
-            })
-          );
-        }
-
-        if (idServiceFinal) {
-          const serviceUsersPromise = this.prismaService.user.findMany({
-            where: {
-              idService: idServiceFinal,
-              isActive: true,
-              isDelete: false,
-            },
-            select: {
-              phone: true,
-              firstName: true,
-            },
-          })
-          .then((serviceUsersWithPhones) => {
-            const prioriteLabel = (updateCourrierDto.priorite || result.courrier.priorite) === 'urgent' || (updateCourrierDto.priorite || result.courrier.priorite) === 'haute'
-              ? 'URGENT'
-              : (updateCourrierDto.priorite || result.courrier.priorite) === 'normal'
-                ? 'Normal'
-                : 'Basse';
-
-            const messageSMS = `KIAMA S.A: Courrier ${result.courrier.numero} mis a jour et transmis a votre service ${serviceInfoForSms?.nom || ''}. Priorite: ${prioriteLabel}. Veuillez consulter.`;
-
-            const phoneNumbers = serviceUsersWithPhones
-              .filter((user) => user.phone)
-              .map((user) => user.phone) as string[];
-
-            if (phoneNumbers.length > 0) {
-              return this.smsService.sendSameSmsToMultiple(phoneNumbers, messageSMS, false, true);
-            }
-          })
-          .catch((error) => {
-            console.error(`Erreur envoi SMS aux utilisateurs du service:`, error);
-          });
-
-          smsPromises.push(serviceUsersPromise);
-        }
-
-        return Promise.all(smsPromises);
-      })
-      .catch((error) => {
-        console.error(`Erreur lors de l'envoi des SMS:`, error);
-      });
+      console.log(`📵 SMS volontairement ignorés pour mise à jour du courrier (shouldSendNotification: ${shouldSendNotification}) - seuls les emails sont envoyés.`);
+    } else {
+      console.log(`📵 SMS désactivés ou aucun téléphone - shouldSendNotification: ${shouldSendNotification}, telephone: ${updateCourrierDto.telephone || 'N/A'}, idServiceFinal: ${idServiceFinal || 'N/A'}`);
     }
 
     if (idServiceFinal) {

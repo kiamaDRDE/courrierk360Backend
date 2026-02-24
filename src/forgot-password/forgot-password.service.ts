@@ -21,7 +21,7 @@ export class ForgotPasswordService {
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'ppatnuc@gmail.com',
+        user: 'kiamadrde@gmail.com',
         pass: 'jyqkjhovvrdmujrs',
       },
     });
@@ -47,7 +47,7 @@ export class ForgotPasswordService {
   // Envoyer un email avec le code OTP de réinitialisation
   private async sendResetOtpEmail(email: string, otp: string, nom: string) {
     const mailOptions = {
-      from: 'ppatnuc@gmail.com',
+      from: 'kiamadrde@gmail.com',
       to: email,
       subject: 'Réinitialisation de mot de passe - Patnuc Segmentation',
       html: `

@@ -7,7 +7,7 @@ async function testSimpleEmail() {
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: 'ppatnuc@gmail.com',
+      user: 'kiamadrde@gmail.com',
       pass: 'jyqkjhovvrdmujrs',
     },
     logger: true,
@@ -18,7 +18,7 @@ async function testSimpleEmail() {
     // Test avec des vraies adresses Gmail
     const testEmails = [
       'manudouanla9@gmail.com',
-      'ppatnuc@gmail.com', // votre propre adresse pour test
+      'kiamadrde@gmail.com', // votre propre adresse pour test
     ];
 
     for (let i = 0; i < testEmails.length; i++) {
@@ -28,7 +28,7 @@ async function testSimpleEmail() {
       const info = await transporter.sendMail({
         from: {
           name: 'TEST KIAMA',
-          address: 'ppatnuc@gmail.com',
+          address: 'kiamadrde@gmail.com',
         },
         to: email,
         subject: '🧪 Test Email Simple - ' + new Date().toLocaleString(),

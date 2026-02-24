@@ -826,10 +826,9 @@ export class CourrierDepartService {
           .catch(() => undefined);
       }
 
-      // Envoyer le SMS
-      const message = `Courrier départ créé. Référence: ${result.courrierDepart.numeroReference || 'N/A'}.`;
+      // 📵 Ne pas envoyer de SMS lors de la création d'un courrier départ — seul l'email est envoyé.
       if (dto.numeroTelephone) {
-        this.smsService.sendSms(dto.numeroTelephone, message, true).catch(() => undefined);
+        console.log(`📵 SMS volontairement ignoré pour courrier départ créé (numeroTelephone: ${dto.numeroTelephone})`);
       }
     }
 
@@ -976,10 +975,9 @@ export class CourrierDepartService {
           .catch(() => undefined);
       }
 
-      // Envoyer le SMS
-      const message = `Courrier départ mis à jour. Référence: ${result.courrierDepart.numeroReference || 'N/A'}.`;
+      // 📵 Ne pas envoyer de SMS lors de la mise à jour d'un courrier départ — seul l'email est envoyé.
       if (dto.numeroTelephone) {
-        this.smsService.sendSms(dto.numeroTelephone, message, true).catch(() => undefined);
+        console.log(`📵 SMS volontairement ignoré pour courrier départ mis à jour (numeroTelephone: ${dto.numeroTelephone})`);
       }
     }
 
@@ -1029,9 +1027,8 @@ export class CourrierDepartService {
     }
 
     if (courrierDepart.numeroTelephone) {
-      const message = `Courrier départ créé. Référence: ${courrierDepart.numeroReference || 'N/A'}.`;
-      const smsResult = await this.smsService.sendSms(courrierDepart.numeroTelephone, message, true);
-      smsSent = smsResult.success === true;
+      console.log(`📵 SMS volontairement ignoré pour notify courrier-depart id ${id} (numeroTelephone: ${courrierDepart.numeroTelephone})`);
+      // smsSent reste false — seul l'email est envoyé
     }
 
     return this.responseFormatter.success(

@@ -124,17 +124,10 @@ export class TraitementService {
       .filter((user) => user.phone)
       .map((user) => user.phone) as string[];
 
+    // 📵 Pour création de transmission : ne pas envoyer de SMS, uniquement les emails.
     let smsCount = 0;
     if (phoneNumbers.length > 0) {
-      const messageSMS = `KIAMA S.A: Nouvelle transmission ${transmission.id} pour le courrier ${courrierInfo?.numero || 'N/A'}. Service: ${serviceInfo.nom || ''}.`;
-      await this.smsService
-        .sendSameSmsToMultiple(phoneNumbers, messageSMS, false, true)
-        .then(() => {
-          smsCount = phoneNumbers.length;
-        })
-        .catch((error) => {
-          console.error(`Erreur envoi SMS aux utilisateurs du service:`, error);
-        });
+      console.log(`📵 SMS volontairement ignorés pour la création de la transmission ${transmission.id} (send via email uniquement). Utilisateurs avec téléphone: ${phoneNumbers.length}`);
     }
 
     return this.responseFormatter.success(
@@ -420,12 +413,9 @@ export class TraitementService {
           .filter((user) => user.phone)
           .map((user) => user.phone) as string[];
 
+        // ⚠️ Lors de la création d'une transmission, n'envoyer que des emails.
         if (phoneNumbers.length > 0) {
-          const messageSMS = `KIAMA S.A: Nouvelle transmission ${result.transmission.id} pour le courrier ${courrierInfo?.numero || 'N/A'}. Service: ${serviceInfo?.nom || ''}. Veuillez consulter.`;
-
-          this.smsService.sendSameSmsToMultiple(phoneNumbers, messageSMS, false, true).catch((error) => {
-            console.error(`Erreur envoi SMS aux utilisateurs du service:`, error);
-          });
+          console.log(`📵 SMS volontairement ignorés pour la création de la transmission ${result.transmission.id} (envoi email uniquement). Utilisateurs avec téléphone: ${phoneNumbers.length}`);
         }
       } catch (error) {
         console.error(`Erreur lors de l'envoi des notifications:`, error);

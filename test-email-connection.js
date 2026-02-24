@@ -17,7 +17,7 @@ async function testEmailConnection() {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'ppatnuc@gmail.com',
+        user: 'kiamadrde@gmail.com',
         pass: 'jyqkjhovvrdmujrs', // Mot de passe d'application
       },
     });
@@ -32,8 +32,8 @@ async function testEmailConnection() {
     // Envoyer un email de test
     console.log('📤 Envoi d\'un email de test...');
     const testEmail = {
-      from: 'ppatnuc@gmail.com',
-      to: 'ppatnuc@gmail.com', // Envoi à soi-même pour test
+      from: 'kiamadrde@gmail.com',
+      to: 'kiamadrde@gmail.com', // Envoi à soi-même pour test
       subject: 'Test de connexion - ' + new Date().toLocaleString(),
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
