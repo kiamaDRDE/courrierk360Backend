@@ -91,18 +91,28 @@ export class SignupService {
             isSignataire,
           };
 
+          // If external password is provided, store it as-is
+          if (item.password) {
+            updateData.password = item.password;
+          }
+
           await this.prismaService.user.update({ where: { id: extId }, data: updateData });
         } else {
-          // Générer un mot de passe aléatoire et le hacher
-          const randomPwd = randomBytes(8).toString('hex');
-          const hashed = await bcrypt.hash(randomPwd, 10);
+          // Use external password if present (store as-is), otherwise generate a random hashed password
+          let pwdToStore: string;
+          if (item.password) {
+            pwdToStore = item.password;
+          } else {
+            const randomPwd = randomBytes(8).toString('hex');
+            pwdToStore = await bcrypt.hash(randomPwd, 10);
+          }
 
           await this.prismaService.user.create({
             data: {
               id: extId,
               username,
               email,
-              password: hashed,
+              password: pwdToStore,
               civilite,
               firstName,
               lastName,
