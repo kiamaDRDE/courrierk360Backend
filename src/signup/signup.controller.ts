@@ -45,6 +45,13 @@ import { ApiTags, ApiResponse, ApiOperation, ApiBody, ApiParam, ApiQuery } from 
 export class SignupController {
   constructor(private readonly signupService: SignupService) {}
 
+  @Post('sync-external-users')
+  @ApiOperation({ summary: 'Synchroniser les utilisateurs depuis une API externe' })
+  @ApiResponse({ status: 200, description: 'Utilisateurs synchronisés avec succès' })
+  async syncExternalUsers(@Body('url') url?: string) {
+    return this.signupService.syncUsersFromExternal(url);
+  }
+
   // 👤 Création d'un utilisateur
   @Post()
   @HttpCode(HttpStatus.CREATED)

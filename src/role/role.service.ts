@@ -3,7 +3,9 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
+import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -15,12 +17,58 @@ import { roleSearchConfig } from './role.config';
 
 @Injectable()
 export class RoleService {
+  private readonly logger = new Logger(RoleService.name);
   constructor(
     private prisma: PrismaService,
     private responseFormatter: ResponseFormatterService,
     private paginationService: PaginationService,
     private searchService: SearchService,
   ) {}
+
+  /**
+   * Synchronise les rôles depuis une API externe et insère les rôles
+   * en utilisant `nom = item.name`.
+   */
+  async syncFromExternal(externalUrl?: string) {
+    const url = externalUrl || process.env.EXTERNAL_SERVICES_URL || 'http://api-kiama360-test.kiama.cm/courrier/roles?page=1&limit=0';
+    this.logger.log(`Sync roles from external URL: ${url}`);
+
+    const externalToken = process.env.EXTERNAL_SERVICES_TOKEN;
+    const headers: any = {};
+    if (externalToken) {
+      headers.Authorization = `Bearer ${externalToken}`;
+      this.logger.log('Using EXTERNAL_SERVICES_TOKEN for Authorization header');
+    }
+
+    const resp = await axios.get(url, { timeout: 15000, headers });
+    const items = Array.isArray(resp.data?.data?.data) ? resp.data.data.data : resp.data?.data || [];
+
+    let processed = 0;
+    for (const item of items) {
+      try {
+        const roleId = Number(item.id);
+        if (!Number.isInteger(roleId)) continue;
+
+        const name = (item.name || item.nom || '').trim();
+        if (!name) continue;
+
+        const description = item.description || null;
+
+        // Upsert by explicit id: create with the external id and name
+        await this.prisma.role.upsert({
+          where: { id: roleId },
+          update: { nom: name, description },
+          create: { id: roleId, nom: name, description },
+        });
+
+        processed++;
+      } catch (err) {
+        this.logger.error(`Error processing external role item: ${err?.message || err}`);
+      }
+    }
+
+    return { processed };
+  }
 
   async create(createRoleDto: CreateRoleDto) {
     const existingRole = await this.prisma.role.findFirst({

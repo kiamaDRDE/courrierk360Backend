@@ -1,6 +1,7 @@
 // src/service/service.service.ts
 
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
@@ -11,6 +12,7 @@ import { SearchService } from '../common/search.service';
 
 @Injectable()
 export class ServiceService {
+  private readonly logger = new Logger(ServiceService.name);
   constructor(
     private readonly prismaService: PrismaService,
     private readonly responseFormatter: ResponseFormatterService,
@@ -67,6 +69,88 @@ export class ServiceService {
       'Création service',
       'Service créé avec succès.',
     );
+  }
+
+  /**
+   * Récupère la liste des services depuis une API externe et insère/met à jour
+   * dans la table `service`.
+   * Utilise les champs suivants depuis l'API distante: `id`, `name`, `posteSup.id`, `isActif`.
+   * Mapping:
+   *  - id -> id
+   *  - nom, sigle -> name
+   *  - parentId -> posteSup.id
+   *  - isActive -> isActif
+   *  - isVisible -> true
+   *  - type -> 'Poste'
+   */
+  async syncFromExternal(externalUrl?: string) {
+    const url = externalUrl || process.env.EXTERNAL_SERVICES_URL || 'http://api-kiama360-test.kiama.cm/courrier/roles?page=1&limit=0';
+    this.logger.log(`Sync services from external URL: ${url}`);
+
+    // Support authenticated external API: read token from env and send as Bearer
+    const externalToken = process.env.EXTERNAL_SERVICES_TOKEN;
+    const headers: any = {};
+    if (externalToken) {
+      headers.Authorization = `Bearer ${externalToken}`;
+      this.logger.log('Using EXTERNAL_SERVICES_TOKEN for Authorization header');
+    }
+
+    const resp = await axios.get(url, { timeout: 15000, headers });
+    const items = Array.isArray(resp.data?.data?.data) ? resp.data.data.data : resp.data?.data || [];
+
+    let processed = 0;
+    for (const item of items) {
+      try {
+        const extId = Number(item.id);
+        if (!Number.isInteger(extId)) continue;
+
+        const name = item.name || String(item.nom || item.label || '').trim();
+        const parentExtId = item.posteSup?.id ? Number(item.posteSup.id) : null;
+        const isActive = item.isActif === undefined ? true : Boolean(item.isActif);
+
+        // Ensure parent exists if provided
+        if (parentExtId) {
+          const parent = await this.prismaService.service.findUnique({ where: { id: parentExtId } });
+          if (!parent) {
+            // create parent placeholder using posteSup.name if available
+            await this.prismaService.service.create({
+              data: {
+                id: parentExtId,
+                nom: item.posteSup?.name || `Service ${parentExtId}`,
+                sigle: item.posteSup?.name || `S${parentExtId}`,
+                parentId: null,
+                isActive: true,
+                isVisible: true,
+                type: 'Poste',
+              },
+            });
+          }
+        }
+
+        const existing = await this.prismaService.service.findUnique({ where: { id: extId } });
+        const data: any = {
+          nom: name,
+          sigle: name,
+          parentId: parentExtId || null,
+          isActive,
+          isVisible: true,
+          type: 'Poste',
+        };
+
+        if (existing) {
+          await this.prismaService.service.update({ where: { id: extId }, data });
+        } else {
+          // create with explicit id
+          await this.prismaService.service.create({ data: { id: extId, ...data } });
+        }
+
+        processed++;
+      } catch (err) {
+        this.logger.error(`Error processing external service item: ${err?.message || err}`);
+      }
+    }
+
+    return { processed };
   }
 
   // 📋 Liste de tous les services avec filtres et pagination

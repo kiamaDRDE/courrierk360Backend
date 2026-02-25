@@ -2,6 +2,8 @@
 
 import * as bcrypt from 'bcryptjs';
 import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import axios from 'axios';
+import { randomBytes } from 'crypto';
 import { PrismaService } from './../prisma/prisma.service';
 import { SignupDto } from './dto/signup.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -27,6 +29,99 @@ export class SignupService {
       message,
       data,
     };
+  }
+
+  /**
+   * Synchronise les utilisateurs depuis une API externe et insère/met à jour
+   * dans la table `user`.
+   * Mapping des champs externes -> table locale:
+   *  - id -> id
+   *  - username -> username
+   *  - email -> email
+   *  - civilite -> civilite
+   *  - fullName -> firstName & lastName
+   *  - service -> idService
+   *  - role -> idRole
+   *  - isActive -> isActive
+   *  - isSignataire -> isSignataire
+   */
+  async syncUsersFromExternal(externalUrl?: string) {
+    const url = externalUrl || process.env.EXTERNAL_SERVICES_USERS_URL || 'http://api-kiama360-test.kiama.cm/courrier/users?page=1&limit=0';
+    this.logger.log(`Sync users from external URL: ${url}`);
+
+    const externalToken = process.env.EXTERNAL_SERVICES_TOKEN;
+    const headers: any = {};
+    if (externalToken) {
+      headers.Authorization = `Bearer ${externalToken}`;
+      this.logger.log('Using EXTERNAL_SERVICES_TOKEN for Authorization header (users)');
+    }
+
+    const resp = await axios.get(url, { timeout: 20000, headers });
+    const items = Array.isArray(resp.data?.data?.data) ? resp.data.data.data : resp.data?.data || [];
+
+    let processed = 0;
+    for (const item of items) {
+      try {
+        const extId = Number(item.id);
+        if (!Number.isInteger(extId)) continue;
+
+        const username = item.username || null;
+        const email = item.email || null;
+        const civilite = item.civilite || null;
+        const fullName = (item.fullName || '').trim();
+        const firstName = fullName || null;
+        const lastName = fullName || null;
+        const idService = item.service || null;
+        const idRole = item.role || null;
+        const isActive = item.isActive === undefined ? true : Boolean(item.isActive);
+        const isSignataire = item.isSignataire === undefined ? false : Boolean(item.isSignataire);
+
+        const existing = await this.prismaService.user.findUnique({ where: { id: extId } });
+
+        if (existing) {
+          const updateData: any = {
+            username,
+            email,
+            civilite,
+            firstName,
+            lastName,
+            idService,
+            idRole,
+            isActive,
+            isSignataire,
+          };
+
+          await this.prismaService.user.update({ where: { id: extId }, data: updateData });
+        } else {
+          // Générer un mot de passe aléatoire et le hacher
+          const randomPwd = randomBytes(8).toString('hex');
+          const hashed = await bcrypt.hash(randomPwd, 10);
+
+          await this.prismaService.user.create({
+            data: {
+              id: extId,
+              username,
+              email,
+              password: hashed,
+              civilite,
+              firstName,
+              lastName,
+              idService,
+              idRole,
+              isActive,
+              isSignataire,
+              numero: '',
+            },
+          });
+        }
+
+        processed++;
+      } catch (err) {
+        this.logger.error(`Error processing external user item: ${err?.message || err}`);
+      }
+    }
+
+    return { processed };
   }
 
   // 👤 Création d'un utilisateur

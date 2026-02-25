@@ -63,6 +63,13 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class ServiceController {
   constructor(private readonly serviceService: ServiceService) {}
 
+  // Admin: Synchroniser les services depuis une API externe
+  @Post('sync-external')
+  @HttpCode(HttpStatus.OK)
+  async syncExternal(@Body('url') url?: string) {
+    return this.serviceService.syncFromExternal(url);
+  }
+
   // 📝 Créer un service
   @Post()
   @HttpCode(HttpStatus.CREATED)

@@ -25,6 +25,13 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
+  @Post('sync-external')
+  @ApiOperation({ summary: 'Synchroniser les rôles depuis une API externe' })
+  @ApiResponse({ status: 200, description: 'Rôles synchronisés avec succès' })
+  async syncExternal(@Body('url') url?: string) {
+    return this.roleService.syncFromExternal(url);
+  }
+
   @Post()
   @ApiOperation({
     summary: 'Créer un rôle avec permissions',
