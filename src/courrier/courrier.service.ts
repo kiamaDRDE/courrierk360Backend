@@ -1126,6 +1126,7 @@ export class CourrierService {
     }
 
     let data = courriers.map((courrier) => {
+      const formatDateOnly = (d?: Date | null) => (d ? new Date(d).toISOString().slice(0, 10) : null);
       const createurFullName = courrier.user
         ? `${courrier.user.firstName || ''} ${courrier.user.lastName || ''}`.trim() || courrier.user.username
         : null;
@@ -1149,8 +1150,8 @@ export class CourrierService {
         // 🆕 CHAMPS SPÉCIFIQUEMENT DEMANDÉS - MISE EN ÉVIDENCE
         categorie: categorieObj,
         classeCourrier: courrier.classeCourrier,
-        dateArrivee: courrier.dateArrivee,
-        dateEnregistrement: courrier.dateEnregistrement,
+        dateArrivee: formatDateOnly(courrier.dateArrivee),
+        dateEnregistrement: formatDateOnly(courrier.dateEnregistrement),
         
         // 🆕 AUTRES CHAMPS DATES SUPPLÉMENTAIRES
         dateRemiseEffective: courrier.dateRemiseEffective,
