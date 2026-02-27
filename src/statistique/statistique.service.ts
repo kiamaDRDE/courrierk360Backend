@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+﻿import { BadRequestException, Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StatistiqueQueryDto } from './dto/statistique-query.dto';
 
@@ -13,7 +14,7 @@ export class StatistiqueService {
     if (start) {
       const startDate = new Date(start);
       if (Number.isNaN(startDate.getTime())) {
-        throw new BadRequestException('La date de début est invalide.');
+        throw new BadRequestException('La date de dÃ©but est invalide.');
       }
       range.gte = startDate;
     }
@@ -31,7 +32,7 @@ export class StatistiqueService {
 
   private countBy(items: any[], getKey: (item: any) => string | null | undefined) {
     return items.reduce((acc: Record<string, number>, item) => {
-      const key = getKey(item) || 'Non défini';
+      const key = getKey(item) || 'Non dÃ©fini';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
@@ -55,25 +56,46 @@ export class StatistiqueService {
     if (filters.isConfidentiel !== undefined) filtersApplied.push('isConfidentiel');
     if (filters.serviceId) filtersApplied.push('serviceId');
 
-    const courrierWhere: any = {
+    const hasCourrierFilters =
+      Boolean(filters.priorite) || filters.isConfidentiel !== undefined || Boolean(filters.serviceId);
+
+    const baseCourrierWhere: Prisma.CourrierWhereInput = {
       isDelete: false,
-      ...(createdAt ? { createdAt } : {}),
       ...(filters.priorite ? { priorite: filters.priorite } : {}),
       ...(filters.isConfidentiel !== undefined ? { isConfidentiel: filters.isConfidentiel } : {}),
       ...(filters.serviceId ? { idService: filters.serviceId } : {}),
     };
 
-    // Filtres pour les entités liées aux courriers
-    const courrierRelationFilter: any = {
+    const courrierWhere: Prisma.CourrierWhereInput = {
+      ...baseCourrierWhere,
+      ...(createdAt ? { createdAt } : {}),
+    };
+
+    // Filtres pour les entitÃ©s liÃ©es aux courriers
+    const courrierDepartWhere: Prisma.CourrierDepartWhereInput = {
       isDelete: false,
-      ...(filters.priorite || filters.isConfidentiel !== undefined || filters.serviceId ? {
-        courrier: {
-          isDelete: false,
-          ...(filters.priorite ? { priorite: filters.priorite } : {}),
-          ...(filters.isConfidentiel !== undefined ? { isConfidentiel: filters.isConfidentiel } : {}),
-          ...(filters.serviceId ? { idService: filters.serviceId } : {}),
-        }
-      } : {}),
+      ...(hasCourrierFilters ? { courrier: baseCourrierWhere } : {}),
+      ...(createdAt ? { createdAt } : {}),
+    };
+
+    const transmissionWhere: Prisma.TransmissionWhereInput = {
+      isDelete: false,
+      ...(hasCourrierFilters ? { courrier: baseCourrierWhere } : {}),
+      ...(createdAt ? { createdAt } : {}),
+    };
+
+    const reponseWhere: Prisma.ReponseWhereInput = {
+      isDelete: false,
+      ...(hasCourrierFilters
+        ? {
+            courriers: {
+              some: {
+                courrier: baseCourrierWhere,
+              },
+            },
+          }
+        : {}),
+      ...(createdAt ? { createdAt } : {}),
     };
 
     const [
@@ -97,10 +119,7 @@ export class StatistiqueService {
         },
       }),
       this.prismaService.courrierDepart.findMany({
-        where: {
-          ...courrierRelationFilter,
-          ...(createdAt ? { createdAt } : {}),
-        },
+        where: courrierDepartWhere,
         include: {
           courrier: { select: { id: true, numero: true, objet: true } },
           signataire: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -108,10 +127,7 @@ export class StatistiqueService {
         },
       }),
       this.prismaService.transmission.findMany({
-        where: {
-          ...courrierRelationFilter,
-          ...(createdAt ? { createdAt } : {}),
-        },
+        where: transmissionWhere,
         include: {
           courrier: { select: { id: true, numero: true, objet: true } },
           service: { select: { id: true, nom: true, sigle: true } },
@@ -119,10 +135,7 @@ export class StatistiqueService {
         },
       }),
       this.prismaService.reponse.findMany({
-        where: {
-          ...courrierRelationFilter,
-          ...(createdAt ? { createdAt } : {}),
-        },
+        where: reponseWhere,
         include: {
           redacteur: { select: { id: true, firstName: true, lastName: true, email: true } },
           serviceDestinataire: { select: { id: true, nom: true, sigle: true } },
@@ -184,7 +197,7 @@ export class StatistiqueService {
       total: courriers.length,
       par_statut: this.countBy(courriers, (c) => c.statut),
       par_priorite: this.countBy(courriers, (c) => c.priorite),
-      par_service: this.countBy(courriers, (c) => c.service?.nom || 'Non affecté'),
+      par_service: this.countBy(courriers, (c) => c.service?.nom || 'Non affectÃ©'),
       par_type_courrier: this.countBy(courriers, (c) => c.typeCourrier?.nom),
       par_provenance: this.countBy(courriers, (c) => c.provenance?.nom),
       confidentiels: courriers.filter((c) => c.isConfidentiel).length,
@@ -196,7 +209,7 @@ export class StatistiqueService {
         statut: c.statut,
         date_arrivee: c.dateArrivee,
         priorite: c.priorite,
-        service: c.service?.nom || 'Non affecté',
+        service: c.service?.nom || 'Non affectÃ©',
         is_geled: c.isGeled,
         is_confidentiel: c.isConfidentiel,
       })),
@@ -209,7 +222,7 @@ export class StatistiqueService {
       par_categorie: this.countBy(courriersDepart, (c) => c.categorie),
       par_signataire: this.countBy(courriersDepart, (c) => {
         const fullName = `${c.signataire?.firstName || ''} ${c.signataire?.lastName || ''}`.trim();
-        return fullName || 'Non défini';
+        return fullName || 'Non dÃ©fini';
       }),
       par_destinataire: this.countBy(courriersDepart, (c) => c.destinataire?.nom),
       par_mois: this.countByMonth(courriersDepart as Array<{ createdAt: Date }>),
@@ -248,7 +261,7 @@ export class StatistiqueService {
       par_service_destinataire: this.countBy(transmissions, (t) => t.service?.nom),
       par_emetteur: this.countBy(transmissions, (t) => {
         const fullName = `${t.emetteur?.firstName || ''} ${t.emetteur?.lastName || ''}`.trim();
-        return fullName || 'Non défini';
+        return fullName || 'Non dÃ©fini';
       }),
       avec_accuse_reception: transmissions.filter((t) => t.accuseReception).length,
       par_mois: this.countByMonth(transmissions as Array<{ createdAt: Date }>),
@@ -309,7 +322,7 @@ export class StatistiqueService {
 
     const reponseDetails = reponses.map((r) => {
       const typeId = Array.isArray(r.typesCourrierIds) ? Number(r.typesCourrierIds[0]) : null;
-      const typeReponse = typeId && typeCourrierMap.get(typeId) ? typeCourrierMap.get(typeId) : { id: null, nom: 'Non défini' };
+      const typeReponse = typeId && typeCourrierMap.get(typeId) ? typeCourrierMap.get(typeId) : { id: null, nom: 'Non dÃ©fini' };
       return {
         id: r.id,
         objet: r.objet,
@@ -317,7 +330,7 @@ export class StatistiqueService {
         commentaire_interne: r.commentaireInterne || null,
         date_reponse: r.dateReponse,
         classe_courrier: r.classeCourrier,
-        type_transmission: r.typeTransmission || 'Non défini',
+        type_transmission: r.typeTransmission || 'Non dÃ©fini',
         type_reponse: typeReponse,
         redacteur: r.redacteur
           ? { id: r.redacteur.id, nom: r.redacteur.lastName || null, prenom: r.redacteur.firstName || null, email: r.redacteur.email || null }
@@ -335,13 +348,13 @@ export class StatistiqueService {
 
     const reponseStats = {
       total: reponses.length,
-      par_type_reponse: this.countBy(reponseDetails, (r) => r.type_reponse?.nom || 'Non défini'),
-      par_classe_courrier: this.countBy(reponseDetails, (r) => r.classe_courrier || 'Non défini'),
-      par_type_transmission: this.countBy(reponseDetails, (r) => r.type_transmission || 'Non défini'),
-      par_service_destinataire: this.countBy(reponseDetails, (r) => r.service_destinataire?.nom || 'Non défini'),
+      par_type_reponse: this.countBy(reponseDetails, (r) => r.type_reponse?.nom || 'Non dÃ©fini'),
+      par_classe_courrier: this.countBy(reponseDetails, (r) => r.classe_courrier || 'Non dÃ©fini'),
+      par_type_transmission: this.countBy(reponseDetails, (r) => r.type_transmission || 'Non dÃ©fini'),
+      par_service_destinataire: this.countBy(reponseDetails, (r) => r.service_destinataire?.nom || 'Non dÃ©fini'),
       par_redacteur: this.countBy(reponseDetails, (r) => {
         const fullName = `${r.redacteur?.prenom || ''} ${r.redacteur?.nom || ''}`.trim();
-        return fullName || 'Non défini';
+        return fullName || 'Non dÃ©fini';
       }),
       par_mois: this.countByMonth(reponses as Array<{ createdAt: Date }>),
       details: reponseDetails,
@@ -407,7 +420,7 @@ export class StatistiqueService {
       par_categorie: correspondants.reduce((acc: Record<string, number>, c) => {
         const categories = c.categories?.map((cat) => cat.categorie?.nom).filter(Boolean) as string[];
         if (!categories || categories.length === 0) {
-          acc['Non défini'] = (acc['Non défini'] || 0) + 1;
+          acc['Non dÃ©fini'] = (acc['Non dÃ©fini'] || 0) + 1;
         } else {
           for (const cat of categories) {
             acc[cat] = (acc[cat] || 0) + 1;
@@ -457,9 +470,9 @@ export class StatistiqueService {
       total_en_depassement: 0,
       delai_defaut_jours: 7,
       depassements: {
-        '7_jours': { count: 0, description: 'Courriers en dépassement de 7 jours', courriers: [] },
-        '15_jours': { count: 0, description: 'Courriers en dépassement de 15 jours', courriers: [] },
-        '30_jours': { count: 0, description: 'Courriers en dépassement de 30 jours', courriers: [] },
+        '7_jours': { count: 0, description: 'Courriers en dÃ©passement de 7 jours', courriers: [] },
+        '15_jours': { count: 0, description: 'Courriers en dÃ©passement de 15 jours', courriers: [] },
+        '30_jours': { count: 0, description: 'Courriers en dÃ©passement de 30 jours', courriers: [] },
       },
     };
 
@@ -483,3 +496,4 @@ export class StatistiqueService {
     };
   }
 }
+

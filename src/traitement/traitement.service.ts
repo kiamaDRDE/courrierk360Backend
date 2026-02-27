@@ -1031,7 +1031,7 @@ export class TraitementService {
             emetteur: t.emetteur
               ? {
                   id: t.emetteur.id,
-                  fullName: emetteurFullName,
+                  fullName: emetteurFullName || null,
                   email: t.emetteur.email,
                   service: t.emetteur.service
                     ? { id: t.emetteur.service.id, nom: t.emetteur.service.nom, sigle: t.emetteur.service.sigle }
@@ -1145,7 +1145,7 @@ export class TraitementService {
         emetteur: transmission.emetteur
           ? {
               id: transmission.emetteur.id,
-              fullName: emetteurFullName,
+              fullName: emetteurFullName || null,
               email: transmission.emetteur.email,
               service: transmission.emetteur.service || null,
             }
@@ -1534,7 +1534,7 @@ export class TraitementService {
             emetteur: t.emetteur
               ? {
                   id: t.emetteur.id,
-                  fullName: emetteurFullName,
+                  fullName: emetteurFullName || null,
                   email: t.emetteur.email,
                   service: t.emetteur.service
                     ? { id: t.emetteur.service.id, nom: t.emetteur.service.nom, sigle: t.emetteur.service.sigle }
@@ -1648,7 +1648,7 @@ export class TraitementService {
         emetteur: transmission.emetteur
           ? {
               id: transmission.emetteur.id,
-              fullName: emetteurFullName,
+              fullName: emetteurFullName || null,
               email: transmission.emetteur.email,
               service: transmission.emetteur.service || null,
             }
@@ -2047,7 +2047,7 @@ export class TraitementService {
             emetteur: t.emetteur
               ? {
                   id: t.emetteur.id,
-                  fullName: emetteurFullName,
+                  fullName: emetteurFullName || null,
                   email: t.emetteur.email,
                   service: t.emetteur.service
                     ? { id: t.emetteur.service.id, nom: t.emetteur.service.nom, sigle: t.emetteur.service.sigle }
@@ -2161,7 +2161,7 @@ export class TraitementService {
         emetteur: transmission.emetteur
           ? {
               id: transmission.emetteur.id,
-              fullName: emetteurFullName,
+              fullName: emetteurFullName || null,
               email: transmission.emetteur.email,
               service: transmission.emetteur.service || null,
             }
@@ -2590,7 +2590,7 @@ export class TraitementService {
         ? {
             id: transmission.emetteur.id,
             username: transmission.emetteur.username,
-            fullName: emetteurFullName,
+            fullName: emetteurFullName || null,
             email: transmission.emetteur.email,
             service: transmission.emetteur.service || null,
           }
