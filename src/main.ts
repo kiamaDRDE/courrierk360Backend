@@ -523,7 +523,7 @@ async function bootstrap() {
   // Setup Swagger pour chaque module avec URL dédiée
   SwaggerModule.setup('signup-doc', app, signupDocument, {
     jsonDocumentUrl: '/signup-swagger.json',
-    customSiteTitle: 'API Signup - Création Utilisateurs',
+    customSiteTitle: 'API Signup - Création Utilisateur',
     customfavIcon: '',
   });
 
