@@ -949,7 +949,6 @@ export class CourrierService {
         { service: { is: { nom: { equals: strictSearch } } } },
         { service: { is: { sigle: { equals: strictSearch } } } },
         { provenance: { is: { nom: { equals: strictSearch } } } },
-        { provenance: { is: { type: { equals: strictSearch } } } },
         { typeCourrier: { is: { nom: { equals: strictSearch } } } },
         { typeCourrier: { is: { type: { equals: strictSearch } } } },
         { typeCourrier: { is: { classeCourrier: { equals: strictSearch } } } },
