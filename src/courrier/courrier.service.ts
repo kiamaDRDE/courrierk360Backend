@@ -937,10 +937,21 @@ export class CourrierService {
         { service: { is: { nom: { contains: search } } } },
         { service: { is: { sigle: { contains: search } } } },
         { provenance: { is: { nom: { contains: search } } } },
+        { typeCourrier: { is: { nom: { contains: search } } } },
+        { typeCourrier: { is: { type: { contains: search } } } },
+        { typeCourrier: { is: { classeCourrier: { contains: search } } } },
         { user: { is: { username: { contains: search } } } },
         { user: { is: { firstName: { contains: search } } } },
         { user: { is: { lastName: { contains: search } } } },
       ];
+
+      const searchDateRange = this.parseSearchDate(search);
+      if (searchDateRange) {
+        orFilters.push(
+          { dateArrivee: searchDateRange },
+          { dateEnregistrement: searchDateRange },
+        );
+      }
 
       if (!Number.isNaN(numericSearch)) {
         orFilters.push(
@@ -1444,6 +1455,41 @@ export class CourrierService {
     const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0);
     const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
 
+    return { gte: start, lte: end };
+  }
+
+  private parseSearchDate(searchValue: string): { gte: Date; lte: Date } | undefined {
+    const value = searchValue.trim();
+    let year: number;
+    let month: number;
+    let day: number;
+
+    const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      year = Number(isoMatch[1]);
+      month = Number(isoMatch[2]);
+      day = Number(isoMatch[3]);
+    } else {
+      const frMatch = value.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/);
+      if (!frMatch) {
+        return undefined;
+      }
+      day = Number(frMatch[1]);
+      month = Number(frMatch[2]);
+      year = Number(frMatch[3]);
+    }
+
+    const start = new Date(year, month - 1, day, 0, 0, 0, 0);
+    if (
+      Number.isNaN(start.getTime()) ||
+      start.getFullYear() !== year ||
+      start.getMonth() !== month - 1 ||
+      start.getDate() !== day
+    ) {
+      return undefined;
+    }
+
+    const end = new Date(year, month - 1, day, 23, 59, 59, 999);
     return { gte: start, lte: end };
   }
 
