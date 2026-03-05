@@ -919,48 +919,44 @@ export class CourrierService {
       const normalizedSearch = search.replace(/\s+/g, ' ').trim();
       const numericSearch = Number(normalizedSearch);
       const tokenTerms = normalizedSearch.split(' ').filter(Boolean);
-      const searchTerms = Array.from(
+      const phraseTerms = Array.from(
         new Set([
           normalizedSearch,
           normalizedSearch.replace(/\s+/g, '_'),
           normalizedSearch.replace(/\s+/g, '-'),
-          ...tokenTerms,
         ]),
       );
 
-      const orFilters: any[] = [];
-      const addFilters = (factory: (term: string) => any) => {
-        for (const term of searchTerms) {
-          orFilters.push(factory(term));
-        }
-      };
+      const buildTermFilters = (term: string): any[] => [
+        { numero: { contains: term } },
+        { reference: { contains: term } },
+        { objet: { contains: term } },
+        { nom: { contains: term } },
+        { email: { contains: term } },
+        { telephone: { contains: term } },
+        { adresse: { contains: term } },
+        { commentaire: { contains: term } },
+        { commentairePublic: { contains: term } },
+        { commentaireInterne: { contains: term } },
+        { priorite: { contains: term } },
+        { statut: { contains: term } },
+        { categorie: { contains: term } },
+        { typeTransfert: { contains: term } },
+        { classeCourrier: { contains: term } },
+        { matricule: { contains: term } },
+        { service: { is: { nom: { contains: term } } } },
+        { service: { is: { sigle: { contains: term } } } },
+        { provenance: { is: { nom: { contains: term } } } },
+        { provenance: { is: { type: { contains: term } } } },
+        { typeCourrier: { is: { nom: { contains: term } } } },
+        { typeCourrier: { is: { type: { contains: term } } } },
+        { typeCourrier: { is: { classeCourrier: { contains: term } } } },
+        { user: { is: { username: { contains: term } } } },
+        { user: { is: { firstName: { contains: term } } } },
+        { user: { is: { lastName: { contains: term } } } },
+      ];
 
-      addFilters((term) => ({ numero: { contains: term } }));
-      addFilters((term) => ({ reference: { contains: term } }));
-      addFilters((term) => ({ objet: { contains: term } }));
-      addFilters((term) => ({ nom: { contains: term } }));
-      addFilters((term) => ({ email: { contains: term } }));
-      addFilters((term) => ({ telephone: { contains: term } }));
-      addFilters((term) => ({ adresse: { contains: term } }));
-      addFilters((term) => ({ commentaire: { contains: term } }));
-      addFilters((term) => ({ commentairePublic: { contains: term } }));
-      addFilters((term) => ({ commentaireInterne: { contains: term } }));
-      addFilters((term) => ({ priorite: { contains: term } }));
-      addFilters((term) => ({ statut: { contains: term } }));
-      addFilters((term) => ({ categorie: { contains: term } }));
-      addFilters((term) => ({ typeTransfert: { contains: term } }));
-      addFilters((term) => ({ classeCourrier: { contains: term } }));
-      addFilters((term) => ({ matricule: { contains: term } }));
-      addFilters((term) => ({ service: { is: { nom: { contains: term } } } }));
-      addFilters((term) => ({ service: { is: { sigle: { contains: term } } } }));
-      addFilters((term) => ({ provenance: { is: { nom: { contains: term } } } }));
-      addFilters((term) => ({ provenance: { is: { type: { contains: term } } } }));
-      addFilters((term) => ({ typeCourrier: { is: { nom: { contains: term } } } }));
-      addFilters((term) => ({ typeCourrier: { is: { type: { contains: term } } } }));
-      addFilters((term) => ({ typeCourrier: { is: { classeCourrier: { contains: term } } } }));
-      addFilters((term) => ({ user: { is: { username: { contains: term } } } }));
-      addFilters((term) => ({ user: { is: { firstName: { contains: term } } } }));
-      addFilters((term) => ({ user: { is: { lastName: { contains: term } } } }));
+      const orFilters: any[] = phraseTerms.flatMap((term) => buildTermFilters(term));
 
       const searchDateRange = this.parseSearchDate(normalizedSearch);
       if (searchDateRange) {
@@ -980,7 +976,18 @@ export class CourrierService {
         );
       }
 
-      where.OR = orFilters;
+      if (tokenTerms.length > 1) {
+        const tokenAndFilters = tokenTerms.map((term) => ({
+          OR: buildTermFilters(term),
+        }));
+
+        where.AND = [
+          { OR: orFilters },
+          ...tokenAndFilters,
+        ];
+      } else {
+        where.OR = orFilters;
+      }
     }
 
     const includePayload = {
