@@ -918,6 +918,14 @@ export class CourrierService {
 
     if (filters.statut) {
       where.statut = filters.statut;
+    } else {
+      // Par défaut, exclure les courriers clôturés de la liste
+      where.NOT = [
+        { statut: 'Clôturé' },
+        { statut: 'clôturé' },
+        { statut: 'Cloturé' },
+        { statut: 'cloturé' },
+      ];
     }
 
     if (filters.serviceId) {
