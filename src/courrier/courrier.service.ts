@@ -918,34 +918,49 @@ export class CourrierService {
     if (search) {
       const normalizedSearch = search.replace(/\s+/g, ' ').trim();
       const numericSearch = Number(normalizedSearch);
-      const orFilters: any[] = [
-        { numero: { contains: normalizedSearch } },
-        { reference: { contains: normalizedSearch } },
-        { objet: { contains: normalizedSearch } },
-        { nom: { contains: normalizedSearch } },
-        { email: { contains: normalizedSearch } },
-        { telephone: { contains: normalizedSearch } },
-        { adresse: { contains: normalizedSearch } },
-        { commentaire: { contains: normalizedSearch } },
-        { commentairePublic: { contains: normalizedSearch } },
-        { commentaireInterne: { contains: normalizedSearch } },
-        { priorite: { contains: normalizedSearch } },
-        { statut: { contains: normalizedSearch } },
-        { categorie: { contains: normalizedSearch } },
-        { typeTransfert: { contains: normalizedSearch } },
-        { classeCourrier: { contains: normalizedSearch } },
-        { matricule: { contains: normalizedSearch } },
-        { service: { is: { nom: { contains: normalizedSearch } } } },
-        { service: { is: { sigle: { contains: normalizedSearch } } } },
-        { provenance: { is: { nom: { contains: normalizedSearch } } } },
-        { provenance: { is: { type: { contains: normalizedSearch } } } },
-        { typeCourrier: { is: { nom: { contains: normalizedSearch } } } },
-        { typeCourrier: { is: { type: { contains: normalizedSearch } } } },
-        { typeCourrier: { is: { classeCourrier: { contains: normalizedSearch } } } },
-        { user: { is: { username: { contains: normalizedSearch } } } },
-        { user: { is: { firstName: { contains: normalizedSearch } } } },
-        { user: { is: { lastName: { contains: normalizedSearch } } } },
-      ];
+      const tokenTerms = normalizedSearch.split(' ').filter(Boolean);
+      const searchTerms = Array.from(
+        new Set([
+          normalizedSearch,
+          normalizedSearch.replace(/\s+/g, '_'),
+          normalizedSearch.replace(/\s+/g, '-'),
+          ...tokenTerms,
+        ]),
+      );
+
+      const orFilters: any[] = [];
+      const addFilters = (factory: (term: string) => any) => {
+        for (const term of searchTerms) {
+          orFilters.push(factory(term));
+        }
+      };
+
+      addFilters((term) => ({ numero: { contains: term } }));
+      addFilters((term) => ({ reference: { contains: term } }));
+      addFilters((term) => ({ objet: { contains: term } }));
+      addFilters((term) => ({ nom: { contains: term } }));
+      addFilters((term) => ({ email: { contains: term } }));
+      addFilters((term) => ({ telephone: { contains: term } }));
+      addFilters((term) => ({ adresse: { contains: term } }));
+      addFilters((term) => ({ commentaire: { contains: term } }));
+      addFilters((term) => ({ commentairePublic: { contains: term } }));
+      addFilters((term) => ({ commentaireInterne: { contains: term } }));
+      addFilters((term) => ({ priorite: { contains: term } }));
+      addFilters((term) => ({ statut: { contains: term } }));
+      addFilters((term) => ({ categorie: { contains: term } }));
+      addFilters((term) => ({ typeTransfert: { contains: term } }));
+      addFilters((term) => ({ classeCourrier: { contains: term } }));
+      addFilters((term) => ({ matricule: { contains: term } }));
+      addFilters((term) => ({ service: { is: { nom: { contains: term } } } }));
+      addFilters((term) => ({ service: { is: { sigle: { contains: term } } } }));
+      addFilters((term) => ({ provenance: { is: { nom: { contains: term } } } }));
+      addFilters((term) => ({ provenance: { is: { type: { contains: term } } } }));
+      addFilters((term) => ({ typeCourrier: { is: { nom: { contains: term } } } }));
+      addFilters((term) => ({ typeCourrier: { is: { type: { contains: term } } } }));
+      addFilters((term) => ({ typeCourrier: { is: { classeCourrier: { contains: term } } } }));
+      addFilters((term) => ({ user: { is: { username: { contains: term } } } }));
+      addFilters((term) => ({ user: { is: { firstName: { contains: term } } } }));
+      addFilters((term) => ({ user: { is: { lastName: { contains: term } } } }));
 
       const searchDateRange = this.parseSearchDate(normalizedSearch);
       if (searchDateRange) {
