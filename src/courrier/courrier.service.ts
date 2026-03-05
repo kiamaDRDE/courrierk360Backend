@@ -906,6 +906,16 @@ export class CourrierService {
       where.idTypeCourrier = filters.typeCourrierId;
     }
 
+    if (filters.typeCourrierNom?.trim()) {
+      where.typeCourrier = {
+        is: {
+          nom: {
+            contains: filters.typeCourrierNom.trim(),
+          },
+        },
+      };
+    }
+
     if (filters.statut) {
       where.statut = filters.statut;
     }

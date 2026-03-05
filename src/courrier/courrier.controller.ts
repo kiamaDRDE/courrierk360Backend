@@ -77,6 +77,7 @@ export class CourrierController {
   @ApiQuery({ name: 'categorie', required: false, type: String, description: 'Filtrer par catégorie' })
   @ApiQuery({ name: 'categorieId', required: false, type: Number, description: 'ID de la catégorie' })
   @ApiQuery({ name: 'typeCourrierId', required: false, type: Number, description: 'ID du type de courrier' })
+  @ApiQuery({ name: 'typeCourrierNom', required: false, type: String, description: 'Nom du type de courrier' })
   @ApiQuery({ name: 'statut', required: false, type: String, description: 'Statut du courrier' })
   @ApiQuery({ name: 'dernierStatut', required: false, type: String, description: 'Dernier statut de transmission' })
   @ApiQuery({ name: 'serviceId', required: false, type: Number, description: 'ID du service assigné' })

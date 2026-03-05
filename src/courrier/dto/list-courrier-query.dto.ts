@@ -71,6 +71,14 @@ export class ListCourrierQueryDto extends PaginationQueryDto {
   typeCourrierId?: number;
 
   @ApiPropertyOptional({
+    description: 'Nom du type de courrier',
+    example: 'COURRIER ARRIVEE',
+  })
+  @IsOptional()
+  @IsString({ message: 'typeCourrierNom doit être une chaîne de caractères' })
+  typeCourrierNom?: string;
+
+  @ApiPropertyOptional({
     description: 'Statut du courrier',
     example: 'Transmis',
   })
