@@ -916,36 +916,38 @@ export class CourrierService {
 
     const search = filters.search?.trim();
     if (search) {
-      const numericSearch = Number(search);
+      const normalizedSearch = search.replace(/\s+/g, ' ').trim();
+      const numericSearch = Number(normalizedSearch);
       const orFilters: any[] = [
-        { numero: { contains: search } },
-        { reference: { contains: search } },
-        { objet: { contains: search } },
-        { nom: { contains: search } },
-        { email: { contains: search } },
-        { telephone: { contains: search } },
-        { adresse: { contains: search } },
-        { commentaire: { contains: search } },
-        { commentairePublic: { contains: search } },
-        { commentaireInterne: { contains: search } },
-        { priorite: { contains: search } },
-        { statut: { contains: search } },
-        { categorie: { contains: search } },
-        { typeTransfert: { contains: search } },
-        { classeCourrier: { contains: search } },
-        { matricule: { contains: search } },
-        { service: { is: { nom: { contains: search } } } },
-        { service: { is: { sigle: { contains: search } } } },
-        { provenance: { is: { nom: { contains: search } } } },
-        { typeCourrier: { is: { nom: { contains: search } } } },
-        { typeCourrier: { is: { type: { contains: search } } } },
-        { typeCourrier: { is: { classeCourrier: { contains: search } } } },
-        { user: { is: { username: { contains: search } } } },
-        { user: { is: { firstName: { contains: search } } } },
-        { user: { is: { lastName: { contains: search } } } },
+        { numero: { contains: normalizedSearch } },
+        { reference: { contains: normalizedSearch } },
+        { objet: { contains: normalizedSearch } },
+        { nom: { contains: normalizedSearch } },
+        { email: { contains: normalizedSearch } },
+        { telephone: { contains: normalizedSearch } },
+        { adresse: { contains: normalizedSearch } },
+        { commentaire: { contains: normalizedSearch } },
+        { commentairePublic: { contains: normalizedSearch } },
+        { commentaireInterne: { contains: normalizedSearch } },
+        { priorite: { contains: normalizedSearch } },
+        { statut: { contains: normalizedSearch } },
+        { categorie: { contains: normalizedSearch } },
+        { typeTransfert: { contains: normalizedSearch } },
+        { classeCourrier: { contains: normalizedSearch } },
+        { matricule: { contains: normalizedSearch } },
+        { service: { is: { nom: { contains: normalizedSearch } } } },
+        { service: { is: { sigle: { contains: normalizedSearch } } } },
+        { provenance: { is: { nom: { contains: normalizedSearch } } } },
+        { provenance: { is: { type: { contains: normalizedSearch } } } },
+        { typeCourrier: { is: { nom: { contains: normalizedSearch } } } },
+        { typeCourrier: { is: { type: { contains: normalizedSearch } } } },
+        { typeCourrier: { is: { classeCourrier: { contains: normalizedSearch } } } },
+        { user: { is: { username: { contains: normalizedSearch } } } },
+        { user: { is: { firstName: { contains: normalizedSearch } } } },
+        { user: { is: { lastName: { contains: normalizedSearch } } } },
       ];
 
-      const searchDateRange = this.parseSearchDate(search);
+      const searchDateRange = this.parseSearchDate(normalizedSearch);
       if (searchDateRange) {
         orFilters.push(
           { dateArrivee: searchDateRange },
