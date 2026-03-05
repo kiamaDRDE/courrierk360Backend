@@ -916,49 +916,39 @@ export class CourrierService {
 
     const search = filters.search?.trim();
     if (search) {
-      const normalizedSearch = search.replace(/\s+/g, ' ').trim();
-      const numericSearch = Number(normalizedSearch);
-      const tokenTerms = normalizedSearch.split(' ').filter(Boolean);
-      const phraseTerms = Array.from(
-        new Set([
-          normalizedSearch,
-          normalizedSearch.replace(/\s+/g, '_'),
-          normalizedSearch.replace(/\s+/g, '-'),
-        ]),
-      );
+      const strictSearch = search.trim();
+      const numericSearch = Number(strictSearch);
 
-      const buildTermFilters = (term: string): any[] => [
-        { numero: { contains: term } },
-        { reference: { contains: term } },
-        { objet: { contains: term } },
-        { nom: { contains: term } },
-        { email: { contains: term } },
-        { telephone: { contains: term } },
-        { adresse: { contains: term } },
-        { commentaire: { contains: term } },
-        { commentairePublic: { contains: term } },
-        { commentaireInterne: { contains: term } },
-        { priorite: { contains: term } },
-        { statut: { contains: term } },
-        { categorie: { contains: term } },
-        { typeTransfert: { contains: term } },
-        { classeCourrier: { contains: term } },
-        { matricule: { contains: term } },
-        { service: { is: { nom: { contains: term } } } },
-        { service: { is: { sigle: { contains: term } } } },
-        { provenance: { is: { nom: { contains: term } } } },
-        { provenance: { is: { type: { contains: term } } } },
-        { typeCourrier: { is: { nom: { contains: term } } } },
-        { typeCourrier: { is: { type: { contains: term } } } },
-        { typeCourrier: { is: { classeCourrier: { contains: term } } } },
-        { user: { is: { username: { contains: term } } } },
-        { user: { is: { firstName: { contains: term } } } },
-        { user: { is: { lastName: { contains: term } } } },
+      const orFilters: any[] = [
+        { numero: { equals: strictSearch } },
+        { reference: { equals: strictSearch } },
+        { objet: { equals: strictSearch } },
+        { nom: { equals: strictSearch } },
+        { email: { equals: strictSearch } },
+        { telephone: { equals: strictSearch } },
+        { adresse: { equals: strictSearch } },
+        { commentaire: { equals: strictSearch } },
+        { commentairePublic: { equals: strictSearch } },
+        { commentaireInterne: { equals: strictSearch } },
+        { priorite: { equals: strictSearch } },
+        { statut: { equals: strictSearch } },
+        { categorie: { equals: strictSearch } },
+        { typeTransfert: { equals: strictSearch } },
+        { classeCourrier: { equals: strictSearch } },
+        { matricule: { equals: strictSearch } },
+        { service: { is: { nom: { equals: strictSearch } } } },
+        { service: { is: { sigle: { equals: strictSearch } } } },
+        { provenance: { is: { nom: { equals: strictSearch } } } },
+        { provenance: { is: { type: { equals: strictSearch } } } },
+        { typeCourrier: { is: { nom: { equals: strictSearch } } } },
+        { typeCourrier: { is: { type: { equals: strictSearch } } } },
+        { typeCourrier: { is: { classeCourrier: { equals: strictSearch } } } },
+        { user: { is: { username: { equals: strictSearch } } } },
+        { user: { is: { firstName: { equals: strictSearch } } } },
+        { user: { is: { lastName: { equals: strictSearch } } } },
       ];
 
-      const orFilters: any[] = phraseTerms.flatMap((term) => buildTermFilters(term));
-
-      const searchDateRange = this.parseSearchDate(normalizedSearch);
+      const searchDateRange = this.parseSearchDate(strictSearch);
       if (searchDateRange) {
         orFilters.push(
           { dateArrivee: searchDateRange },
@@ -976,18 +966,7 @@ export class CourrierService {
         );
       }
 
-      if (tokenTerms.length > 1) {
-        const tokenAndFilters = tokenTerms.map((term) => ({
-          OR: buildTermFilters(term),
-        }));
-
-        where.AND = [
-          { OR: orFilters },
-          ...tokenAndFilters,
-        ];
-      } else {
-        where.OR = orFilters;
-      }
+      where.OR = orFilters;
     }
 
     const includePayload = {
