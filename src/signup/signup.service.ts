@@ -46,7 +46,7 @@ export class SignupService {
    *  - isSignataire -> isSignataire
    */
   async syncUsersFromExternal(externalUrl?: string) {
-    const url = externalUrl || process.env.EXTERNAL_SERVICES_USERS_URL || 'http://api-kiama360-test.kiama.cm/courrier/users?page=1&limit=0';
+    const url = externalUrl || process.env.EXTERNAL_SERVICES_USERS_URL || 'https://api-kiama360v2.kiama.cm/courrier/users?page=1&limit=0';
     this.logger.log(`Sync users from external URL: ${url}`);
 
     const externalToken = process.env.EXTERNAL_SERVICES_TOKEN;

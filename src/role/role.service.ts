@@ -30,7 +30,7 @@ export class RoleService {
    * en utilisant `nom = item.name`.
    */
   async syncFromExternal(externalUrl?: string) {
-    const url = externalUrl || process.env.EXTERNAL_SERVICES_URL || 'http://api-kiama360-test.kiama.cm/courrier/roles?page=1&limit=0';
+    const url = externalUrl || process.env.EXTERNAL_SERVICES_URL || 'https://api-kiama360v2.kiama.cm/courrier/roles?page=1&limit=0';
     this.logger.log(`Sync roles from external URL: ${url}`);
 
     const externalToken = process.env.EXTERNAL_SERVICES_TOKEN;
