@@ -485,7 +485,6 @@ export class CourrierService {
           data: {
             idCourrier: courrier.id,
             idService: idService,
-            idEmetteur: userId,
             dateInstruction: new Date(dateArrivee), // Utiliser la date d'arrivée comme date d'instruction
             typeTransfert: typeTransfert || 'Pour traitement',
             instruction: commentaire || 'Transmission initiale du courrier',
