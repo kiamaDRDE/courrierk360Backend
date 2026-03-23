@@ -122,8 +122,8 @@ export class StatistiqueService {
         where: courrierDepartWhere,
         include: {
           courrier: { select: { id: true, numero: true, objet: true } },
-          signataire: { select: { id: true, firstName: true, lastName: true, email: true } },
-          destinataire: { select: { id: true, nom: true, email: true, telephone: true } },
+          destinataire: { select: { id: true, nom: true } },
+          projet: { select: { id: true, name: true } },
         },
       }),
       this.prismaService.transmission.findMany({
@@ -218,34 +218,25 @@ export class StatistiqueService {
     const courrierDepartStats = {
       total: courriersDepart.length,
       par_type_courrier: this.countBy(courriersDepart, (c) => c.typeCourrier),
-      par_classe: this.countBy(courriersDepart, (c) => c.classeCourrier),
-      par_categorie: this.countBy(courriersDepart, (c) => c.categorie),
-      par_signataire: this.countBy(courriersDepart, (c) => {
-        const fullName = `${c.signataire?.firstName || ''} ${c.signataire?.lastName || ''}`.trim();
-        return fullName || 'Non dÃ©fini';
-      }),
       par_destinataire: this.countBy(courriersDepart, (c) => c.destinataire?.nom),
+      par_projet: this.countBy(courriersDepart, (c) => c.projet?.name),
       par_mois: this.countByMonth(courriersDepart as Array<{ createdAt: Date }>),
       details: courriersDepart.map((c) => ({
         id: c.id,
         courrier_id: c.courrier?.id || null,
         courrier_numero: c.courrier?.numero || null,
         courrier_objet: c.courrier?.objet || null,
-        date_signature: c.dateSignature,
         type_courrier: c.typeCourrier,
-        classe_courrier: c.classeCourrier,
         numero_reference: c.numeroReference,
         numero_acte: c.numeroActe,
+        objet: c.objet,
         commentaire: c.commentaire,
-        signataire: c.signataire
-          ? { id: c.signataire.id, nom: c.signataire.lastName || null, prenom: c.signataire.firstName || null, email: c.signataire.email || null }
-          : { id: null, nom: null, prenom: null, email: null },
         destinataire: c.destinataire
-          ? { id: c.destinataire.id, nom: c.destinataire.nom, email: c.destinataire.email, telephone: c.destinataire.telephone }
-          : { id: null, nom: null, email: null, telephone: null },
-        email: c.email || '',
-        numero_telephone: c.numeroTelephone || '',
-        categorie: c.categorie,
+          ? { id: c.destinataire.id, nom: c.destinataire.nom }
+          : { id: null, nom: null },
+        projet: c.projet
+          ? { id: c.projet.id, name: c.projet.name }
+          : { id: null, name: null },
         document: c.document || '',
         provenances_copie: c.provenancesCopie || null,
         is_archive: c.isArchive,

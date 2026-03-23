@@ -198,13 +198,10 @@ export class CourrierService {
 
         const lastDepart = await this.prismaService.courrierDepart.findFirst({
           where: { idCourrier: courrier.id, isDelete: false },
-          orderBy: { dateSignature: 'desc' },
+          orderBy: { createdAt: 'desc' },
           select: {
             numeroActe: true,
-            dateSignature: true,
-            signataire: {
-              select: { id: true, firstName: true, lastName: true, service: { select: { nom: true } } },
-            },
+            createdAt: true,
           },
         });
 
@@ -216,14 +213,10 @@ export class CourrierService {
           },
         });
 
-        const signataireNom = lastDepart?.signataire
-          ? `${lastDepart.signataire.firstName || ''} ${lastDepart.signataire.lastName || ''}`.trim()
-          : null;
-
         return {
           registre: courrier.reference || courrier.numero,
           datearrivee: courrier.dateArrivee || null,
-          date_signature: lastDepart?.dateSignature || null,
+          date_signature: lastDepart?.createdAt || null,
           emetteur_nom_prenom: courrier.provenance?.nom || courrier.nom || null,
           objetcourrier: courrier.objet || null,
           dernier_service_emetteur_libelle: lastTransmission?.emetteur?.service?.nom || null,
@@ -233,14 +226,7 @@ export class CourrierService {
           commentaire_reponse:
             lastReponse?.reponse?.commentairePublic || lastReponse?.reponse?.commentaireInterne || null,
           numeroActe: lastDepart?.numeroActe || null,
-          dateSignature: lastDepart?.dateSignature || null,
-          signataire: lastDepart?.signataire
-            ? {
-                id: lastDepart.signataire.id,
-                nom: signataireNom || null,
-                service: lastDepart.signataire.service?.nom || null,
-              }
-            : null,
+          dateSignature: lastDepart?.createdAt || null,
         };
       }),
     );
@@ -1057,16 +1043,17 @@ export class CourrierService {
       courrierDeparts: {
         select: {
           id: true,
-          dateSignature: true,
           typeCourrier: true,
           numeroReference: true,
-          classeCourrier: true,
-          categorie: true,
-          email: true,
-          numeroTelephone: true,
           numeroActe: true,
-          destinataire: { select: { id: true, nom: true, email: true, telephone: true } },
-          signataire: { select: { id: true, firstName: true, lastName: true, username: true } }
+          objet: true,
+          commentaire: true,
+          document: true,
+          createdAt: true,
+          idDestinataire: true,
+          idProjet: true,
+          destinataire: { select: { id: true, nom: true } },
+          projet: { select: { id: true, name: true } },
         }
       },
       piecesJointes: {
@@ -1298,19 +1285,17 @@ export class CourrierService {
         // ===== COURRIERS DE DÉPART =====
         courrierDeparts: courrier.courrierDeparts.map(cd => ({
           id: cd.id,
-          dateSignature: cd.dateSignature,
           typeCourrier: cd.typeCourrier,
           numeroReference: cd.numeroReference,
-          classeCourrier: cd.classeCourrier,
-          categorie: cd.categorie,
-          email: cd.email,
-          numeroTelephone: cd.numeroTelephone,
           numeroActe: cd.numeroActe,
-          destinataire: cd.destinataire,
-          signataire: cd.signataire ? {
-            id: cd.signataire.id,
-            nom: `${cd.signataire.firstName || ''} ${cd.signataire.lastName || ''}`.trim() || cd.signataire.username
-          } : null
+          objet: cd.objet,
+          commentaire: cd.commentaire,
+          document: cd.document,
+          createdAt: cd.createdAt,
+          idDestinataire: (cd as any).idDestinataire,
+          idProjet: (cd as any).idProjet,
+          destinataire: cd.destinataire || null,
+          projet: (cd as any).projet || null,
         })),
         
         // ===== PIÈCES JOINTES =====

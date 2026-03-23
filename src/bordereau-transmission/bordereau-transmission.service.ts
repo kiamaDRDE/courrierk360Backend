@@ -133,23 +133,19 @@ export class BordereauTransmissionService {
     const courriers = courrierIds.length > 0
       ? await this.prismaService.courrierDepart.findMany({
           where: { id: { in: courrierIds } },
-          select: {
-            id: true,
-            numeroReference: true,
-            typeCourrier: true,
-            classeCourrier: true,
-            categorie: true,
-            dateSignature: true,
-            numeroActe: true,
-            document: true,
-            commentaire: true,
-            email: true,
-            numeroTelephone: true,
-            idDestinataire: true,
-            idSignataire: true,
-            idCourrier: true,
-          },
-        })
+           select: {
+             id: true,
+             numeroReference: true,
+             typeCourrier: true,
+             numeroActe: true,
+             objet: true,
+             document: true,
+             commentaire: true,
+             idDestinataire: true,
+             idCourrier: true,
+             idProjet: true,
+           },
+         })
       : [];
 
     // Enrichir les courriers avec leurs relations
@@ -164,10 +160,10 @@ export class BordereauTransmissionService {
           : null;
 
         // Récupérer le signataire
-        const signataire = courrier.idSignataire
-          ? await this.prismaService.user.findUnique({
-              where: { id: courrier.idSignataire },
-              select: { id: true, lastName: true, firstName: true },
+        const projet = courrier.idProjet
+          ? await this.prismaService.projet.findUnique({
+              where: { id: courrier.idProjet },
+              select: { id: true, name: true },
             })
           : null;
 
@@ -183,16 +179,12 @@ export class BordereauTransmissionService {
           id: courrier.id,
           numeroReference: courrier.numeroReference,
           typeCourrier: courrier.typeCourrier,
-          classeCourrier: courrier.classeCourrier,
-          categorie: courrier.categorie,
-          dateSignature: courrier.dateSignature,
           numeroActe: courrier.numeroActe,
+          objet: courrier.objet,
           document: courrier.document,
           commentaire: courrier.commentaire,
-          email: courrier.email,
-          numeroTelephone: courrier.numeroTelephone,
           destinataire,
-          signataire,
+          projet,
           courrier: courrierLie,
         };
       }),
@@ -248,20 +240,18 @@ export class BordereauTransmissionService {
         const courriers = courrierIds.length > 0
           ? await this.prismaService.courrierDepart.findMany({
               where: { id: { in: courrierIds } },
-              select: {
-                id: true,
-                numeroReference: true,
-                typeCourrier: true,
-                classeCourrier: true,
-                categorie: true,
-                dateSignature: true,
-                numeroActe: true,
-                document: true,
-                commentaire: true,
-                idDestinataire: true,
-                idSignataire: true,
-              },
-            })
+               select: {
+                 id: true,
+                 numeroReference: true,
+                 typeCourrier: true,
+                 numeroActe: true,
+                 objet: true,
+                 document: true,
+                 commentaire: true,
+                 idDestinataire: true,
+                 idProjet: true,
+               },
+             })
           : [];
 
         // Enrichir les courriers avec leurs relations
@@ -276,10 +266,10 @@ export class BordereauTransmissionService {
               : null;
 
             // Récupérer le signataire
-            const signataire = courrier.idSignataire
-              ? await this.prismaService.user.findUnique({
-                  where: { id: courrier.idSignataire },
-                  select: { id: true, lastName: true, firstName: true },
+            const projet = courrier.idProjet
+              ? await this.prismaService.projet.findUnique({
+                  where: { id: courrier.idProjet },
+                  select: { id: true, name: true },
                 })
               : null;
 
@@ -287,14 +277,12 @@ export class BordereauTransmissionService {
               id: courrier.id,
               numeroReference: courrier.numeroReference,
               typeCourrier: courrier.typeCourrier,
-              classeCourrier: courrier.classeCourrier,
-              categorie: courrier.categorie,
-              dateSignature: courrier.dateSignature,
               numeroActe: courrier.numeroActe,
+              objet: courrier.objet,
               document: courrier.document,
               commentaire: courrier.commentaire,
               destinataire,
-              signataire,
+              projet,
             };
           }),
         );

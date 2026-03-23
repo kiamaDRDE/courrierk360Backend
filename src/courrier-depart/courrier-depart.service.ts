@@ -82,16 +82,6 @@ export class CourrierDepartService {
     return uploadDir;
   }
 
-  private sanitizeCourrierDepartForResponse<T extends Record<string, any>>(courrierDepart: T | null) {
-    if (!courrierDepart) return courrierDepart;
-    const { categorie, classeCourrier, dateSignature, idDestinataire, email, numeroTelephone, ...rest } =
-      courrierDepart;
-    return rest as Omit<
-      T,
-      'categorie' | 'classeCourrier' | 'dateSignature' | 'idDestinataire' | 'email' | 'numeroTelephone'
-    >;
-  }
-
   // 📋 Liste des courriers départ
   async list(query?: ListCourrierDepartQueryDto) {
     const filters = query || {};
@@ -104,23 +94,23 @@ export class CourrierDepartService {
     const where: any = { isDelete: false };
     const courrierFilters: any = {};
 
-    // Filtrer sur dateSignature avec dateArriveeDebut/Fin
+    // Filtrer sur createdAt avec dateArriveeDebut/Fin
     if (filters.dateArriveeDebut || filters.dateArriveeFin) {
       // Si les dates sont identiques, utiliser parseSingleDate
       if (filters.dateArriveeDebut && filters.dateArriveeDebut === filters.dateArriveeFin) {
-        where.dateSignature = this.parseSingleDate(
+        where.createdAt = this.parseSingleDate(
           filters.dateArriveeDebut,
-          'dateSignature',
+          'createdAt',
         );
       } else {
         // Sinon utiliser parseDateRange
-        const dateSignatureRange = this.parseDateRange(
+        const createdAtRange = this.parseDateRange(
           filters.dateArriveeDebut,
           filters.dateArriveeFin,
-          'dateSignature',
+          'createdAt',
         );
-        if (dateSignatureRange) {
-          where.dateSignature = dateSignatureRange;
+        if (createdAtRange) {
+          where.createdAt = createdAtRange;
         }
       }
     }
@@ -164,15 +154,12 @@ export class CourrierDepartService {
       const courrierDepartOrFilters: any[] = [
         { numeroReference: { contains: search } },
         { numeroActe: { contains: search } },
+        { objet: { contains: search } },
         { commentaire: { contains: search } },
         { typeCourrier: { contains: search } },
         { statutArchive: { contains: search } },
-        { signataire: { is: { username: { contains: search } } } },
-        { signataire: { is: { firstName: { contains: search } } } },
-        { signataire: { is: { lastName: { contains: search } } } },
-        { signataire: { is: { email: { contains: search } } } },
-        { signataire: { is: { phone: { contains: search } } } },
-        { signataire: { is: { numero: { contains: search } } } },
+        { destinataire: { is: { nom: { contains: search } } } },
+        { projet: { is: { name: { contains: search } } } },
       ];
 
       // Conditions de recherche sur le courrier lié
@@ -186,15 +173,11 @@ export class CourrierDepartService {
         { priorite: { contains: search } },
         { statut: { contains: search } },
         { document: { contains: search } },
-        { telephone: { contains: search } },
-        { email: { contains: search } },
         { adresse: { contains: search } },
         { civilite: { contains: search } },
         { nom: { contains: search } },
         { matricule: { contains: search } },
         { typeTransfert: { contains: search } },
-        { classeCourrier: { contains: search } },
-        { categorie: { contains: search } },
         { statutArchive: { contains: search } },
         { typeCourrier: { is: { nom: { contains: search } } } },
         { provenance: { is: { nom: { contains: search } } } },
@@ -208,7 +191,8 @@ export class CourrierDepartService {
           courrierDepartOrFilters.push(
             { id: numericSearch },
             { idCourrier: numericSearch },
-            { idSignataire: numericSearch },
+            { idDestinataire: numericSearch },
+            { idProjet: numericSearch },
             { nombrePieceJointe: numericSearch },
           );
         
@@ -234,7 +218,8 @@ export class CourrierDepartService {
     }
 
     const includePayload = {
-      signataire: { select: { id: true, firstName: true, lastName: true } },
+      destinataire: { select: { id: true, nom: true } },
+      projet: { select: { id: true, name: true } },
       piecesJointes: { select: { id: true, nom: true, chemin: true, type: true } },
       courrier: {
         select: {
@@ -245,7 +230,6 @@ export class CourrierDepartService {
           isGeled: true,
           dateArrivee: true,
           dateEnregistrement: true,
-          categorie: true,
           priorite: true,
           statut: true,
           typeCourrier: { select: { nom: true } },
@@ -342,8 +326,18 @@ export class CourrierDepartService {
         numeroReference: courrierDepart.numeroReference,
         numeroActe: courrierDepart.numeroActe,
         typeCourrier: courrierDepart.typeCourrier,
+        objet: courrierDepart.objet,
         commentaire: courrierDepart.commentaire,
         document: courrierDepart.document,
+        idCourrier: courrierDepart.idCourrier,
+        idDestinataire: courrierDepart.idDestinataire,
+        idProjet: courrierDepart.idProjet,
+        destinataire: courrierDepart.destinataire
+          ? { id: courrierDepart.destinataire.id, nom: courrierDepart.destinataire.nom }
+          : null,
+        projet: courrierDepart.projet
+          ? { id: courrierDepart.projet.id, name: courrierDepart.projet.name }
+          : null,
         nombrePieceJointe: courrierDepart.nombrePieceJointe,
         provenancesCopie: provenancesCopieDetaillees,
         piecesJointes: (courrierDepart.piecesJointes || []).map((pj) => ({
@@ -352,12 +346,6 @@ export class CourrierDepartService {
           chemin: pj.chemin,
           type: pj.type,
         })),
-        signataire: courrierDepart.signataire
-          ? {
-              id: courrierDepart.signataire.id,
-              fullName: `${courrierDepart.signataire.firstName} ${courrierDepart.signataire.lastName}`,
-            }
-          : { id: null, fullName: null },
         courrier: courrierDepart.courrier
           ? {
               id: courrierDepart.courrier.id,
@@ -369,7 +357,6 @@ export class CourrierDepartService {
               dateEnregistrement: courrierDepart.courrier.dateEnregistrement,
               typeCourrier: courrierDepart.courrier.typeCourrier?.nom || null,
               provenance: courrierDepart.courrier.provenance?.nom || null,
-              categorie: courrierDepart.courrier.categorie,
               priorite: courrierDepart.courrier.priorite,
               statut: courrierDepart.courrier.statut,
             }
@@ -431,7 +418,8 @@ export class CourrierDepartService {
     const courrierDepart = await this.prismaService.courrierDepart.findUnique({
       where: { id },
       include: {
-        signataire: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+        destinataire: { select: { id: true, nom: true } },
+        projet: { select: { id: true, name: true } },
         piecesJointes: { select: { id: true, nom: true, intitule: true, chemin: true, type: true, createdAt: true } },
         courrier: {
           select: {
@@ -442,8 +430,8 @@ export class CourrierDepartService {
             isGeled: true,
             dateArrivee: true,
             dateEnregistrement: true,
-            categorie: true,
             priorite: true,
+            statut: true,
             typeCourrier: { select: { nom: true } },
             provenance: { select: { nom: true } },
           },
@@ -456,13 +444,13 @@ export class CourrierDepartService {
     }
 
     // Charger les correspondants en copie
-    const provenancesCopieDetaillees: { id: number; nom: string; email: string | null; telephone: string; adresse: string | null }[] = [];
+    const provenancesCopieDetaillees: { id: number; nom: string }[] = [];
     if (courrierDepart.provenancesCopie && Array.isArray(courrierDepart.provenancesCopie)) {
       const correspondantIds = courrierDepart.provenancesCopie.filter((id: any) => typeof id === 'number');
       if (correspondantIds.length > 0) {
         const correspondants = await this.prismaService.correspondant.findMany({
           where: { id: { in: correspondantIds } },
-          select: { id: true, nom: true, email: true, telephone: true, adresse: true },
+          select: { id: true, nom: true },
         });
         provenancesCopieDetaillees.push(...correspondants);
       }
@@ -473,19 +461,21 @@ export class CourrierDepartService {
       numeroReference: courrierDepart.numeroReference,
       numeroActe: courrierDepart.numeroActe,
       typeCourrier: courrierDepart.typeCourrier,
+      objet: courrierDepart.objet,
       commentaire: courrierDepart.commentaire,
       document: courrierDepart.document,
+      idCourrier: courrierDepart.idCourrier,
+      idDestinataire: courrierDepart.idDestinataire,
+      idProjet: courrierDepart.idProjet,
+      destinataire: courrierDepart.destinataire
+        ? { id: courrierDepart.destinataire.id, nom: courrierDepart.destinataire.nom }
+        : null,
+      projet: courrierDepart.projet
+        ? { id: courrierDepart.projet.id, name: courrierDepart.projet.name }
+        : null,
       nombrePieceJointe: courrierDepart.nombrePieceJointe,
       provenancesCopie: provenancesCopieDetaillees,
       piecesJointes: courrierDepart.piecesJointes || [],
-      signataire: courrierDepart.signataire
-        ? {
-            id: courrierDepart.signataire.id,
-            fullName: `${courrierDepart.signataire.firstName} ${courrierDepart.signataire.lastName}`,
-            email: courrierDepart.signataire.email,
-            phone: courrierDepart.signataire.phone,
-          }
-        : null,
       courrier: courrierDepart.courrier
         ? {
             id: courrierDepart.courrier.id,
@@ -497,8 +487,8 @@ export class CourrierDepartService {
             dateEnregistrement: courrierDepart.courrier.dateEnregistrement,
             typeCourrier: courrierDepart.courrier.typeCourrier?.nom || null,
             provenance: courrierDepart.courrier.provenance?.nom || null,
-            categorie: courrierDepart.courrier.categorie,
             priorite: courrierDepart.courrier.priorite,
+            statut: courrierDepart.courrier.statut,
           }
         : null,
       isDelete: courrierDepart.isDelete,
@@ -526,7 +516,8 @@ export class CourrierDepartService {
     const courriersDeparts = await this.prismaService.courrierDepart.findMany({
       where: { id: { in: cleanIds }, isDelete: false },
       include: {
-        signataire: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, username: true } },
+        destinataire: { select: { id: true, nom: true } },
+        projet: { select: { id: true, name: true } },
         piecesJointes: { select: { id: true, nom: true, intitule: true, chemin: true, type: true, createdAt: true } },
         courrier: {
           select: {
@@ -588,10 +579,6 @@ export class CourrierDepartService {
     }
 
     const data = courriersDeparts.map((courrierDepart) => {
-      const signataireFullName = courrierDepart.signataire
-        ? `${courrierDepart.signataire.firstName || ''} ${courrierDepart.signataire.lastName || ''}`.trim() || courrierDepart.signataire.username
-        : null;
-
       const courrierLinked =
         courrierDepart.courrier ||
         (courrierDepart.numeroReference
@@ -603,18 +590,20 @@ export class CourrierDepartService {
         numeroReference: courrierDepart.numeroReference,
         numeroActe: courrierDepart.numeroActe,
         typeCourrier: courrierDepart.typeCourrier,
+        objet: courrierDepart.objet,
         commentaire: courrierDepart.commentaire,
         document: courrierDepart.document,
+        idCourrier: courrierDepart.idCourrier,
+        idDestinataire: courrierDepart.idDestinataire,
+        idProjet: courrierDepart.idProjet,
+        destinataire: courrierDepart.destinataire
+          ? { id: courrierDepart.destinataire.id, nom: courrierDepart.destinataire.nom }
+          : null,
+        projet: courrierDepart.projet
+          ? { id: courrierDepart.projet.id, name: courrierDepart.projet.name }
+          : null,
         provenancesCopie: courrierDepart.provenancesCopie || [],
         piecesJointes: courrierDepart.piecesJointes || [],
-        signataire: courrierDepart.signataire
-          ? {
-              id: courrierDepart.signataire.id,
-              fullName: signataireFullName,
-              email: courrierDepart.signataire.email,
-              phone: courrierDepart.signataire.phone,
-            }
-          : null,
         courrier: courrierLinked
           ? {
               id: courrierLinked.id,
@@ -649,9 +638,16 @@ export class CourrierDepartService {
     document?: Express.Multer.File,
     piecesJointes?: Express.Multer.File[],
   ) {
-    if (!document || !dto.typeCourrier || !dto.idSignataire) {
+    if (
+      !document ||
+      !dto.numeroReference ||
+      !dto.objet ||
+      !dto.typeCourrier ||
+      !dto.idDestinataire ||
+      !dto.projet
+    ) {
       throw new BadRequestException(
-        'Les champs document, typeCourrier et idSignataire sont obligatoires.',
+        'Les champs document, numeroReference, objet, idDestinataire, typeCourrier et projet sont obligatoires.',
       );
     }
     const uploadDir = this.ensureUploadDir();
@@ -684,10 +680,12 @@ export class CourrierDepartService {
       const courrierDepart = await prisma.courrierDepart.create({
         data: {
           document: documentPath,
-          numeroReference: dto.numeroReference || null,
+          numeroReference: dto.numeroReference,
           numeroActe: dto.numeroActe || null,
+          objet: dto.objet,
+          idDestinataire: dto.idDestinataire,
           idCourrier: dto.idCourrier || null,
-          idSignataire: dto.idSignataire || null,
+          idProjet: dto.projet,
           typeCourrier: dto.typeCourrier || null,
           commentaire: dto.commentaire || null,
           nombrePieceJointe: dto.nombrePieceJointe || (piecesJointes?.length ?? 0),
@@ -734,16 +732,22 @@ export class CourrierDepartService {
         : null;
 
       // Récupérer les informations du signataire
-      const signataire = await this.prismaService.user.findUnique({
-        where: { id: dto.idSignataire },
-        select: { firstName: true, lastName: true },
-      });
+      const [destinataire, projet] = await Promise.all([
+        this.prismaService.correspondant.findUnique({
+          where: { id: dto.idDestinataire },
+          select: { nom: true, email: true },
+        }),
+        this.prismaService.projet.findUnique({
+          where: { id: dto.projet },
+          select: { name: true },
+        }),
+      ]);
 
-      const destinataireNom = courrierLinked?.provenance?.nom || 'Monsieur/Madame';
-      const destinataireEmail = courrierLinked?.provenance?.email || null;
-      const signataireNom = signataire
-        ? `${signataire.firstName} ${signataire.lastName}`
-        : 'N/A';
+      const destinataireNom =
+        destinataire?.nom || courrierLinked?.provenance?.nom || 'Monsieur/Madame';
+      const destinataireEmail =
+        destinataire?.email || courrierLinked?.provenance?.email || null;
+      const projetNom = projet?.name || null;
 
       // Envoyer l'email avec le nouveau template
       if (destinataireEmail) {
@@ -752,10 +756,8 @@ export class CourrierDepartService {
             numeroReference: result.courrierDepart.numeroReference,
             numeroActe: result.courrierDepart.numeroActe,
             typeCourrier: result.courrierDepart.typeCourrier,
-            categorie: result.courrierDepart.categorie,
-            classeCourrier: result.courrierDepart.classeCourrier,
-            dateSignature: result.courrierDepart.dateSignature,
-            signataire: signataireNom,
+            objet: result.courrierDepart.objet,
+            projet: projetNom,
             commentaire: result.courrierDepart.commentaire,
           })
           .catch(() => undefined);
@@ -766,7 +768,7 @@ export class CourrierDepartService {
 
     const sanitizedResult = {
       ...result,
-      courrierDepart: this.sanitizeCourrierDepartForResponse(result.courrierDepart),
+      courrierDepart: result.courrierDepart,
     };
 
     return this.responseFormatter.success(
@@ -817,8 +819,10 @@ export class CourrierDepartService {
         const updateData: any = {
           numeroReference: dto.numeroReference !== undefined ? dto.numeroReference : existing.numeroReference,
           numeroActe: dto.numeroActe !== undefined ? dto.numeroActe : existing.numeroActe,
+          objet: dto.objet !== undefined ? dto.objet : existing.objet,
+          idDestinataire: dto.idDestinataire !== undefined ? dto.idDestinataire : existing.idDestinataire,
           idCourrier: dto.idCourrier !== undefined ? dto.idCourrier : existing.idCourrier,
-          idSignataire: dto.idSignataire !== undefined ? dto.idSignataire : existing.idSignataire,
+          idProjet: dto.projet !== undefined ? dto.projet : (existing as any).idProjet,
           typeCourrier: dto.typeCourrier !== undefined ? dto.typeCourrier : existing.typeCourrier,
           commentaire: dto.commentaire !== undefined ? dto.commentaire : existing.commentaire,
           nombrePieceJointe: dto.nombrePieceJointe !== undefined ? dto.nombrePieceJointe : (piecesJointes?.length ?? existing.nombrePieceJointe),
@@ -879,16 +883,30 @@ export class CourrierDepartService {
         : null;
 
       // Récupérer les informations du signataire
-      const signataire = await this.prismaService.user.findUnique({
-        where: { id: dto.idSignataire },
-        select: { firstName: true, lastName: true },
-      });
+      const destinataireId =
+        dto.idDestinataire !== undefined ? dto.idDestinataire : existing.idDestinataire;
+      const projetId = dto.projet !== undefined ? dto.projet : (existing as any).idProjet;
 
-      const destinataireNom = courrierLinked?.provenance?.nom || 'Monsieur/Madame';
-      const destinataireEmail = courrierLinked?.provenance?.email || null;
-      const signataireNom = signataire
-        ? `${signataire.firstName} ${signataire.lastName}`
-        : 'N/A';
+      const [destinataire, projet] = await Promise.all([
+        destinataireId
+          ? this.prismaService.correspondant.findUnique({
+              where: { id: destinataireId },
+              select: { nom: true, email: true },
+            })
+          : Promise.resolve(null),
+        projetId
+          ? this.prismaService.projet.findUnique({
+              where: { id: projetId },
+              select: { name: true },
+            })
+          : Promise.resolve(null),
+      ]);
+
+      const destinataireNom =
+        destinataire?.nom || courrierLinked?.provenance?.nom || 'Monsieur/Madame';
+      const destinataireEmail =
+        destinataire?.email || courrierLinked?.provenance?.email || null;
+      const projetNom = projet?.name || null;
 
       // Envoyer l'email avec le nouveau template
       if (destinataireEmail) {
@@ -897,10 +915,8 @@ export class CourrierDepartService {
             numeroReference: result.courrierDepart.numeroReference,
             numeroActe: result.courrierDepart.numeroActe,
             typeCourrier: result.courrierDepart.typeCourrier,
-            categorie: result.courrierDepart.categorie,
-            classeCourrier: result.courrierDepart.classeCourrier,
-            dateSignature: result.courrierDepart.dateSignature,
-            signataire: signataireNom,
+            objet: result.courrierDepart.objet,
+            projet: projetNom,
             commentaire: result.courrierDepart.commentaire,
           })
           .catch(() => undefined);
@@ -911,7 +927,7 @@ export class CourrierDepartService {
 
     const sanitizedResult = {
       ...result,
-      courrierDepart: this.sanitizeCourrierDepartForResponse(result.courrierDepart),
+      courrierDepart: result.courrierDepart,
     };
 
     return this.responseFormatter.success(
@@ -925,7 +941,8 @@ export class CourrierDepartService {
     const courrierDepart = await this.prismaService.courrierDepart.findUnique({
       where: { id },
       include: {
-        signataire: { select: { firstName: true, lastName: true } },
+        destinataire: { select: { nom: true, email: true } },
+        projet: { select: { name: true } },
         courrier: { select: { provenance: { select: { nom: true, email: true } } } },
       },
     });
@@ -934,15 +951,18 @@ export class CourrierDepartService {
       throw new NotFoundException(`Courrier départ avec l'ID ${id} introuvable.`);
     }
 
-    const destinataireNom = courrierDepart.courrier?.provenance?.nom || 'Monsieur/Madame';
-    const signataireNom = courrierDepart.signataire
-      ? `${courrierDepart.signataire.firstName} ${courrierDepart.signataire.lastName}`
-      : 'N/A';
+    const destinataireNom =
+      courrierDepart.destinataire?.nom ||
+      courrierDepart.courrier?.provenance?.nom ||
+      'Monsieur/Madame';
 
     let emailSent = false;
     let smsSent = false;
 
-    const destinataireEmail = courrierDepart.courrier?.provenance?.email || null;
+    const destinataireEmail =
+      courrierDepart.destinataire?.email ||
+      courrierDepart.courrier?.provenance?.email ||
+      null;
     if (destinataireEmail) {
       emailSent = await this.mailerService.sendCourrierDepartNotification(
         destinataireEmail,
@@ -951,10 +971,8 @@ export class CourrierDepartService {
           numeroReference: courrierDepart.numeroReference,
           numeroActe: courrierDepart.numeroActe,
           typeCourrier: courrierDepart.typeCourrier,
-          categorie: courrierDepart.categorie,
-          classeCourrier: courrierDepart.classeCourrier,
-          dateSignature: courrierDepart.dateSignature,
-          signataire: signataireNom,
+          objet: courrierDepart.objet,
+          projet: courrierDepart.projet?.name || null,
           commentaire: courrierDepart.commentaire,
         },
       );

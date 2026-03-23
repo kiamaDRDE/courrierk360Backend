@@ -44,16 +44,15 @@ export class CourrierDepartController {
     description: `Liste paginée des courriers départ avec filtres et recherche.
     
 Retourne toutes les informations détaillées incluant:
-- Les données du courrier départ (numeroReference, numeroActe, typeCourrier, commentaire, etc.)
-- Le signataire avec { id, fullName }
-- Le courrier lié (si existe) avec tous ses détails (numero, reference, objet, is_geled, dates, typeCourrier, provenance, categorie, priorite)
+- Les données du courrier départ (numeroReference, numeroActe, objet, typeCourrier, commentaire, destinataire, projet, etc.)
+- Le courrier lié (si existe) avec ses détails (numero, reference, objet, is_geled, dates, typeCourrier, provenance, priorite, statut)
 - Les pièces jointes avec { id, nom, chemin, type }
 - Les provenances en copie
 - Les métadonnées (isDelete, isArchive, createdAt)`,
   })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Numéro de la page (défaut: 1)' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Nombre d\'éléments par page (défaut: 10)' })
-  @ApiQuery({ name: 'search', required: false, type: String, description: 'Recherche dans numeroReference, numeroActe, commentaire, signataire, courrier lié' })
+  @ApiQuery({ name: 'search', required: false, type: String, description: 'Recherche dans numeroReference, numeroActe, objet, commentaire, destinataire, projet, courrier lié' })
   @ApiQuery({ name: 'dateArriveeDebut', required: false, type: String, description: 'Date début (format: YYYY-MM-DD)' })
   @ApiQuery({ name: 'dateArriveeFin', required: false, type: String, description: 'Date fin (format: YYYY-MM-DD)' })
   @ApiQuery({ name: 'dateEnregistrementDebut', required: false, type: String, description: 'Date début (format: YYYY-MM-DD)' })
@@ -88,8 +87,14 @@ Retourne toutes les informations détaillées incluant:
                   numeroReference: { type: 'string' },
                   numeroActe: { type: 'string' },
                   typeCourrier: { type: 'string' },
+                  objet: { type: 'string' },
                   commentaire: { type: 'string' },
                   document: { type: 'string' },
+                  idCourrier: { type: 'number', nullable: true },
+                  idDestinataire: { type: 'number', nullable: true },
+                  idProjet: { type: 'number', nullable: true },
+                  destinataire: { type: 'object', nullable: true, properties: { id: { type: 'number' }, nom: { type: 'string' } } },
+                  projet: { type: 'object', nullable: true, properties: { id: { type: 'number' }, name: { type: 'string' } } },
                   nombrePieceJointe: { type: 'number' },
                   provenancesCopie: { 
                     type: 'array',
@@ -103,7 +108,6 @@ Retourne toutes les informations détaillées incluant:
                     }
                   },
                   piecesJointes: { type: 'array' },
-                  signataire: { type: 'object', properties: { id: { type: 'number' }, fullName: { type: 'string' } } },
                   courrier: { 
                     type: 'object',
                     nullable: true,
@@ -117,7 +121,6 @@ Retourne toutes les informations détaillées incluant:
                       dateEnregistrement: { type: 'string' },
                       typeCourrier: { type: 'string', nullable: true },
                       provenance: { type: 'string', nullable: true },
-                      categorie: { type: 'string' },
                       priorite: { type: 'string' },
                       statut: { type: 'string', nullable: true },
                     }
@@ -171,12 +174,14 @@ Retourne toutes les informations détaillées incluant:
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['document', 'typeCourrier', 'idSignataire'],
+      required: ['document', 'numeroReference', 'objet', 'idDestinataire', 'typeCourrier', 'projet'],
       properties: {
         numeroReference: { type: 'string', example: 'MINEPIA/2025/09/17/25/A' },
+        objet: { type: 'string', example: 'Objet du courrier' },
+        idDestinataire: { type: 'number', example: 10, description: 'ID du destinataire (correspondant)' },
+        projet: { type: 'number', example: 243, description: 'ID du projet' },
         numeroActe: { type: 'string', example: 'ACTE-2025-001', description: 'Numéro d\'acte du courrier départ' },
         idCourrier: { type: 'number', example: 123, description: 'ID du courrier lié (optionnel)' },
-        idSignataire: { type: 'number', example: 5, description: 'ID de l\'utilisateur signataire (obligatoire)' },
         provenancesCopie: { 
           type: 'string', 
           example: '[15, 60, 354]',
@@ -212,7 +217,9 @@ Retourne toutes les informations détaillées incluant:
           courrierDepart: {
             id: 1,
             numeroReference: 'MINEPIA/2025/09/17/25/A',
-            idSignataire: 5,
+            objet: 'Objet du courrier',
+            idDestinataire: 10,
+            idProjet: 243,
             typeCourrier: 'Note',
             commentaire: 'Traitement effectué',
             document: 'courrier-depart/1700000000000-document.pdf',
@@ -260,7 +267,6 @@ Retourne toutes les informations détaillées incluant:
         numeroReference: { type: 'string', example: 'MINEPIA/2025/09/17/25/A' },
         numeroActe: { type: 'string', example: 'ACTE-2025-001', description: 'Numéro d\'acte du courrier départ' },
         idCourrier: { type: 'number', example: 123, description: 'ID du courrier lié (optionnel)' },
-        idSignataire: { type: 'number', example: 5, description: 'ID de l\'utilisateur signataire (obligatoire)' },
         provenancesCopie: { 
           type: 'string', 
           example: '[15, 60, 354]',
@@ -296,7 +302,9 @@ Retourne toutes les informations détaillées incluant:
           courrierDepart: {
             id: 1,
             numeroReference: 'MINEPIA/2025/09/17/25/A',
-            idSignataire: 5,
+            objet: 'Objet du courrier',
+            idDestinataire: 10,
+            idProjet: 243,
             typeCourrier: 'Note',
             commentaire: 'Traitement mis à jour',
             document: 'courrier-depart/1700000000000-document.pdf',

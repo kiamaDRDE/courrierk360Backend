@@ -640,25 +640,14 @@ export class MailerService {
       numeroReference?: string | null;
       numeroActe?: string | null;
       typeCourrier?: string | null;
-      categorie?: string | null;
-      classeCourrier?: string | null;
-      dateSignature?: Date | null;
-      signataire?: string | null;
+      objet?: string | null;
+      projet?: string | null;
       commentaire?: string | null;
     },
   ): Promise<boolean> {
     try {
       const templatePath = path.join(__dirname, 'templates', 'courrier-depart-notification.html');
       let htmlContent = fs.readFileSync(templatePath, 'utf8');
-
-      // Formater la date de signature
-      const dateSignature = courrierDepart.dateSignature
-        ? new Date(courrierDepart.dateSignature).toLocaleDateString('fr-FR', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-          })
-        : 'N/A';
 
       // Gérer le bloc commentaire
       let commentaireBlock = '';
@@ -676,10 +665,8 @@ export class MailerService {
         .replace(/{{numeroReference}}/g, courrierDepart.numeroReference || 'N/A')
         .replace(/{{numeroActe}}/g, courrierDepart.numeroActe || 'N/A')
         .replace(/{{typeCourrier}}/g, courrierDepart.typeCourrier || 'N/A')
-        .replace(/{{categorie}}/g, courrierDepart.categorie || 'N/A')
-        .replace(/{{classeCourrier}}/g, courrierDepart.classeCourrier || 'N/A')
-        .replace(/{{dateSignature}}/g, dateSignature)
-        .replace(/{{signataire}}/g, courrierDepart.signataire || 'N/A')
+        .replace(/{{objet}}/g, courrierDepart.objet || 'N/A')
+        .replace(/{{projet}}/g, courrierDepart.projet || 'N/A')
         .replace(/{{commentaireBlock}}/g, commentaireBlock);
 
       const mailOptions = {

@@ -1,26 +1,48 @@
 // src/courrier-depart/dto/create-courrier-depart.dto.ts
 
-import { IsBoolean, IsOptional, IsString, IsInt, IsNumber, IsNotEmpty } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class CreateCourrierDepartDto {
-  @IsOptional()
   @IsString()
-  numeroReference?: string;
+  @IsNotEmpty()
+  numeroReference: string;
 
   @IsOptional()
   @IsString()
   numeroActe?: string;
 
-  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : value))
+  @IsString()
+  @IsNotEmpty()
+  objet: string;
+
+  @Transform(({ value }) =>
+    value !== undefined && value !== null && value !== '' ? Number(value) : value,
+  )
+  @IsInt()
+  @IsNotEmpty()
+  idDestinataire: number;
+
+  @Transform(({ value }) =>
+    value !== undefined && value !== null && value !== '' ? Number(value) : value,
+  )
+  @IsInt()
+  @IsNotEmpty()
+  projet: number;
+
+  @Transform(({ value }) =>
+    value !== undefined && value !== null && value !== '' ? Number(value) : value,
+  )
   @IsOptional()
   @IsInt()
   idCourrier?: number;
-
-  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : value))
-  @IsInt()
-  @IsNotEmpty()
-  idSignataire: number;
 
   @IsOptional()
   @IsString()
@@ -35,7 +57,9 @@ export class CreateCourrierDepartDto {
   commentaire?: string;
 
   @IsOptional()
-  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : value))
+  @Transform(({ value }) =>
+    value !== undefined && value !== null && value !== '' ? Number(value) : value,
+  )
   @IsNumber()
   nombrePieceJointe?: number;
 
@@ -48,3 +72,4 @@ export class CreateCourrierDepartDto {
   @IsBoolean()
   sendNotification?: boolean;
 }
+

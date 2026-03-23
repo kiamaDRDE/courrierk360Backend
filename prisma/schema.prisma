@@ -51,7 +51,6 @@ model User {
   servicesAdditionnels   UserServiceAdditionnel[]
   notifications          Notification[]            @relation("NotificationUser")
   courriers              Courrier[]                @relation("CourrierUser")
-  courrierDepartsSignes  CourrierDepart[]          @relation("CourrierDepartSignataire")
   reponses               Reponse[]                 @relation("ReponseRedacteur")
   transmissions          Transmission[]            @relation("TransmissionEmetteur")
 
@@ -422,20 +421,16 @@ model Courrier {
 
 model CourrierDepart {
   id                Int       @id @default(autoincrement()) @map("id")
-  dateSignature     DateTime? @default(now()) @map("date_signature")
   typeCourrier      String?   @map("type_courrier") @db.VarChar(100)
   commentaire       String?   @map("commentaire") @db.Text
+  objet             String?   @map("objet") @db.Text
   numeroReference   String?   @map("numero_reference") @db.VarChar(255)
   idDestinataire    Int?      @map("id_destinataire")
   idCourrier        Int?      @map("id_courrier")
-  idSignataire      Int?      @map("id_signataire")
-  classeCourrier    String?   @map("classe_courrier") @db.VarChar(100)
-  categorie         String?   @map("categorie") @db.VarChar(100)
   document          String?   @map("document") @db.Text
-  email             String?   @map("email") @db.VarChar(191)
-  numeroTelephone   String?   @map("numero_telephone") @db.VarChar(50)
   numeroActe        String?   @map("numero_acte") @db.VarChar(100)
   provenancesCopie  Json?     @map("provenances_copie")
+  idProjet          Int?      @map("id_projet")
   isDelete          Boolean   @default(false) @map("is_delete")
   isArchive         Boolean   @default(false) @map("is_archive")
   statutArchive     String?   @map("statut_archive") @db.VarChar(100)
@@ -447,16 +442,14 @@ model CourrierDepart {
   //relation
   destinataire      Correspondant? @relation("CourrierDepartDestinataire", fields: [idDestinataire], references: [id], onDelete: SetNull)
   courrier          Courrier?      @relation("CourrierDepartCourrier", fields: [idCourrier], references: [id], onDelete: SetNull)
-  signataire        User?          @relation("CourrierDepartSignataire", fields: [idSignataire], references: [id], onDelete: SetNull)
+  projet            Projet?        @relation(fields: [idProjet], references: [id], onDelete: SetNull)
   piecesJointes     PieceJointe[]  @relation("CourrierDepartPieceJointe")
 
   @@index([typeCourrier])
   @@index([idDestinataire])
   @@index([idCourrier])
-  @@index([idSignataire])
   @@index([numeroReference])
-  @@index([classeCourrier])
-  @@index([categorie])
+  @@index([idProjet])
   @@index([isDelete])
   @@index([isArchive])
   @@index([createdAt])
@@ -652,6 +645,9 @@ model Projet {
   id        Int      @id @default(autoincrement()) @map("id")
   name      String   @map("name") @db.VarChar(255)
   createdAt DateTime @default(now()) @map("created_at")
+
+  // relations
+  courriersDeparts CourrierDepart[]
 
   @@index([name])
   @@index([createdAt])

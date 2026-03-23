@@ -334,14 +334,15 @@ export class ArchiveService {
             const courriersDepart = idCourriersDepart.length > 0
               ? await this.prismaService.courrierDepart.findMany({
                   where: { id: { in: idCourriersDepart } },
-                  select: {
-                    id: true,
-                    numeroReference: true,
-                    numeroActe: true,
-                    typeCourrier: true,
-                    dateSignature: true,
-                  },
-                })
+                   select: {
+                     id: true,
+                     numeroReference: true,
+                     numeroActe: true,
+                     typeCourrier: true,
+                     createdAt: true,
+                     objet: true,
+                   },
+                 })
               : [];
 
             return {
