@@ -44,8 +44,7 @@ export class CourrierDepartController {
     description: `Liste paginée des courriers départ avec filtres et recherche.
     
 Retourne toutes les informations détaillées incluant:
-- Les données complètes du courrier départ (numeroReference, numeroActe, dateSignature, etc.)
-- Le destinataire avec { id, nom }
+- Les données du courrier départ (numeroReference, numeroActe, typeCourrier, commentaire, etc.)
 - Le signataire avec { id, fullName }
 - Le courrier lié (si existe) avec tous ses détails (numero, reference, objet, is_geled, dates, typeCourrier, provenance, categorie, priorite)
 - Les pièces jointes avec { id, nom, chemin, type }
@@ -54,14 +53,12 @@ Retourne toutes les informations détaillées incluant:
   })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Numéro de la page (défaut: 1)' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Nombre d\'éléments par page (défaut: 10)' })
-  @ApiQuery({ name: 'search', required: false, type: String, description: 'Recherche dans numeroReference, numeroActe, commentaire, email, destinataire, signataire, courrier lié' })
+  @ApiQuery({ name: 'search', required: false, type: String, description: 'Recherche dans numeroReference, numeroActe, commentaire, signataire, courrier lié' })
   @ApiQuery({ name: 'dateArriveeDebut', required: false, type: String, description: 'Date début (format: YYYY-MM-DD)' })
   @ApiQuery({ name: 'dateArriveeFin', required: false, type: String, description: 'Date fin (format: YYYY-MM-DD)' })
   @ApiQuery({ name: 'dateEnregistrementDebut', required: false, type: String, description: 'Date début (format: YYYY-MM-DD)' })
   @ApiQuery({ name: 'dateEnregistrementFin', required: false, type: String, description: 'Date fin (format: YYYY-MM-DD)' })
   @ApiQuery({ name: 'priorite', required: false, type: String, description: 'Filtrer par priorité' })
-  @ApiQuery({ name: 'categorie', required: false, type: String, description: 'Filtrer par catégorie' })
-  @ApiQuery({ name: 'categorieId', required: false, type: Number, description: 'Filtrer par ID de catégorie' })
   @ApiQuery({ name: 'typeCourrierId', required: false, type: Number, description: 'Filtrer par ID de type de courrier' })
   @ApiQuery({ name: 'statut', required: false, type: String, description: 'Filtrer par statut' })
   @ApiQuery({ name: 'dernierStatut', required: false, type: String, description: 'Filtrer par dernier statut de transmission' })
@@ -90,14 +87,9 @@ Retourne toutes les informations détaillées incluant:
                   id: { type: 'number' },
                   numeroReference: { type: 'string' },
                   numeroActe: { type: 'string' },
-                  dateSignature: { type: 'string' },
                   typeCourrier: { type: 'string' },
                   commentaire: { type: 'string' },
-                  classeCourrier: { type: 'string' },
-                  categorie: { type: 'string' },
                   document: { type: 'string' },
-                  email: { type: 'string' },
-                  numeroTelephone: { type: 'string' },
                   nombrePieceJointe: { type: 'number' },
                   provenancesCopie: { 
                     type: 'array',
@@ -111,14 +103,6 @@ Retourne toutes les informations détaillées incluant:
                     }
                   },
                   piecesJointes: { type: 'array' },
-                  destinataire: { 
-                    type: 'object',
-                    nullable: true,
-                    properties: { 
-                      id: { type: 'number' }, 
-                      nom: { type: 'string' } 
-                    } 
-                  },
                   signataire: { type: 'object', properties: { id: { type: 'number' }, fullName: { type: 'string' } } },
                   courrier: { 
                     type: 'object',
@@ -182,17 +166,15 @@ Retourne toutes les informations détaillées incluant:
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Créer un courrier départ',
-    description: 'Crée un courrier départ avec document et pièces jointes. Peut notifier par email et SMS.',
+    description: 'Crée un courrier départ avec document et pièces jointes. Peut notifier par email.',
   })
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['document', 'categorie', 'classeCourrier', 'typeCourrier', 'dateSignature', 'idDestinataire', 'idSignataire'],
+      required: ['document', 'typeCourrier', 'idSignataire'],
       properties: {
         numeroReference: { type: 'string', example: 'MINEPIA/2025/09/17/25/A' },
         numeroActe: { type: 'string', example: 'ACTE-2025-001', description: 'Numéro d\'acte du courrier départ' },
-        categorie: { type: 'string', example: 'Administrative' },
-        idDestinataire: { type: 'number', example: 15, description: 'ID du correspondant destinataire (obligatoire)' },
         idCourrier: { type: 'number', example: 123, description: 'ID du courrier lié (optionnel)' },
         idSignataire: { type: 'number', example: 5, description: 'ID de l\'utilisateur signataire (obligatoire)' },
         provenancesCopie: { 
@@ -200,12 +182,8 @@ Retourne toutes les informations détaillées incluant:
           example: '[15, 60, 354]',
           description: 'JSON string contenant un tableau d\'IDs des correspondants en copie'
         },
-        classeCourrier: { type: 'string', example: 'Interne' },
         typeCourrier: { type: 'string', example: 'Note' },
-        dateSignature: { type: 'string', example: '2025-09-20T16:00:00.000Z' },
         commentaire: { type: 'string', example: 'Traitement effectué' },
-        email: { type: 'string', example: 'destinataire@example.com' },
-        numeroTelephone: { type: 'string', example: '+237612345678' },
         nombrePieceJointe: { type: 'number', example: 2 },
         piecesJointesData: {
           type: 'string',
@@ -234,14 +212,9 @@ Retourne toutes les informations détaillées incluant:
           courrierDepart: {
             id: 1,
             numeroReference: 'MINEPIA/2025/09/17/25/A',
-            categorie: 'Administrative',
             idSignataire: 5,
-            classeCourrier: 'Interne',
             typeCourrier: 'Note',
-            dateSignature: '2025-09-20T16:00:00.000Z',
             commentaire: 'Traitement effectué',
-            email: 'destinataire@example.com',
-            numeroTelephone: '+237612345678',
             document: 'courrier-depart/1700000000000-document.pdf',
             nombrePieceJointe: 2,
           },
@@ -278,7 +251,7 @@ Retourne toutes les informations détaillées incluant:
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Mettre à jour un courrier départ',
-    description: 'Met à jour un courrier départ avec document et pièces jointes. Peut notifier par email et SMS.',
+    description: 'Met à jour un courrier départ avec document et pièces jointes. Peut notifier par email.',
   })
   @ApiBody({
     schema: {
@@ -286,8 +259,6 @@ Retourne toutes les informations détaillées incluant:
       properties: {
         numeroReference: { type: 'string', example: 'MINEPIA/2025/09/17/25/A' },
         numeroActe: { type: 'string', example: 'ACTE-2025-001', description: 'Numéro d\'acte du courrier départ' },
-        categorie: { type: 'string', example: 'Administrative' },
-        idDestinataire: { type: 'number', example: 15, description: 'ID du correspondant destinataire' },
         idCourrier: { type: 'number', example: 123, description: 'ID du courrier lié (optionnel)' },
         idSignataire: { type: 'number', example: 5, description: 'ID de l\'utilisateur signataire (obligatoire)' },
         provenancesCopie: { 
@@ -295,12 +266,8 @@ Retourne toutes les informations détaillées incluant:
           example: '[15, 60, 354]',
           description: 'JSON string contenant un tableau d\'IDs des correspondants en copie'
         },
-        classeCourrier: { type: 'string', example: 'Interne' },
         typeCourrier: { type: 'string', example: 'Note' },
-        dateSignature: { type: 'string', example: '2025-09-20T16:00:00.000Z' },
         commentaire: { type: 'string', example: 'Traitement effectué' },
-        email: { type: 'string', example: 'destinataire@example.com' },
-        numeroTelephone: { type: 'string', example: '+237612345678' },
         nombrePieceJointe: { type: 'number', example: 2 },
         piecesJointesData: {
           type: 'string',
@@ -329,14 +296,9 @@ Retourne toutes les informations détaillées incluant:
           courrierDepart: {
             id: 1,
             numeroReference: 'MINEPIA/2025/09/17/25/A',
-            categorie: 'Administrative',
             idSignataire: 5,
-            classeCourrier: 'Interne',
             typeCourrier: 'Note',
-            dateSignature: '2025-09-20T16:00:00.000Z',
             commentaire: 'Traitement mis à jour',
-            email: 'destinataire@example.com',
-            numeroTelephone: '+237612345678',
             document: 'courrier-depart/1700000000000-document.pdf',
             nombrePieceJointe: 3,
           },

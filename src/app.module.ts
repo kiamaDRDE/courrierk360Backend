@@ -31,6 +31,7 @@ import { CourrierInterneModule } from './courrier-interne/courrier-interne.modul
 import { NotificationModule } from './notification/notification.module';
 import { CourrierDepartModule } from './courrier-depart/courrier-depart.module';
 import { StatistiqueModule } from './statistique/statistique.module';
+import { ProjetModule } from './projets/projet.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { StatistiqueModule } from './statistique/statistique.module';
     NotificationModule,
     CourrierDepartModule,
     StatistiqueModule,
+    ProjetModule,
   ],
   providers: [
     {

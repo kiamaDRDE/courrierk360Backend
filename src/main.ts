@@ -30,6 +30,7 @@ import { CourrierInterneModule } from './courrier-interne/courrier-interne.modul
 import { NotificationModule } from './notification/notification.module';
 import { CourrierDepartModule } from './courrier-depart/courrier-depart.module';
 import { StatistiqueModule } from './statistique/statistique.module';
+import { ProjetModule } from './projets/projet.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -399,6 +400,20 @@ async function bootstrap() {
     include: [StatistiqueModule],
   });
 
+  // Configuration Swagger pour le module Projets
+  const projetConfig = new DocumentBuilder()
+    .setTitle('API Projets')
+    .setDescription('API dédiée à la gestion des projets.')
+    .setVersion('1.0.0')
+    .addTag('Projets', 'Gestion des projets')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
+    .addServer('/')
+    .build();
+
+  const projetDocument = SwaggerModule.createDocument(app, projetConfig, {
+    include: [ProjetModule],
+  });
+
   // Setup Swagger avec dropdown pour filtrer par module
   SwaggerModule.setup('', app, mainDocument, {
     explorer: true,
@@ -494,6 +509,10 @@ async function bootstrap() {
         { 
           name: '📤 Module Courrier Départ', 
           url: '/courrier-depart-swagger.json' 
+        },
+        { 
+          name: '📁 Module Projets', 
+          url: '/projet-swagger.json' 
         },
         { 
           name: '📊 Module Statistique', 
@@ -650,6 +669,12 @@ async function bootstrap() {
   SwaggerModule.setup('courrier-depart-doc', app, courrierDepartDocument, {
     jsonDocumentUrl: '/courrier-depart-swagger.json',
     customSiteTitle: 'API Courrier Départ',
+    customfavIcon: '',
+  });
+
+  SwaggerModule.setup('projet-doc', app, projetDocument, {
+    jsonDocumentUrl: '/projet-swagger.json',
+    customSiteTitle: 'API Projets',
     customfavIcon: '',
   });
 

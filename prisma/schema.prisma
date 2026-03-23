@@ -648,3 +648,13 @@ model RolePermission {
 }
 
 
+model Projet {
+  id        Int      @id @default(autoincrement()) @map("id")
+  name      String   @map("name") @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([name])
+  @@index([createdAt])
+  @@map("projet")
+}
+

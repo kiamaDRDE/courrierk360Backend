@@ -9,12 +9,12 @@ export class ListCourrierDepartQueryDto extends PaginationQueryDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ description: "Date d'arrivée - début (YYYY-MM-DD ou ISO)", example: '2025-02-01' })
+  @ApiPropertyOptional({ description: "Date d'arrivÃ©e - dÃ©but (YYYY-MM-DD ou ISO)", example: '2025-02-01' })
   @IsOptional()
   @IsString()
   dateArriveeDebut?: string;
 
-  @ApiPropertyOptional({ description: "Date d'arrivée - fin (YYYY-MM-DD ou ISO)", example: '2025-02-28' })
+  @ApiPropertyOptional({ description: "Date d'arrivÃ©e - fin (YYYY-MM-DD ou ISO)", example: '2025-02-28' })
   @IsOptional()
   @IsString()
   dateArriveeFin?: string;
@@ -24,70 +24,48 @@ export class ListCourrierDepartQueryDto extends PaginationQueryDto {
   @IsString()
   dateEnregistrement?: string;
 
-  @ApiPropertyOptional({ description: 'Date de signature (YYYY-MM-DD)', example: '2025-02-16' })
-  @IsOptional()
-  @IsString()
-  dateSignature?: string;
-
-  @ApiPropertyOptional({ description: 'Priorité du courrier lié', example: 'Urgent' })
+  @ApiPropertyOptional({ description: 'PrioritÃ© du courrier liÃ©', example: 'Urgent' })
   @IsOptional()
   @IsString()
   priorite?: string;
 
-  @ApiPropertyOptional({ description: 'Catégorie du courrier départ', example: 'Administratif' })
-  @IsOptional()
-  @IsString()
-  categorie?: string;
-
-  @ApiPropertyOptional({ description: 'ID de catégorie', example: 3 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  categorieId?: number;
-
-  @ApiPropertyOptional({ description: 'ID du type de courrier (courrier lié)', example: 5 })
+  @ApiPropertyOptional({ description: 'ID du type de courrier (courrier liÃ©)', example: 5 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   typeCourrierId?: number;
 
-  @ApiPropertyOptional({ description: 'Statut du courrier lié', example: 'Transmis' })
+  @ApiPropertyOptional({ description: 'Statut du courrier liÃ©', example: 'Transmis' })
   @IsOptional()
   @IsString()
   statut?: string;
 
-  @ApiPropertyOptional({ description: 'Dernier statut de transmission du courrier lié', example: 'Reçu' })
+  @ApiPropertyOptional({ description: 'Dernier statut de transmission du courrier liÃ©', example: 'ReÃ§u' })
   @IsOptional()
   @IsString()
   dernierStatut?: string;
 
-  @ApiPropertyOptional({ description: 'Service destinataire du courrier lié', example: 2 })
+  @ApiPropertyOptional({ description: 'Service destinataire du courrier liÃ©', example: 2 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   serviceId?: number;
 
-  @ApiPropertyOptional({ description: 'Dernier service destinataire du courrier lié', example: 4 })
+  @ApiPropertyOptional({ description: 'Dernier service destinataire du courrier liÃ©', example: 4 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   dernierServiceId?: number;
 
-  @ApiPropertyOptional({ description: 'Provenance (correspondant) du courrier lié', example: 10 })
+  @ApiPropertyOptional({ description: 'Provenance (correspondant) du courrier liÃ©', example: 10 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   provenanceId?: number;
-
-  @ApiPropertyOptional({ description: 'ID du correspondant destinataire du courrier départ', example: 5 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  CorrespondantId?: number;
 }
 
 export class CourrierDepartIdsDto {
-  @ApiPropertyOptional({ description: 'Liste des IDs de courriers départ', example: [1, 2, 3] })
+  @ApiPropertyOptional({ description: 'Liste des IDs de courriers dÃ©part', example: [1, 2, 3] })
   @IsArray()
   @Type(() => Number)
   @IsInt({ each: true })

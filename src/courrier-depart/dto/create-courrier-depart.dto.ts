@@ -12,15 +12,6 @@ export class CreateCourrierDepartDto {
   @IsString()
   numeroActe?: string;
 
-  @IsString()
-  @IsNotEmpty()
-  categorie: string;
-
-  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : value))
-  @IsInt()
-  @IsNotEmpty()
-  idDestinataire: number;
-
   @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : value))
   @IsOptional()
   @IsInt()
@@ -28,6 +19,7 @@ export class CreateCourrierDepartDto {
 
   @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : value))
   @IsInt()
+  @IsNotEmpty()
   idSignataire: number;
 
   @IsOptional()
@@ -36,27 +28,11 @@ export class CreateCourrierDepartDto {
 
   @IsString()
   @IsNotEmpty()
-  classeCourrier: string;
-
-  @IsString()
-  @IsNotEmpty()
   typeCourrier: string;
-
-  @IsString()
-  @IsNotEmpty()
-  dateSignature: string;
 
   @IsOptional()
   @IsString()
   commentaire?: string;
-
-  @IsOptional()
-  @IsString()
-  email?: string;
-
-  @IsOptional()
-  @IsString()
-  numeroTelephone?: string;
 
   @IsOptional()
   @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? Number(value) : value))
