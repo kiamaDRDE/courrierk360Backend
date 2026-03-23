@@ -4,6 +4,8 @@ import {
   Controller,
   Get,
   Post,
+  HttpCode,
+  HttpStatus,
   Patch,
   Delete,
   Body,
@@ -15,6 +17,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { CorrespondantService } from './correspondant.service';
 import { CreateCorrespondantDto } from './dto/create-correspondant.dto';
+import { SyncDestinatairesDto } from './dto/sync-destinataires.dto';
 import { UpdateCorrespondantDto } from './dto/update-correspondant.dto';
 import { SearchPaginationQueryDto } from '../common/dto/search-pagination-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -560,5 +563,17 @@ export class CorrespondantController {
   })
   removePermanently(@Param('id', ParseIntPipe) id: number) {
     return this.correspondantService.removePermanently(id);
+  }
+
+  @Post('sync-external-destinataires')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Synchroniser les destinataires depuis une API externe' })
+  @ApiResponse({
+    status: 200,
+    description: 'Destinataires synchronisÃ©s avec succÃ¨s.',
+    schema: { example: { processed: 255 } },
+  })
+  async syncExternalDestinataires(@Body() body: SyncDestinatairesDto) {
+    return this.correspondantService.syncDestinatairesFromExternal(body?.url);
   }
 }

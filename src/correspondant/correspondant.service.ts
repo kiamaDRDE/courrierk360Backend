@@ -1,6 +1,7 @@
 // src/correspondant/correspondant.service.ts
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { ResponseFormatterService } from '../common/response-formatter.service';
 import { PaginationService } from '../common/pagination.service';
@@ -11,12 +12,80 @@ import { correspondantSearchConfig } from './correspondant.config';
 
 @Injectable()
 export class CorrespondantService {
+  private readonly logger = new Logger(CorrespondantService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly responseFormatter: ResponseFormatterService,
     private readonly paginationService: PaginationService,
     private readonly searchService: SearchService,
   ) {}
+
+  /**
+   * Synchronise les destinataires depuis une API externe et insère/met à jour
+   * dans la table `correspondant`.
+   * Mapping:
+   *  - id -> id
+   *  - fullName -> nom
+   * Les autres champs ne sont pas synchronisés.
+   */
+  async syncDestinatairesFromExternal(externalUrl?: string) {
+    const url =
+      externalUrl ||
+      process.env.EXTERNAL_SERVICES_DESTINATAIRES_URL ||
+      'http://api-kiama360-test.kiama.cm/courrier/destinataires?page=1&limit=0';
+    this.logger.log(`Sync destinataires from external URL: ${url}`);
+
+    const externalToken = process.env.EXTERNAL_SERVICES_TOKEN;
+    const headers: any = {};
+    if (externalToken) {
+      headers.Authorization = `Bearer ${externalToken}`;
+      this.logger.log(
+        'Using EXTERNAL_SERVICES_TOKEN for Authorization header (destinataires)',
+      );
+    }
+
+    const resp = await axios.get(url, { timeout: 20000, headers });
+    const items = Array.isArray(resp.data?.data?.data)
+      ? resp.data.data.data
+      : Array.isArray(resp.data?.data)
+        ? resp.data.data
+        : [];
+
+    const seenIds = new Set<number>();
+    let processed = 0;
+
+    for (const item of items) {
+      try {
+        const correspondantId = Number(item.id);
+        if (!Number.isInteger(correspondantId)) continue;
+        if (seenIds.has(correspondantId)) continue;
+        seenIds.add(correspondantId);
+
+        const nom = String(item.fullName ?? item.nom ?? item.name ?? '').trim();
+        if (!nom) continue;
+
+        await this.prisma.correspondant.upsert({
+          where: { id: correspondantId },
+          update: { nom },
+          create: {
+            id: correspondantId,
+            nom,
+            // Champs obligatoires du modèle Prisma
+            telephone: '',
+            type: '',
+          },
+        });
+
+        processed++;
+      } catch (err) {
+        this.logger.error(
+          `Error processing external destinataire item: ${err?.message || err}`,
+        );
+      }
+    }
+
+    return { processed };
+  }
 
   async create(createDto: CreateCorrespondantDto) {
         // Vérifier unicité du nom
