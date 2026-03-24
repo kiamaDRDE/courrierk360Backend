@@ -32,6 +32,7 @@ import { NotificationModule } from './notification/notification.module';
 import { CourrierDepartModule } from './courrier-depart/courrier-depart.module';
 import { StatistiqueModule } from './statistique/statistique.module';
 import { ProjetModule } from './projets/projet.module';
+import { DechargeModule } from './decharges/decharge.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { ProjetModule } from './projets/projet.module';
     CourrierDepartModule,
     StatistiqueModule,
     ProjetModule,
+    DechargeModule,
   ],
   providers: [
     {

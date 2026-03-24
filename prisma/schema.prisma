@@ -444,6 +444,7 @@ model CourrierDepart {
   courrier          Courrier?      @relation("CourrierDepartCourrier", fields: [idCourrier], references: [id], onDelete: SetNull)
   projet            Projet?        @relation(fields: [idProjet], references: [id], onDelete: SetNull)
   piecesJointes     PieceJointe[]  @relation("CourrierDepartPieceJointe")
+  decharges Decharge[]
 
   @@index([typeCourrier])
   @@index([idDestinataire])
@@ -654,3 +655,23 @@ model Projet {
   @@map("projet")
 }
 
+model Decharge {
+  id             Int       @id @default(autoincrement()) @map("id")
+
+  dateSignature  DateTime  @map("date_signature")
+  signataire     String    @map("signataire") @db.VarChar(255)
+  observation    String?   @map("observation") @db.Text
+  document       String?   @map("document") @db.VarChar(255)
+
+  idCourrierDepart Int     @map("id_courrier_depart")
+
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // relation
+  courrierDepart CourrierDepart @relation(fields: [idCourrierDepart], references: [id], onDelete: Cascade)
+
+  @@index([idCourrierDepart])
+  @@index([dateSignature])
+  @@map("decharge")
+}
