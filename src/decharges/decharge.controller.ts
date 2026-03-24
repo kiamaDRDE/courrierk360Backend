@@ -95,6 +95,13 @@ export class DechargeController {
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @ApiQuery({
+    name: 'idCourrierDepart',
+    required: true,
+    type: Number,
+    description: 'ID du courrier départ (obligatoire)',
+    example: 123,
+  })
+  @ApiQuery({
     name: 'search',
     required: false,
     type: String,

@@ -201,6 +201,12 @@ export class DechargeService {
 
   async list(query?: ListDechargeQueryDto) {
     const filters = query || {};
+    if (!filters.idCourrierDepart) {
+      return this.responseFormatter.validationError(
+        'Paramètre manquant',
+        'idCourrierDepart est obligatoire pour lister les décharges.',
+      );
+    }
     const { page, limit } = this.paginationService.validatePaginationParams(
       filters.page,
       filters.limit,
@@ -210,6 +216,7 @@ export class DechargeService {
     const search = this.searchService.sanitizeSearchTerm(filters.search);
 
     const where: any = {};
+    where.idCourrierDepart = filters.idCourrierDepart;
 
     if (search) {
       const numericValue = Number(search);
