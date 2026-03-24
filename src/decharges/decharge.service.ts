@@ -289,4 +289,37 @@ export class DechargeService {
       `${totalItems} décharge(s) récupérée(s) avec succès.`,
     );
   }
+
+  async remove(id: number) {
+    const existing = await this.prisma.decharge.findUnique({
+      where: { id },
+      select: { id: true, document: true },
+    });
+
+    if (!existing) {
+      return this.responseFormatter.notFound(
+        'Décharge non trouvée',
+        `Aucune décharge trouvée avec l'ID ${id}.`,
+      );
+    }
+
+    if (existing.document) {
+      try {
+        const absolutePath = path.join(process.cwd(), 'public', existing.document);
+        if (fs.existsSync(absolutePath)) {
+          fs.unlinkSync(absolutePath);
+        }
+      } catch {
+        // ignore file delete errors
+      }
+    }
+
+    const deleted = await this.prisma.decharge.delete({ where: { id } });
+
+    return this.responseFormatter.deleted(
+      'Décharge supprimée',
+      'La décharge a été supprimée avec succès.',
+      deleted,
+    );
+  }
 }

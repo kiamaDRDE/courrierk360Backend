@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -119,5 +120,13 @@ export class DechargeController {
   @ApiResponse({ status: 200, description: 'Décharge récupérée avec succès.' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.dechargeService.findOne(id);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Supprimer une décharge' })
+  @ApiParam({ name: 'id', type: Number, description: 'ID de la décharge' })
+  @ApiResponse({ status: 200, description: 'Décharge supprimée avec succès.' })
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.dechargeService.remove(id);
   }
 }
